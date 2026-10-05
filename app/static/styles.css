@@ -343,7 +343,8 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
   .workbench, .project-shell[data-right-collapsed="true"] .workbench { grid-template-columns:185px minmax(0,1fr); }
   .project-shell[data-left-collapsed="true"] .workbench,
   .project-shell[data-left-collapsed="true"][data-right-collapsed="true"] .workbench { grid-template-columns:52px minmax(0,1fr); }
-  .lia-panel { position:static; grid-column:1/-1; min-height:0; }
+  .context-panel, .lia-panel { position:static; max-height:none; }
+  .lia-panel { grid-column:1/-1; min-height:0; }
   .project-shell[data-right-collapsed="true"] .lia-panel { min-height:0; }
   .stage-pipeline { overflow-x:auto; grid-template-columns:repeat(4,minmax(175px,1fr)); }
   .stage-step small { display:none; }
@@ -364,7 +365,8 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
   .tile-arrow { bottom:15px; }
   .section-heading, .project-heading, .space-header { align-items:flex-start; flex-direction:column; }
   .home-note { flex-wrap:wrap; }
-  .recent-list { grid-template-columns:1fr; }
+  .recent-list { grid-template-columns:minmax(0,1fr); }
+  .project-tile-info { min-width:0; }
   .project-status { white-space:normal; }
   .workbench, .project-shell[data-left-collapsed="true"] .workbench,
   .project-shell[data-right-collapsed="true"] .workbench,
