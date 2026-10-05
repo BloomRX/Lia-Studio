@@ -109,7 +109,12 @@ ul.clean { padding-left: 18px; }
 ul.clean li { margin: 4px 0; }
 
 .skill-content { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 65vh; overflow-y: auto; font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace; }
-@media(max-width: 720px) { .layout { grid-template-columns: 1fr; } .topbar { flex-wrap: wrap; } .topnav a { margin-left: 0; } }
+@media(max-width: 720px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .layout > * { min-width: 0; }
+  .topbar { flex-wrap: wrap; }
+  .topnav a { margin-left: 0; }
+}
 
 /* Pipeline central do projeto; a lateral continua apenas navegação funcional. */
 .stage-pipeline { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
