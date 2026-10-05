@@ -164,6 +164,46 @@ escapados antes de aparecer na tela. **Nenhum serviço Ollama real foi acessado*
 nenhum modelo executado; o diagnóstico novo ainda não foi retestado no Windows.
 Este incremento não altera o aceite anterior da Alpha.
 
+### Alpha UI.1 — navegação, painéis e Skills locais (2026-10-04)
+`python verify_alpha.py` no Linux → **109 testes Python OK**, regressão JS,
+sintaxe Python/JS OK. Três novos testes cobrem Skills do Dev: criação, edição
+com revisão, reabertura, separação do projeto, rejeição de symlink, corrupção,
+entrada inválida e origem cross-site. A regressão JS cobre launcher distinto,
+quatro contextos da pipeline sem mutação de estágio, pipeline central única,
+recolhimento independente de painéis, criação/edição/cópia de Skill e ações do
+Workspace. O servidor foi iniciado com dados **descartáveis** em preview e um
+smoke HTTP real confirmou Home, criar/reabrir projeto, criar/editar/reabrir Skill,
+servir CSS e preservar o estágio salvo.
+
+**Navegador real no Linux:** após falha do download padrão do Playwright
+(`ECONNRESET`), foi usado Chromium empacotado via npm **apenas no ambiente de
+teste** (sem dependência nova no Studio). Playwright percorreu Home → criar
+projeto → quatro fases → 11 áreas → recolher ambos os painéis (centro 820 →
+1226 px a 1440 px) → Skills criar/editar/reabrir/duplicar Skill distribuída →
+Home → reabrir projeto; sem `pageerror` ou HTTP 500. O filtro de Skills, rascunho
+de formulário durante recolhimento e editor móvel também foram exercitados. Um
+smoke adicional de regressão Alpha no browser percorreu Etapa 0 → editar GDD →
+aprovar gate explicitamente → adicionar módulo → recarregar, com persistência.
+Capturas Home/Projeto/Skills/mobile foram inspecionadas localmente. A cópia de
+Skill com frontmatter e a ocultação visual dos itens filtrados falharam na primeira
+tentativa, foram corrigidas e passaram no reteste. Após reiniciar o servidor,
+projeto e Skill editada persistiram.
+Viewports CSS 390 e 720 px não tiveram overflow horizontal. **Ainda pendentes:**
+zoom nativo 200%, navegador Windows e aceite do Dev da UI.1. Roteiro em
+[ALPHA-UI1-VALIDACAO.md](ALPHA-UI1-VALIDACAO.md). O aceite anterior da Alpha
+funcional permanece separado desta evolução visual.
+
+**Relatório Windows recebido em 05/10:** o Copilot testou `7ad7b19`, anterior à
+implementação UI.1. Registrou ausência de pipeline navegável, painéis recolhíveis
+e CRUD de Skills naquela versão, além de um overflow a 200% corrigido no commit
+`e5b8217`. O relatório e a saída integral foram preservados em
+[ALPHA-UI1-EXECUCAO-WINDOWS-2026-10-05.md](ALPHA-UI1-EXECUCAO-WINDOWS-2026-10-05.md)
+e [ALPHA-UI1-VERIFY-WINDOWS-2026-10-05.txt](ALPHA-UI1-VERIFY-WINDOWS-2026-10-05.txt).
+**Não é uma validação Windows da UI.1 implementada depois**: 106 testes passaram
+naquela revisão, 11 casos de symlink foram pulados (não aprovados). A correção
+CSS foi mantida aqui; o fluxo UI.1 e o zoom nativo ainda precisam de reteste
+na revisão que contenha a UI.1.
+
 ## 2. Smoke técnico anterior de API (via curl; não é teste de uso/aceite)
 Fluxo registrado anteriormente pelo desenvolvimento: criar projeto → bootstrap com ideia incompleta →
 listar decisões (todas `em aberto`) → inserir decisão conflitante (plataforma

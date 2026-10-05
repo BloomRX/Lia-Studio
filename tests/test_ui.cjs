@@ -107,6 +107,7 @@ vm.runInNewContext(source.replace(/navigate\(\);\s*$/, ''), context);
   await context.renderProject('project-1', 'plan');
   assert.equal((view.innerHTML.match(/class="stage-pipeline"/g) || []).length, 1);
   context.fetch = post;
+  const originalRenderProject = context.renderProject;
   context.renderProject = async () => {};
   stageNote.value = '   ';
   await context.advanceStage('project-1', 'mvp');
@@ -271,5 +272,95 @@ vm.runInNewContext(source.replace(/navigate\(\);\s*$/, ''), context);
   assert.match(probeResult.innerHTML, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(probeResult.innerHTML, /<img/);
   assert.equal(probeButton.disabled, false);
+  // Alpha UI.1: contextos visuais não alteram o estágio nem duplicam a pipeline.
+  const phase = context.renderStageContext('project-1', 'delivery', {
+    stage_gate: project.stage_gate, docs: ['GDD.md'], modules: [], qa: [],
+  });
+  assert.match(phase, /04 \/ FINALIZAÇÃO/);
+  assert.match(phase, /Build, Run e Agent reais ainda não estão conectados/);
+  assert.match(phase, /estágio salvo continua/);
+  const stageNav = context.renderStagePipeline(project.stage_gate, 'project-1', 'delivery');
+  assert.equal((stageNav.match(/class="stage-step/g) || []).length, 4);
+  assert.match(stageNav, /href="#\/project\/project-1\/stage\/delivery"/);
+  assert.match(stageNav, /aria-current="step"/);
+  assert.doesNotMatch(stageNav, />Entrega</);
+  const shellContext = {textContent: ''};
+  const shell = {dataset: {}};
+  const leftToggle = {attributes: {}, setAttribute(k,v) {this.attributes[k]=v;}};
+  const rightToggle = {attributes: {}, setAttribute(k,v) {this.attributes[k]=v;}};
+  const skillTitle = {value: 'Loop de gameplay'};
+  const skillContent = {value: 'Quando usar: revisar o core loop.'};
+  context.document.body = {dataset: {}};
+  context.document.querySelector = () => shell;
+  context.document.getElementById = id => ({view, toast, 'shell-context': shellContext,
+    'toggle-left': leftToggle, 'toggle-right': rightToggle,
+    'skill-title': skillTitle, 'skill-content': skillContent})[id];
+  const pageCalls = [];
+  context.fetch = async (url, options) => {
+    pageCalls.push({url, options});
+    let data = {};
+    if (url === '/api/projects/project-1') data = {
+      ...project, entry: {name:'Jogo',status:'ativo',next_step:'Revisar ideia'},
+      docs:[], modules:[], qa:[], recent_sessions:[], health:'needs_review',
+    };
+    else if (url === '/api/projects') data = {projects:[{id:'project-1', name:'Jogo',
+      stage:'preparation', status:'ativo'}]};
+    else if (url === '/api/skills') data = {skills:[{id:'lia-project-resume',title:'Retomar',origin:'builtin'},
+      {id:'lia-user-abcdef123456',title:'Minha Skill',origin:'user'}]};
+    else if (url === '/api/skills/lia-project-resume') data = {id:'lia-project-resume',
+      title:'Retomar',origin:'builtin',content:'# Retomar\n\nFluxo.'};
+    else if (url === '/api/skills/lia-user-abcdef123456') data = {id:'lia-user-abcdef123456',
+      title:'Minha Skill',origin:'user',content:'# Minha Skill\n\nFluxo.',revision:'a'.repeat(64)};
+    if (url === '/api/skills' && options.method === 'POST') data = {id:'lia-user-abcdef123456'};
+    return {ok:true, json:async () => data};
+  };
+  await context.renderHome();
+  assert.match(view.innerHTML, /Criar projeto/);
+  assert.match(view.innerHTML, /Abrir projeto/);
+  assert.match(view.innerHTML, /Criar Skill/);
+  assert.doesNotMatch(view.innerHTML, /stage-pipeline/);
+  assert.equal(context.document.body.dataset.space, 'home');
+  context.renderProject = originalRenderProject;
+  await context.renderProject('project-1', 'stage', 'production');
+  assert.equal((view.innerHTML.match(/class="stage-pipeline"/g) || []).length, 1);
+  assert.match(view.innerHTML, /CONTEXTO/);
+  assert.match(view.innerHTML, /LIA · ACOMPANHAMENTO/);
+  assert.match(view.innerHTML, /Como evoluir sem perder o rumo/);
+  assert.match(view.innerHTML, /O estágio salvo continua/);
+  assert.match(view.innerHTML, /href="#\/project\/project-1\/qa\/production"/);
+  assert.equal(context.document.body.dataset.space, 'project');
+  await context.renderProject('project-1', 'qa', 'delivery');
+  assert.match(view.innerHTML, /Contexto: Finalização/);
+  assert.match(view.innerHTML, /href="#\/project\/project-1\/release\/delivery"/);
+  assert.equal(pageCalls.filter(x => x.options.method !== 'GET').length, 0);
+  context.togglePanel('left');
+  context.togglePanel('right');
+  assert.equal(shell.dataset.leftCollapsed, 'true');
+  assert.equal(shell.dataset.rightCollapsed, 'true');
+  assert.equal(leftToggle.attributes['aria-expanded'], 'false');
+  context.togglePanel('left');
+  context.togglePanel('right');
+  assert.equal(shell.dataset.leftCollapsed, 'false');
+  assert.equal(shell.dataset.rightCollapsed, 'false');
+  await context.renderSkills('new');
+  assert.match(view.innerHTML, /Criar Skill/);
+  assert.doesNotMatch(view.innerHTML, /PROJECT WORKSPACE/);
+  assert.equal(context.document.body.dataset.space, 'skills');
+  await context.window.createUserSkill();
+  assert.equal(pageCalls.at(-1).url, '/api/skills');
+  assert.equal(pageCalls.at(-1).options.method, 'POST');
+  assert.match(JSON.parse(pageCalls.at(-1).options.body).content, /^# Loop de gameplay/);
+  assert.equal(context.location.hash, '#/skills/lia-user-abcdef123456');
+  await context.renderSkills('lia-user-abcdef123456', 'edit');
+  skillContent.value = '# Minha Skill\n\nRevisada.';
+  await context.window.saveUserSkill();
+  assert.equal(pageCalls.at(-1).options.method, 'PUT');
+  assert.equal(JSON.parse(pageCalls.at(-1).options.body).revision, 'a'.repeat(64));
+  await context.renderSkills('lia-project-resume');
+  assert.match(view.innerHTML, /Duplicar para editar/);
+  assert.doesNotMatch(view.innerHTML, /onclick="saveUserSkill/);
+  await context.window.copySelectedSkill();
+  assert.equal(pageCalls.at(-1).options.method, 'POST');
+  assert.equal(context.location.hash, '#/skills/lia-user-abcdef123456/edit');
   console.log('UI regression: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });

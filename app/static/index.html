@@ -3,23 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lia Studio — alpha</title>
+  <meta name="theme-color" content="#17111c" />
+  <title>Lia Studio — workspace local</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
-<body>
+<body data-space="home">
   <header class="topbar">
-    <div class="brand">
-      <span class="badge" aria-hidden="true">L</span>
-      <div>
-        <strong>Lia Studio</strong>
-        <small>alpha local · sem conta · sem nuvem obrigatória</small>
-      </div>
-    </div>
-    <nav class="topnav">
-      <a href="#/home" data-nav="home">Início</a>
+    <a class="brand" href="#/home" aria-label="Lia Studio — voltar ao launcher">
+      <span class="badge" aria-hidden="true">✿</span>
+      <span class="brand-copy"><strong>Lia <em>Studio</em></strong><small>CRIE · EXPERIMENTE · EVOLUA</small></span>
+    </a>
+    <span id="shell-context" class="shell-context">Launcher</span>
+    <nav class="topnav" aria-label="Áreas do Studio">
+      <a href="#/home" data-nav="home">Home</a>
       <a href="#/skills" data-nav="skills">Skills</a>
       <a href="#/recovery" data-nav="recovery">Dados</a>
-      <a href="#/config" data-nav="config">Configurações</a>
+      <a href="#/config" data-nav="config">Configuração</a>
     </nav>
   </header>
 
@@ -27,12 +26,8 @@
     <div class="loading">Carregando…</div>
   </main>
 
-  <footer class="foot">
-    <span>Lia Studio · identidade visual provisória, sem logo ou arte oficial.</span>
-  </footer>
-
-  <div id="toast" class="toast" hidden></div>
-
+  <footer class="foot"><span>Lia Studio · local-first · você decide o próximo passo</span><span>Alpha UI.1 · Agents e execução real não conectados</span></footer>
+  <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
   <script src="/static/app.js"></script>
 </body>
 </html>

@@ -15,6 +15,15 @@
   manualmente, substituí-lo exige confirmação explícita. A revisão SHA-256 do
   JSON impede editar uma posição antiga sem recarga, mas não há transação
   multi-arquivo/processo para manter o par sempre sincronizado após falha de disco.
+- Skills criadas pelo Dev (Alpha UI.1): `<pasta>/_skills/lia-user-<id>/SKILL.md`,
+  Markdown UTF-8 independente de todos os projetos. As Skills distribuídas em
+  `.agents/skills/` são somente leitura no app; uma cópia editável vai para
+  `_skills`. Não há sincronização, importação, backup automático, migração nem
+  aplicação a Agent. A exportação de um projeto **não inclui** a biblioteca;
+  faça cópia separada antes de mover ou apagar `LIA_PROJECTS_DIR`. Escrita é
+  atômica sob lock do processo e checa revisão antes de sobrescrever; como os
+  demais arquivos locais, não é transação entre processos. Não coloque segredos
+  nessas instruções: a API local da biblioteca pode servir seu conteúdo.
 - **Fonte única de metadados do projeto:** `<pasta>/lia_index.json` (nome,
   localização, status, estágio, decisões de avanço, próximo passo). Um projeto
   novo não gera `meta.json`; não há duas cópias do estado para divergir.

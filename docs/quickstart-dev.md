@@ -1,6 +1,13 @@
 # Guia rápido do Dev — Lia Studio (alpha)
 
 Este guia cobre os fluxos principais pela interface. Não exige conta externa.
+Na Alpha UI.1, a **Home é o launcher**. Ao abrir um projeto, a pipeline no topo
+seleciona o contexto visual (Preparação, MVP, Produção, Finalização); clicar numa
+fase **não altera o estágio salvo**. O avanço real permanece na Visão geral,
+com gate e aprovação. Os painéis Contexto e Lia podem ser recolhidos, liberando
+espaço ao centro. O painel Lia mostra atalhos e status; chat/Agent real não está
+conectado. O backend ainda armazena a última macrofase como `delivery`, que a
+interface apresenta como Finalização.
 
 ## 1. Iniciar
 ```bash
@@ -23,7 +30,8 @@ Abra `http://127.0.0.1:8080`. Tela inicial mostra projetos recentes, estado e pr
 5. Aba **Documentos**: edite qualquer arquivo Markdown livremente e salve.
 
 ## Avanço de etapa (explícito)
-Na **Visão geral**, a pipeline mostra a etapa do jogo e os bloqueios do gate.
+A **pipeline no topo do Project Workspace** mostra o estágio do jogo. Na
+**Visão geral** ficam os bloqueios do gate e a aprovação explícita.
 A Etapa 0 exige documentos e uma ideia descrita; só depois de revisá-los o Dev
 pode preencher **Motivo da aprovação do Dev** na Visão geral e confirmar o
 avanço ao MVP. **Gerar documentos não avança automaticamente.** Execução simulada e QA apenas registrado não comprovam
@@ -100,9 +108,16 @@ confirmou o aceite da Alpha, mas 11 testes de symlink foram pulados.
   nomes que o serviço anuncia; não inicia modelo nem comprova se é local/gratuito.
   Se Ollama não estiver ativo, a tela mostra indisponibilidade, sem alterar dados.
 
-## Explorar Skills
-Na barra superior ou na Home, escolha **Skills** para consultar as quatro instruções
-locais. O workspace é separado do projeto; não inicia um agente nem modifica arquivos.
+## Skills Workspace (independente dos projetos)
+Na Home ou barra superior, abra **Skills**. A **Biblioteca** reúne as quatro Skills
+distribuídas e as suas; **Minhas Skills** filtra as criadas por você. Busque por
+nome, clique **Criar Skill**, escreva nome e instruções, salve e reabra. Skills
+distribuídas são somente leitura: use **Duplicar para editar**. Para Skills próprias,
+clique **Editar Skill** e **Salvar alterações**; se outra janela ou editor mudou o
+arquivo, recarregue antes de substituir. Os arquivos ficam em
+`LIA_PROJECTS_DIR/_skills/`, não dentro de um projeto e não entram na exportação
+de projeto. Faça cópia separada da biblioteca. Salvar não inicia Agent nem aplica
+a Skill a um projeto.
 
 ## Integridade e exportação
 Na Visão geral, preencha **Pasta de destino absoluta** e clique em **Exportar

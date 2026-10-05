@@ -53,6 +53,28 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   executa código, e não substitui a revisão humana antes de compartilhar.
 - Biblioteca de quatro Skills locais consultáveis, separada dos projetos; aplicação por agente ainda não conectada.
 
+## Alpha UI.1 — evolução pós-aceite (Chromium Linux validado; Windows pendente)
+- Home como **launcher** separado dos projetos, com criar/abrir projeto,
+  recentes e entrada para Skills.
+- Project Workspace com pipeline **central única**. `delivery` segue sendo o ID
+  do core, apresentado na interface como **Finalização**. Escolher uma fase
+  apenas troca a visão; avançar o estágio exige o gate existente na Visão geral.
+  A composição contextual muda em Preparação, MVP, Produção e Finalização; ações
+  de build/Agent são sinalizadas como não conectadas, sem inventar execução.
+- Contexto de projeto e Lia/acompanhamento em painéis recolhíveis. O painel
+  mostra bloqueios, Sessions simuladas e atalhos para QA/feedback manual;
+  **não há chat ou Agent real** nesta etapa.
+- Skills Workspace independente: consultar as quatro Skills distribuídas,
+  criar e editar Skills próprias em Markdown, buscar/organizar por Biblioteca e
+  Minhas Skills. Skills distribuídas são só leitura e podem ser duplicadas.
+  Skills não são obrigatórias para Agents; salvar não aplica nem executa nada.
+- Decisões e limitações em `docs/arquitetura-decisoes.md` (Decisão 21) e roteiro
+  de validação em `docs/ALPHA-UI1-VALIDACAO.md`. Esta evolução **não está incluída
+  retroativamente no aceite da Alpha**; fluxo visual validado no Chromium Linux,
+  mas navegador Windows, zoom nativo 200% **nesta UI** e aceite da UI.1 seguem
+  pendentes. O [relatório Windows de 05/10](docs/ALPHA-UI1-EXECUCAO-WINDOWS-2026-10-05.md)
+  testou o commit `7ad7b19`, anterior à UI.1, e não valida os controles novos.
+
 ## O que é apenas simulado / não implementado
 - Inferência real de IA (Ollama/Gemini/OpenRouter): somente catálogo/modo e
   diagnóstico de disponibilidade Ollama sob demanda; nenhum modelo executado.

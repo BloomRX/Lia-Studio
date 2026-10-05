@@ -306,3 +306,39 @@ Skills locais podem ser lidas via API/SPA, não executadas automaticamente.
   **bloqueados** pelas decisões em `DECISOES-PENDENTES-INTEGRACOES.md`.
 - **Fonte do endpoint:** https://docs.ollama.com/api/tags (GET `/api/tags`,
   resposta JSON com lista `models[].name`; consultado em 2026-10-03).
+
+## Decisão 21 — Alpha UI.1: shell, estágio visual e Skills do Studio (2026-10-04)
+- **Escopo:** implementar os três espaços Home/Projeto/Skills, com Configuração
+  global. O valor persistido do estágio permanece `preparation/mvp/production/delivery`:
+  a UI **apresenta** `delivery` como “Finalização”, contendo QA, polish, build,
+  release e entrega. Selecionar uma fase na pipeline abre apenas uma visão de
+  contexto (hash da URL); **não aprova** gate, não muda estágio salvo nem fabrica
+  execução. Só a ação existente de aprovação explícita na Visão geral muda o gate.
+  Áreas já existentes continuam acessíveis pela lateral funcional, que não repete
+  a pipeline. Painéis recolhíveis guardam somente preferência visual no navegador;
+  ausência de storage web não impede uso. Painel Lia mostra status/links e feedback
+  manual por QA, mas não simula chat/resposta ou Agent real.
+- **Skills:** as quatro Skills distribuídas em `.agents/skills` seguem legíveis e
+  imutáveis pelo app. Para criar/editar/salvar sem alterar pacotes ou projetos, o
+  mínimo backend necessário é guardar Markdown UTF-8 de Skills **do usuário** em
+  `LIA_PROJECTS_DIR/_skills/lia-user-<id>/SKILL.md`; sem alterar índice, dados de
+  projeto ou contratos existentes. Lista/API atual continuam compatíveis, com
+  origem `builtin` ou `user` adicional. Edição de Skill distribuída exige duplicar
+  como Skill do usuário; nenhuma Skill é aplicada automaticamente a um Agent.
+  IDs gerados no servidor, leitura com limite, recusa de symlink e escrita atômica
+  sob lock, com revisão de conteúdo para evitar sobrescrever uma edição concorrente.
+  Organização inicial: Biblioteca / Minhas Skills, busca e ordenação por título;
+  sem inventar versionamento automático, importação, exclusão ou vínculo a projeto.
+- **Alternativas:** gravar no browser localStorage perderia independência do
+  navegador e misturaria domínio/persistência com UI; permitir editar as Skills
+  distribuídas alteraria conteúdo do repositório/aplicação e afetaria a fonte
+  documental da Etapa 0. Novo esquema de DB/registro de runtime seria prematuro.
+- **Riscos e aceite:** Skills podem conter dados sensíveis; armazenamento e export
+  de projeto são separados, portanto exportação de projeto **não** exporta Skills.
+  Requer backup manual da pasta `_skills`. Arquivos alterados fora do Studio são
+  revisão do Dev; symlinks/corrupção falham sem recriação silenciosa. Testar
+  criação, edição, reabertura, colisão de revisão, isolamento entre instalações,
+  rejeição de caminho/links; na UI testar ida/volta ao launcher, quatro contextos,
+  recolhimento, navegação e fluxo de Skills. Chromium real no Linux foi exercitado
+  após a implementação; Windows, zoom nativo 200% e aceite da UI.1 permanecem
+  pendentes. Teste JS sem DOM, isoladamente, não é aceite visual.

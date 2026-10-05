@@ -267,9 +267,17 @@ class Handler(BaseHTTPRequestHandler):
             if parts == ["api", "health"]:
                 return {"ok": True, "app": "Lia Studio", "offline": True}, 200
             if parts == ["api", "skills"] and method == "GET":
-                return {"skills": skills.list_skills()}, 200
+                return {"skills": skills.list_skills(storage)}, 200
+            if parts == ["api", "skills"] and method == "POST":
+                if set(body) != {"content"}:
+                    raise StorageError("envie somente o conteúdo da Skill")
+                return skills.create_skill(storage, body["content"]), 201
             if len(parts) == 3 and parts[:2] == ["api", "skills"] and method == "GET":
-                return skills.get_skill(parts[2]), 200
+                return skills.get_skill(parts[2], storage), 200
+            if len(parts) == 3 and parts[:2] == ["api", "skills"] and method == "PUT":
+                if set(body) != {"content", "revision"}:
+                    raise StorageError("envie conteúdo e revisão da Skill")
+                return skills.save_skill(storage, parts[2], body["content"], body["revision"]), 200
             if parts == ["api", "skill"]:
                 return {
                     "skill_exists": templates_loader.skill_exists(),

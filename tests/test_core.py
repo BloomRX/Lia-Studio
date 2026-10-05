@@ -1973,6 +1973,108 @@ class TestHttpApi(Base):
         self.assertEqual(error.exception.code, 400)
 
 
+class TestUserSkills(Base):
+    def test_create_edit_reopen_and_isolate_from_projects(self):
+        from app.lia import skills
+        builtin = skills.get_skill("lia-game-project-bootstrap", self.store)
+        self.assertEqual(builtin["origin"], "builtin")
+        copy = skills.create_skill(self.store, builtin["content"])  # frontmatter é mantido
+        self.assertEqual(copy["content"], builtin["content"])
+        self.assertEqual(copy["title"], builtin["title"])
+        first = skills.create_skill(self.store, "# Revisar mecânicas\n\nQuando usar: antes de build.\n")
+        self.assertTrue(first["id"].startswith("lia-user-"))
+        self.assertEqual(first["title"], "Revisar mecânicas")
+        self.assertEqual(first["origin"], "user")
+        self.assertEqual(skills.get_skill(first["id"], storage.Storage(Path(self.tmp)))["content"], first["content"])
+        self.assertIn(first["id"], {s["id"] for s in skills.list_skills(self.store)})
+        with tempfile.TemporaryDirectory() as other:
+            self.assertNotIn(first["id"], {s["id"] for s in skills.list_skills(storage.Storage(Path(other)))})
+        updated = skills.save_skill(self.store, first["id"], "# Revisar mecânicas\n\nNovo processo.\n",
+                                    first["revision"])
+        self.assertNotEqual(updated["revision"], first["revision"])
+        with self.assertRaises(storage.StorageError):
+            skills.save_skill(self.store, first["id"], "# Revisão obsoleta", first["revision"])
+        self.assertEqual(skills.get_skill(first["id"], self.store)["content"], updated["content"])
+        with self.assertRaises(storage.StorageError):
+            skills.save_skill(self.store, builtin["id"], "# Não alterar", builtin["revision"])
+        self.assertEqual(skills.get_skill(builtin["id"], self.store)["content"], builtin["content"])
+        pid = self.store.create_project("Jogo sem Skills acopladas")["id"]
+        with tempfile.TemporaryDirectory() as target:
+            exported = Path(self.store.export_project(pid, target))
+            self.assertFalse((exported / "_skills").exists())
+
+    def test_bad_inputs_links_and_external_changes_fail_closed(self):
+        from app.lia import skills
+        for content in ("", 1, "sem título", "# ", "# T\n" + "x" * (skills.MAX_CONTENT_BYTES + 1)):
+            with self.subTest(content=str(content)[:30]), self.assertRaises(storage.StorageError):
+                skills.create_skill(self.store, content)
+        self.assertFalse((self.store.projects_dir / "_skills").exists())
+        with self.assertRaises(storage.StorageError):
+            skills.get_skill("lia-user-../../segredo", self.store)
+        created = skills.create_skill(self.store, "# Segura\n\nConteúdo inicial")
+        with self.assertRaises(storage.StorageError):
+            skills.save_skill(self.store, created["id"], "# Mudar", "wrong")
+        path = self.store.projects_dir / "_skills" / created["id"] / "SKILL.md"
+        path.write_text("# Alterada fora do Studio", encoding="utf-8")
+        with self.assertRaises(storage.StorageError):
+            skills.save_skill(self.store, created["id"], "# Ignorar alteração", created["revision"])
+        self.assertEqual(path.read_text(encoding="utf-8"), "# Alterada fora do Studio")
+        path.write_text("# Corrupção\n" + "x" * (skills.MAX_CONTENT_BYTES + 1), encoding="utf-8")
+        with self.assertRaises(storage.StorageError):
+            skills.list_skills(self.store)
+        path.unlink()
+        with tempfile.TemporaryDirectory() as outside:
+            target = Path(outside) / "segredo.md"
+            target.write_text("# Não expor", encoding="utf-8")
+            self.symlink_or_skip(path, target)
+            with self.assertRaises(storage.StorageError):
+                skills.get_skill(created["id"], self.store)
+            with self.assertRaises(storage.StorageError):
+                skills.save_skill(self.store, created["id"], "# Não sobrescrever", created["revision"])
+            self.assertEqual(target.read_text(encoding="utf-8"), "# Não expor")
+            path.unlink()
+        with self.assertRaises(storage.StorageError):
+            skills.list_skills(self.store)  # arquivo removido: falhar, não recriar silenciosamente
+
+    def test_http_create_update_requires_revision_and_persists(self):
+        from urllib.error import HTTPError
+        from urllib.request import Request, urlopen
+        from app.lia import skills
+        import importlib
+        import threading
+        from http.server import ThreadingHTTPServer
+        with patch.dict(os.environ, {"LIA_PROJECTS_DIR": self.tmp}):
+            server = importlib.import_module("app.server")
+        with patch.object(server, "storage", self.store):
+            http = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+            thread = threading.Thread(target=http.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base = f"http://127.0.0.1:{http.server_address[1]}"
+                url = base + "/api/skills"
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(Request(url, data=b'{"content":"# Bloqueada"}',
+                                    headers={"Origin": "https://evil.example"}))
+                self.assertEqual(error.exception.code, 403)
+                with urlopen(Request(url, data=json.dumps({"content": "# Minha Skill\n\nFluxo."}).encode())) as response:
+                    self.assertEqual(response.status, 201)
+                    created = json.load(response)
+                self.assertEqual(created["origin"], "user")
+                with urlopen(base + "/api/skills/" + created["id"]) as response:
+                    self.assertEqual(json.load(response)["content"], created["content"])
+                update = {"content": "# Minha Skill\n\nFluxo atualizado.", "revision": created["revision"]}
+                with urlopen(Request(url + "/" + created["id"], data=json.dumps(update).encode(), method="PUT")) as response:
+                    self.assertEqual(json.load(response)["content"], update["content"])
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(Request(url + "/" + created["id"], data=json.dumps(update).encode(), method="PUT"))
+                self.assertEqual(error.exception.code, 400)
+                self.assertEqual(skills.get_skill(created["id"], self.store)["content"], update["content"])
+            finally:
+                http.shutdown()
+                http.server_close()
+                thread.join(5)
+
+
 class TestOllamaDiscovery(Base):
     def setUp(self):
         super().setUp()

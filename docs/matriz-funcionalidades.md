@@ -1,5 +1,9 @@
 # Matriz de funcionalidades — Lia Studio (alpha; revisão em 2026-09-30)
 
+> Retrato da revisão de 30/09, preservado como histórico. Para o estado atual da
+> **Alpha UI.1** e os testes em navegador, veja [resultados](testes-resultados.md)
+> e [roteiro UI.1](ALPHA-UI1-VALIDACAO.md).
+
 Legenda: ✅ implementado e testado · 🟡 implementado, não testado · 🔶 parcial ·
 🟣 simulado · ⬜ não implementado · 🚫 bloqueado
 

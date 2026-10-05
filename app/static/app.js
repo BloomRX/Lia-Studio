@@ -41,6 +41,11 @@ const routes = {
   project: renderProject,
 };
 
+function setShellSpace(space, label) {
+  if (document.body) document.body.dataset.space = space;
+  const context = document.getElementById("shell-context");
+  if (context) context.textContent = label;
+}
 function navigate() {
   const hash = location.hash.replace(/^#\//, "");
   const parts = hash.split("/").filter(Boolean);
@@ -48,59 +53,60 @@ function navigate() {
   if (parts.length === 0) return renderHome();
   const [first, ...rest] = parts;
   if (first === "home") return renderHome();
-  if (first === "config") return renderGlobalConfig();
-  if (first === "skills") return renderSkills(rest[0]);
-  if (first === "recovery") return renderRecovery();
-  if (first === "project") return renderProject(rest[0], rest[1] || "overview");
+  if (first === "config") { setShellSpace("config", "Preferências globais"); return renderGlobalConfig(); }
+  if (first === "skills") { setShellSpace("skills", "Workspace de Skills"); return renderSkills(rest[0], rest[1]); }
+  if (first === "recovery") { setShellSpace("recovery", "Dados locais"); return renderRecovery(); }
+  if (first === "project" && rest[0]) {
+    setShellSpace("project", "Workspace de projeto");
+    return renderProject(rest[0], rest[1] || "stage", rest[2]);
+  }
   return renderHome();
 }
 window.addEventListener("hashchange", navigate);
 
 /* ----------------------- HOME ----------------------- */
 async function renderHome() {
+  setShellSpace("home", "Launcher");
   let projects = [];
   try { projects = (await api("GET", "/api/projects")).projects; }
   catch (e) { view.innerHTML = `<div class="banner danger">Erro ao carregar projetos: ${esc(e.message)}. Os dados não foram recriados.</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
 
   const cards = projects.length
-    ? `<div class="grid">${projects.map(p => projectCard(p)).join("")}</div>`
-    : `<div class="empty">Nenhum projeto ainda. Crie o primeiro ou carregue um exemplo demonstrativo.</div>`;
-
+    ? `<div class="recent-list">${projects.map(p => projectCard(p)).join("")}</div>`
+    : `<div class="empty">Ainda não há projetos aqui. Crie o primeiro para começar.</div>`;
   view.innerHTML = `
-    <h1>Início — seus projetos</h1>
-    <div class="banner info">Tudo é salvo localmente no seu computador. Nenhuma conta ou nuvem é obrigatória. Provedores de IA ficam <b>desligados</b> e simulados até você conectar (fora desta alpha).</div>
-    <div class="row" style="margin:14px 0">
-      <button onclick="showNewProject()">+ Novo projeto</button>
-      <a class="btn" href="#/skills">Explorar Skills</a>
-      <button class="ghost" onclick="loadExample()">Carregar exemplo demonstrativo</button>
-    </div>
-    <div id="newproj" hidden>
-      <div class="card">
-        <h3>Criar projeto</h3>
-        <label>Nome</label><input id="np-name" type="text" placeholder="Ex.: Minha aventura" />
-        <label>Pasta local (opcional — deixe em branco para usar a pasta padrão)</label><input id="np-loc" type="text" placeholder="deixe em branco para a pasta configurada" />
-        <div class="row" style="margin-top:12px">
-          <button onclick="createProject()">Criar</button>
-          <button class="ghost" onclick="hideNewProject()">Cancelar</button>
-        </div>
+    <div class="home-shell">
+      <div class="hero"><span class="eyebrow">SEU PONTO DE PARTIDA · LIA STUDIO</span>
+        <h1>Grandes mundos começam <em>com uma ideia.</em></h1>
+        <p>Escolha onde quer trabalhar. Seus projetos ficam no seu computador; Skills vivem em uma biblioteca separada.</p>
+        <span class="hero-mark" aria-hidden="true">✿</span>
       </div>
-    </div>
-    <h2>Projetos</h2>
-    ${cards}
-  `;
+      <div class="launcher-grid" aria-label="Escolha uma área">
+        <button class="launch-tile primary" onclick="showNewProject()"><span class="tile-icon">+</span><span class="tile-kicker">COMEÇAR</span><strong>Criar projeto</strong><small>Do conceito ao primeiro plano</small><span class="tile-arrow">↗</span></button>
+        <button class="launch-tile" onclick="document.getElementById('recent').scrollIntoView({behavior:'smooth'})"><span class="tile-icon">▣</span><span class="tile-kicker">CONTINUAR</span><strong>Abrir projeto</strong><small>Retome de onde parou</small><span class="tile-arrow">↗</span></button>
+        <a class="launch-tile" href="#/skills"><span class="tile-icon">✧</span><span class="tile-kicker">REUTILIZAR</span><strong>Skills</strong><small>Explore, crie e edite instruções</small><span class="tile-arrow">↗</span></a>
+      </div>
+      <div id="newproj" hidden class="new-project"><div class="card">
+        <h2>Novo projeto</h2><p class="muted">Você poderá revisar cada decisão antes de avançar.</p>
+        <label for="np-name">Nome do jogo</label><input id="np-name" type="text" maxlength="120" placeholder="Ex.: Minha aventura" />
+        <label for="np-loc">Pasta local (opcional)</label><input id="np-loc" type="text" placeholder="Em branco: pasta padrão do Studio" />
+        <div class="row" style="margin-top:14px"><button onclick="createProject()">Criar e abrir</button><button class="ghost" onclick="hideNewProject()">Cancelar</button></div>
+      </div></div>
+      <section id="recent" class="home-recent"><div class="section-heading"><div><span class="eyebrow">SEUS MUNDOS</span><h2>Projetos recentes</h2></div><button class="ghost small" onclick="loadExample()">Carregar exemplo local</button></div>
+        ${cards}</section>
+      <div class="home-note"><span class="lia-monogram">L</span><p><b>Um espaço para criar no seu ritmo.</b> O Studio organiza o trabalho; decisões criativas e aprovação continuam suas.</p><a href="#/skills/new">Criar Skill →</a></div>
+    </div>`;
 }
 
 function projectCard(p) {
-  return `<div class="card">
-    <h3>${esc(p.name)}</h3>
-    <div class="meta">${pill(p.status)} · etapa: ${esc(STAGE_LABELS[p.stage] || "Preparação")}</div>
-    <div class="meta">Próximo passo: ${esc(p.next_step || "—")}</div>
-    <div class="actions">
-      <a class="btn small" href="#/project/${esc(p.id)}">Abrir</a>
+  return `<article class="project-tile">
+    <div class="project-tile-symbol" aria-hidden="true">◇</div><div class="project-tile-info"><h3>${esc(p.name)}</h3>
+    <p>${esc(STAGE_LABELS[p.stage] || "Preparação")} · ${esc(p.next_step || "Retomar projeto")}</p></div>
+    <div class="project-tile-actions">${pill(p.status)}
+      <a class="btn small" href="#/project/${esc(p.id)}/stage">Abrir →</a>
       <button class="ghost small" onclick="archiveProject('${esc(p.id)}')">${p.archived ? "Reabrir" : "Arquivar"}</button>
-      <button class="danger small" onclick="deleteProject('${esc(p.id)}')">Excluir</button>
-    </div>
-  </div>`;
+      <button class="danger small" onclick="deleteProject('${esc(p.id)}')">Excluir</button></div>
+  </article>`;
 }
 function showNewProject() { document.getElementById("newproj").hidden = false; }
 function hideNewProject() { document.getElementById("newproj").hidden = true; }
@@ -128,19 +134,79 @@ async function deleteProject(id) {
 }
 
 /* ----------------------- SKILLS (workspace global, independente do projeto) ----------------------- */
-async function renderSkills(selected) {
+async function renderSkills(selected, mode) {
+  setShellSpace("skills", "Workspace de Skills");
   try {
     const { skills } = await api("GET", "/api/skills");
-    const active = selected || (skills.length && skills[0].id);
+    const userSkills = skills.filter(skill => skill.origin === "user");
+    const creating = selected === "new";
+    const onlyMine = selected === "mine";
+    const active = creating ? null : onlyMine ? userSkills[0]?.id : (selected || skills[0]?.id);
     const item = active ? await api("GET", `/api/skills/${encodeURIComponent(active)}`) : null;
-    const nav = skills.map(skill => `<a href="#/skills/${esc(skill.id)}" class="${skill.id===active ? "active" : ""}">${esc(skill.title)}</a>`).join("");
-    view.innerHTML = `<h1>Biblioteca de Skills</h1>
-      <div class="banner info">Conhecimento reutilizável do Studio — não são projetos de jogo. Instruções locais, sem agente ou serviço conectado.</div>
-      <div class="layout"><nav class="side" aria-label="Skills"><b>Biblioteca</b>${nav || "<p>Nenhuma skill instalada.</p>"}</nav>
-      <section><h2>${item ? esc(item.title) : "Selecione uma skill"}</h2>
-      <p class="muted">${item ? esc(item.id) : ""} · leitura local · aplicar requer revisão humana</p>
-      ${item ? `<pre class="skill-content">${esc(item.content)}</pre>` : ""}</section></div>`;
-  } catch (e) { view.innerHTML = `<div class="banner danger">Erro ao carregar Skills: ${esc(e.message)}</div>`; }
+    const nav = (onlyMine ? userSkills : skills).map(skill => `<a data-skill-entry href="#/skills/${esc(skill.id)}" class="${skill.id===active ? "active" : ""}"><span>${esc(skill.title)}</span><small>${skill.origin === "user" ? "MINHA SKILL" : "DO STUDIO"}</small></a>`).join("");
+    let detail = "";
+    if (creating) {
+      detail = `<div class="workspace-heading"><span class="eyebrow">MINHA BIBLIOTECA</span><h1>Criar Skill</h1><p>Uma instrução reutilizável, independente de qualquer projeto. Salvar não executa Agent.</p></div>
+        <div class="card skill-editor"><label for="skill-title">Nome da Skill</label><input id="skill-title" type="text" maxlength="120" placeholder="Ex.: Revisão de mecânicas" />
+        <label for="skill-content">Instruções em Markdown</label><textarea id="skill-content" maxlength="64000" placeholder="Quando usar, entradas, passos, limites e resultado esperado..."></textarea>
+        <div class="actions"><button onclick="createUserSkill()">Salvar Skill</button><a class="btn ghost" href="#/skills">Cancelar</a></div></div>`;
+    } else if (item) {
+      const editing = mode === "edit" && item.origin === "user";
+      detail = `<div class="workspace-heading"><span class="eyebrow">${item.origin === "user" ? "MINHA SKILL" : "BIBLIOTECA DO STUDIO"}</span><h1>${esc(item.title)}</h1>
+        <p>${esc(item.id)} · ${item.origin === "user" ? "salva neste Studio" : "incluída no Studio · somente leitura"}</p></div>
+        <div class="skill-actions">${item.origin === "user" ? `<a class="btn ${editing ? "ghost" : ""}" href="#/skills/${esc(item.id)}${editing ? "" : "/edit"}">${editing ? "Ver Skill" : "Editar Skill"}</a>` : ""}
+          <button class="ghost" onclick="copySelectedSkill()">Duplicar para editar</button></div>
+        ${editing ? `<div class="card skill-editor"><label for="skill-content">Markdown da Skill (inclua # Título; metadados podem vir antes)</label><textarea id="skill-content" maxlength="64000">${esc(item.content)}</textarea>
+          <div class="actions"><button onclick="saveUserSkill()">Salvar alterações</button><a class="btn ghost" href="#/skills/${esc(item.id)}">Cancelar</a></div><p class="muted">Uma edição feita em outra janela exige revisão antes de substituir.</p></div>`
+        : `<pre class="skill-content">${esc(item.content)}</pre>`}`;
+    } else {
+      detail = `<div class="empty">${onlyMine ? "Você ainda não criou Skills. Crie uma para começar." : "Nenhuma Skill disponível."}</div>`;
+    }
+    view.innerHTML = `<div class="skills-shell">
+      <header class="space-header"><div><a class="back-link" href="#/home">← Launcher</a><span class="eyebrow">CONHECIMENTO REUTILIZÁVEL</span><h1>Skills Workspace</h1><p>Skills especializam fluxos, mas não são obrigatórias para um Agent. Nenhum Agent é iniciado aqui.</p></div><a class="btn" href="#/skills/new">+ Criar Skill</a></header>
+      <div class="skills-grid"><nav class="skills-nav" aria-label="Biblioteca de Skills">
+        <a href="#/skills" class="${!creating && !onlyMine ? "active" : ""}">Biblioteca <span>${skills.length}</span></a>
+        <a href="#/skills/mine" class="${onlyMine ? "active" : ""}">Minhas Skills <span>${userSkills.length}</span></a>
+        <label for="skill-filter">Buscar na biblioteca</label><input id="skill-filter" type="text" oninput="filterSkillList()" placeholder="Filtrar por nome" />
+        <div class="skill-list">${nav || "<p class='muted'>Nenhuma Skill instalada.</p>"}</div>
+      </nav><section class="skills-detail">${detail}</section>
+      <aside class="skills-help"><span class="lia-monogram">L</span><span class="eyebrow">LIA · CONHECIMENTO</span><h3>Um método que você pode reutilizar.</h3>
+        <p>Descreva quando usar, entradas necessárias, passos e como revisar o resultado. Uma Skill não conecta runtimes, tools ou MCP.</p>
+        <a href="#/home">Voltar ao launcher →</a></aside></div></div>`;
+    window.filterSkillList = () => {
+      const term = document.getElementById("skill-filter").value.trim().toLocaleLowerCase();
+      document.querySelectorAll("[data-skill-entry]").forEach(link => {
+        link.hidden = !link.textContent.toLocaleLowerCase().includes(term);
+      });
+    };
+    window.createUserSkill = async () => {
+      const title = document.getElementById("skill-title").value.trim();
+      const content = document.getElementById("skill-content").value.trim();
+      if (!title || /[\r\n]/.test(title) || !content) return toast("Informe o nome e as instruções da Skill.");
+      try {
+        const created = await api("POST", "/api/skills", { content: `# ${title}\n\n${content}\n` });
+        toast("Skill salva na biblioteca do Studio.");
+        location.hash = `#/skills/${created.id}`;
+      } catch (e) { toast("Não foi possível criar a Skill: " + e.message); }
+    };
+    window.saveUserSkill = async () => {
+      if (!item || item.origin !== "user") return;
+      const content = document.getElementById("skill-content").value;
+      try {
+        await api("PUT", `/api/skills/${encodeURIComponent(item.id)}`, { content, revision: item.revision });
+        toast("Skill atualizada.");
+        location.hash = `#/skills/${item.id}`;
+      } catch (e) { toast("Não foi possível salvar: " + e.message); }
+    };
+    window.copySelectedSkill = async () => {
+      if (!item) return;
+      try {
+        const copy = await api("POST", "/api/skills", { content: item.content });
+        toast("Cópia editável criada; a Skill original foi preservada.");
+        location.hash = `#/skills/${copy.id}/edit`;
+      } catch (e) { toast("Não foi possível duplicar: " + e.message); }
+    };
+  } catch (e) { view.innerHTML = `<div class="banner danger">Erro ao carregar Skills: ${esc(e.message)}</div><a href="#/home">Voltar à Home</a>`; }
 }
 
 /* ----------------------- INTEGRIDADE DE DADOS ----------------------- */
@@ -174,7 +240,8 @@ async function renderRecovery() {
 }
 
 /* ----------------------- PROJECT ----------------------- */
-const STAGE_LABELS = { preparation: "Preparação", mvp: "MVP jogável", production: "Produção", delivery: "Entrega" };
+// Os IDs de estágio são do core; delivery é apresentado como Finalização só na UI.
+const STAGE_LABELS = { preparation: "Preparação", mvp: "MVP jogável", production: "Produção", delivery: "Finalização" };
 const STAGE_ORDER = Object.keys(STAGE_LABELS);
 
 const SECTIONS = [
@@ -191,21 +258,64 @@ const SECTIONS = [
   ["config", "Configuração"],
 ];
 
-async function renderProject(pid, section) {
+const PANEL_PREFS = { left: false, right: false };
+try {
+  if (typeof localStorage !== "undefined") {
+    PANEL_PREFS.left = localStorage.getItem("lia-ui-left-collapsed") === "true";
+    PANEL_PREFS.right = localStorage.getItem("lia-ui-right-collapsed") === "true";
+  }
+} catch (_) { /* navegador sem storage: layout continua utilizável */ }
+
+function togglePanel(which) {
+  if (which !== "left" && which !== "right") return;
+  PANEL_PREFS[which] = !PANEL_PREFS[which];
+  try { if (typeof localStorage !== "undefined") localStorage.setItem(`lia-ui-${which}-collapsed`, String(PANEL_PREFS[which])); }
+  catch (_) { /* só preferência visual */ }
+  const shell = document.querySelector(".project-shell");
+  if (!shell) return;
+  shell.dataset[which + "Collapsed"] = String(PANEL_PREFS[which]);
+  const button = document.getElementById(`toggle-${which}`);
+  if (button) {
+    button.setAttribute("aria-expanded", String(!PANEL_PREFS[which]));
+    button.setAttribute("aria-label", PANEL_PREFS[which] ? `Expandir painel ${which === "left" ? "de contexto" : "da Lia"}` : `Recolher painel ${which === "left" ? "de contexto" : "da Lia"}`);
+  }
+}
+
+async function renderProject(pid, section, visualStage) {
   let data;
   try { data = await api("GET", `/api/projects/${pid}`); }
-  catch (e) { view.innerHTML = `<div class="banner danger">Erro ao abrir projeto: ${esc(e.message)}</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
+  catch (e) { view.innerHTML = `<div class="banner danger">Erro ao abrir projeto: ${esc(e.message)}</div><a class="btn" href="#/home">Voltar à Home</a> <a class="btn ghost" href="#/recovery">Verificar integridade</a>`; return; }
   const entry = data.entry;
-  const side = `<div class="side">
-    <div class="proj-name">${esc(entry.name)}</div>
-    <div class="meta">${pill(entry.status)} · ${esc(data.stage_gate.stage_label)} · saúde: ${esc(data.health)}</div>
-    ${SECTIONS.map(([s, label]) => `<a href="#/project/${esc(pid)}/${s}" class="${section === s ? "active" : ""}">${label}</a>`).join("")}
-    <hr/>
-    <a class="ghost btn small" href="#/home">← Início</a>
-  </div>`;
-
+  const gate = data.stage_gate;
+  setShellSpace("project", entry.name);
+  // Salvar numa seção não descarta a fase visual que está no hash atual.
+  const currentParts = location.hash.replace(/^#\//, "").split("/");
+  if (!visualStage && currentParts[0] === "project" && currentParts[1] === pid && STAGE_ORDER.includes(currentParts[3])) {
+    visualStage = currentParts[3];
+  }
+  const selectedStage = STAGE_ORDER.includes(visualStage) ? visualStage : gate.stage;
+  if (section !== "stage" && !SECTIONS.some(([name]) => name === section)) section = "stage";
+  const activeSections = ({preparation: ["bootstrap", "docs", "decisions", "plan"],
+    mvp: ["plan", "execute", "qa", "evidence"],
+    production: ["plan", "execute", "docs", "qa"],
+    delivery: ["qa", "evidence", "release", "handoff"]})[selectedStage];
+  const left = `<aside class="context-panel" aria-label="Contexto do projeto">
+    <div class="panel-top"><span class="panel-mini">CONTEXTO</span><button id="toggle-left" class="icon-button" aria-expanded="${!PANEL_PREFS.left}" aria-label="${PANEL_PREFS.left ? "Expandir" : "Recolher"} painel de contexto" title="Recolher / expandir contexto" onclick="togglePanel('left')">≡</button></div>
+    <div class="panel-body"><div class="context-project">${esc(entry.name)}</div><p class="muted">${pill(entry.status)} · ${esc(STAGE_LABELS[gate.stage])}</p>
+      <span class="nav-group-title">NESTA FASE</span>
+      ${activeSections.map(name => {
+        const label = SECTIONS.find(([s]) => s === name)[1];
+        return `<a href="#/project/${esc(pid)}/${name}/${selectedStage}" class="${section === name ? "active" : ""}">${esc(label)}</a>`;
+      }).join("")}
+      <span class="nav-group-title">TODAS AS ÁREAS</span>
+      <a href="#/project/${esc(pid)}/overview/${selectedStage}" class="${section === "overview" ? "active" : ""}">Visão geral · gates</a>
+      ${SECTIONS.filter(([name]) => name !== "overview" && !activeSections.includes(name)).map(([name,label]) =>
+        `<a href="#/project/${esc(pid)}/${name}/${selectedStage}" class="${section === name ? "active" : ""}">${esc(label)}</a>`).join("")}
+      <a class="context-home" href="#/home">← Voltar ao launcher</a>
+    </div></aside>`;
   let content = "";
-  if (section === "overview") content = await projectOverview(pid, data);
+  if (section === "stage") content = renderStageContext(pid, selectedStage, data);
+  else if (section === "overview") content = await projectOverview(pid, data);
   else if (section === "bootstrap") content = await projectBootstrap(pid, data);
   else if (section === "docs") content = await projectDocs(pid, data);
   else if (section === "decisions") content = projectDecisions(pid, data);
@@ -217,7 +327,31 @@ async function renderProject(pid, section) {
   else if (section === "release") content = await projectRelease(pid, data);
   else if (section === "config") content = await projectConfig(pid, data);
 
-  view.innerHTML = `<div class="layout">${side}<div>${renderStagePipeline(data.stage_gate)}${content}</div></div>`;
+  const recent = data.recent_sessions || [];
+  const right = `<aside class="lia-panel" aria-label="Lia e acompanhamento">
+    <div class="panel-top"><span class="panel-mini">LIA · ACOMPANHAMENTO</span><button id="toggle-right" class="icon-button" aria-expanded="${!PANEL_PREFS.right}" aria-label="${PANEL_PREFS.right ? "Expandir" : "Recolher"} painel da Lia" title="Recolher / expandir Lia" onclick="togglePanel('right')">✦</button></div>
+    <div class="panel-body"><div class="lia-presence"><span class="lia-monogram">L</span><div><strong>Vamos por partes.</strong><small>Contexto: ${esc(STAGE_LABELS[selectedStage])}</small></div></div>
+      <p class="lia-message">${gate.blockers.length ? `Há ${gate.blockers.length} pendência(s) no gate. Você pode revisar os critérios na Visão geral.` : "Nenhum bloqueio no gate atual. A decisão de avançar ainda é sua."}</p>
+      <a class="quick-link" href="#/project/${esc(pid)}/overview/${selectedStage}">Ver bloqueios e decisões →</a>
+      <div class="agent-status"><span class="nav-group-title">AGENT / STATUS</span>
+        <p>Runtime: não conectado · Skills: opcionais · Tools/MCP: indisponíveis · permissões efetivas: nenhuma.</p>
+        <p>Single Agent, Smart Delegation e Multi-Agent manual são modos futuros, não ações ativas.</p>
+        <a class="quick-link" href="#/project/${esc(pid)}/config/${selectedStage}">Ver perfil e provedores →</a></div>
+      <div class="lia-separator"></div><span class="nav-group-title">SESSIONS E RESULTADOS</span>
+      <p>${recent.length ? `${recent.length} Session(s) recente(s). A simulação não valida o resultado.` : "Ainda não há Sessions neste projeto."}</p>
+      <a class="quick-link" href="#/project/${esc(pid)}/execute/${selectedStage}">Acompanhar execução →</a>
+      <div class="lia-separator"></div><span class="nav-group-title">FEEDBACK / PLAYTEST</span>
+      <p>Registre verificações e feedback manual em QA. Não há Agent ou Chat conectado nesta versão.</p>
+      <a class="quick-link" href="#/project/${esc(pid)}/qa/${selectedStage}">Abrir QA / Playtest →</a>
+      <div class="chat-disabled" aria-label="Chat ainda indisponível">Chat com Lia / Agent · ainda não conectado</div>
+    </div></aside>`;
+  view.innerHTML = `<div class="project-shell" data-left-collapsed="${PANEL_PREFS.left}" data-right-collapsed="${PANEL_PREFS.right}">
+    <div class="project-heading"><div><a href="#/home" class="back-link">← Launcher</a><span class="eyebrow">PROJECT WORKSPACE</span><h1>${esc(entry.name)}</h1><p>${esc(entry.next_step || "Trabalhe na sua fase atual.")}</p></div>
+      <div class="project-status"><span class="live-dot"></span> ${esc(STAGE_LABELS[gate.stage])} · ${esc(data.health)}</div></div>
+    ${renderStagePipeline(gate, pid, selectedStage)}
+    <p class="mobile-stage-hint">Deslize para ver todas as fases →</p>
+    <div class="workbench">${left}<section class="workspace-canvas" aria-label="Área de trabalho da fase">${section !== "stage" ? `<div class="canvas-breadcrumb"><a href="#/project/${esc(pid)}/stage/${selectedStage}">${esc(STAGE_LABELS[selectedStage])}</a><span> / ${esc(SECTIONS.find(([s]) => s === section)?.[1] || "Área")}</span></div>` : ""}${content}</section>${right}</div>
+  </div>`;
   if (section === "docs") wireDocs(pid, data.docs);
   if (section === "decisions") wireDecisions(pid, data);
   if (section === "plan") wirePlan(pid, data.modules);
@@ -229,13 +363,55 @@ async function renderProject(pid, section) {
   if (section === "config") wireConfig(pid, data);
 }
 
-/* ----- overview ----- */
-function renderStagePipeline(gate) {
+/* A fase selecionada é navegação de leitura; o estágio salvo só muda no gate. */
+function renderStagePipeline(gate, pid, selected = gate.stage) {
   const stageIndex = STAGE_ORDER.indexOf(gate.stage);
-  const pipeline = STAGE_ORDER.map((stage, index) =>
-    `<span class="stage-step ${index===stageIndex ? "current" : index<stageIndex ? "completed" : "future"}" ${index===stageIndex ? 'aria-current="step"' : ""}>${index + 1}. ${esc(STAGE_LABELS[stage])}</span>`
-  ).join("");
-  return `<nav class="stage-pipeline" aria-label="Etapas do projeto">${pipeline}</nav>`;
+  const pipeline = STAGE_ORDER.map((stage, index) => {
+    const cls = `stage-step ${index === stageIndex ? "current" : index < stageIndex ? "completed" : "future"} ${stage === selected ? "selected" : ""}`;
+    const label = `<span class="stage-number">0${index+1}</span><span>${esc(STAGE_LABELS[stage])}</span>${stage === gate.stage ? '<small>ETAPA ATUAL</small>' : ""}`;
+    const attr = index === stageIndex ? 'aria-current="step"' : '';
+    return pid ? `<a href="#/project/${esc(pid)}/stage/${stage}" class="${cls}" ${attr}>${label}</a>`
+      : `<span class="${cls}" ${attr}>${label}</span>`;
+  }).join("");
+  return `<nav class="stage-pipeline" aria-label="Pipeline do projeto">${pipeline}</nav>`;
+}
+
+function renderStageContext(pid, stage, data) {
+  const id = esc(pid);
+  const details = {
+    preparation: { kicker: "01 / PREPARAÇÃO", question: "O que vamos construir?",
+      intro: "Comece pela ideia, esclareça decisões e transforme a visão em um plano. Nada é implementado sem sua direção.",
+      cards: [["Etapa 0", "Definir a ideia e gerar Brief, GDD e Escopo.", "bootstrap", "COMEÇAR AQUI"],
+              ["Documentos", "Revise GDD, direção visual, sistemas e mecânicas nos documentos existentes.", "docs", "REVISAR"],
+              ["Decisões", "Marque o que é confirmado, proposto ou ainda está em aberto.", "decisions", "DECIDIR"],
+              ["Plano", "Organize módulos, tarefas, asset plan e produção sem executar código.", "plan", "PLANEJAR"]]},
+    mvp: { kicker: "02 / MVP JOGÁVEL", question: "O núcleo funciona?",
+      intro: "Valide mecânicas e core loop com protótipos, UI básica e assets provisórios antes de investir em polish.",
+      cards: [["Mecânicas e tarefas", "Planeje o greybox e seus critérios de aceite.", "plan", "PLANEJAR"],
+              ["Execução supervisionada", "Leia a proposta; hoje só existe Session simulada, sem jogo produzido.", "execute", "SIMULADO"],
+              ["QA / Playtest", "Relate testes e feedback manual, separados de validação automática.", "qa", "REVISAR"],
+              ["Evidências", "Vincule arquivos existentes; integridade não prova gameplay.", "evidence", "REGISTRAR"]]},
+    production: { kicker: "03 / PRODUÇÃO", question: "Como evoluir sem perder o rumo?",
+      intro: "Desenvolva sistemas e conteúdo em ciclos. Assets definitivos, game feel, UX e balance vêm depois do núcleo validado.",
+      cards: [["Sistemas e assets", "Organize entregáveis e dependências reais no plano.", "plan", "ORGANIZAR"],
+              ["Implementação", "Prévia e Session simulada; runtime de código não conectado.", "execute", "SIMULADO"],
+              ["Documentação", "Acompanhe revisões de GDD e escopo.", "docs", "ATUALIZAR"],
+              ["Playtest contínuo", "Verifique, colete feedback e itere.", "qa", "ITERAR"]]},
+    delivery: { kicker: "04 / FINALIZAÇÃO", question: "O que precisa ser revisto antes de entregar?",
+      intro: "Reúna QA, polish, performance e preparação de release. Build, execução e publicação ainda não são automáticas.",
+      cards: [["QA final", "Registre verificações e playtest, sem alegar teste executado pelo Studio.", "qa", "VERIFICAR"],
+              ["Evidências", "Confira a integridade dos arquivos registrados.", "evidence", "CONFERIR"],
+              ["Release", "Créditos, checklist e notas: preparação documental, sem build.", "release", "PREPARAR"],
+              ["Entrega / Handoff", "Revise histórico e próximos passos antes de compartilhar.", "handoff", "REVISAR"]]},
+  }[stage];
+  const count = (data.modules || []).reduce((total, module) => total + (module.tasks || []).length, 0);
+  const otherStage = stage !== data.stage_gate.stage;
+  return `<div class="stage-landing"><span class="eyebrow">${details.kicker}</span><h1>${details.question}</h1><p class="stage-intro">${details.intro}</p>
+    ${otherStage ? `<div class="banner info">Você está explorando ${esc(STAGE_LABELS[stage])}. O estágio salvo continua <b>${esc(STAGE_LABELS[data.stage_gate.stage])}</b>; selecionar a fase não aprova nem avança o projeto.</div>` : ""}
+    <div class="phase-summary"><span><b>${(data.docs || []).length}</b> documentos</span><span><b>${count}</b> tarefas planejadas</span><span><b>${(data.qa || []).length}</b> registros QA</span></div>
+    <div class="phase-grid">${details.cards.map(([title, description, section, tag], i) => `<a class="phase-card" href="#/project/${id}/${section}/${stage}"><span class="eyebrow">${tag}</span><span class="phase-index">0${i+1}</span><h2>${title}</h2><p>${description}</p><span class="phase-arrow">Abrir área →</span></a>`).join("")}</div>
+    <div class="iteration-strip"><span class="eyebrow">DESENVOLVIMENTO É UM CICLO</span><p>Implementar <b>→</b> Build <b>→</b> Playtest <b>→</b> Feedback <b>→</b> Ajustar <b>↺</b></p><small>Build, Run e Agent reais ainda não estão conectados. QA e evidências manuais continuam disponíveis.</small></div>
+  </div>`;
 }
 
 function projectOverview(pid, data) {
@@ -247,7 +423,7 @@ function projectOverview(pid, data) {
   const approval = gate.status === "ready"
     ? `<label for="stage-note">Motivo da aprovação do Dev</label>
        <input id="stage-note" type="text" placeholder="Por que esta etapa pode avançar?" />
-       <button onclick="advanceStage('${esc(pid)}','${esc(gate.next_stage)}')">Revisar e aprovar avanço para ${esc(gate.next_stage_label)}</button>`
+       <button onclick="advanceStage('${esc(pid)}','${esc(gate.next_stage)}')">Revisar e aprovar avanço para ${esc(STAGE_LABELS[gate.next_stage] || gate.next_stage_label)}</button>`
     : gate.status === "complete" ? `<p class="muted">Última etapa. Publicação externa nunca é automática.</p>`
       : `<p class="muted">Gate bloqueado: resolva as pendências acima. Simulações não contam como implementação.</p>`;
   const history = gate.history.length
@@ -264,7 +440,7 @@ function projectOverview(pid, data) {
     : "";
   return `
     <h1>${esc(data.entry.name)}</h1>
-    <div class="card"><h2>Gate: ${esc(gate.stage_label)} → ${esc(gate.next_stage_label || "fim")}</h2>
+    <div class="card"><h2>Gate: ${esc(STAGE_LABELS[gate.stage])} → ${esc(STAGE_LABELS[gate.next_stage] || "fim")}</h2>
       <p>Estado: ${pill(gate.status)} · saúde: ${esc(data.health)}. O avanço precisa de aprovação explícita do Dev.</p>
       ${blockers}${approval}${history}</div>
     ${conflictBanner}${dependencyBanner}
@@ -303,7 +479,8 @@ async function advanceStage(pid, target) {
   try {
     await api("POST", `/api/projects/${pid}/stage`, { target, approved: true, note });
     toast("Etapa aprovada e registrada.");
-    await renderProject(pid, "overview");
+    location.hash = `#/project/${pid}/overview/${target}`;
+    await renderProject(pid, "overview", target);
   } catch (e) { toast("Gate bloqueado: " + e.message); }
 }
 
