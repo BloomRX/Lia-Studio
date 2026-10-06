@@ -339,6 +339,55 @@ Skills locais podem ser lidas via API/SPA, não executadas automaticamente.
   revisão do Dev; symlinks/corrupção falham sem recriação silenciosa. Testar
   criação, edição, reabertura, colisão de revisão, isolamento entre instalações,
   rejeição de caminho/links; na UI testar ida/volta ao launcher, quatro contextos,
-  recolhimento, navegação e fluxo de Skills. Chromium real no Linux foi exercitado
-  após a implementação; Windows, zoom nativo 200% e aceite da UI.1 permanecem
-  pendentes. Teste JS sem DOM, isoladamente, não é aceite visual.
+  recolhimento, navegação e fluxo de Skills. Chromium Linux e navegador Windows
+  (incluindo zoom nativo 200% após correção CSS `df1742e`) foram exercitados.
+  O Dev deu aceite expresso à UI.1 em 2026-10-05; os 12 casos de symlink pulados
+  no Windows continuam não executados. Ver o relatório UI.1 Windows.
+
+## Decisão 22 — marco desktop Windows: shell nativa reversível (2026-10-05)
+
+- **Contexto e responsável:** após o aceite expresso da UI.1, o Dev escolheu
+  "Desktop Windows" como próximo marco. O alvo é uma janela própria com `.exe`,
+  sem converter a SPA nem acoplar o Core a uma engine de UI. A escolha da shell
+  aqui é **um protótipo reversível**, não aprovação de distribuição pública.
+- **Escolha para o primeiro incremento:** launcher Python separado (`desktop.py`)
+  abre **pywebview** com renderer `edgechromium`/WebView2, apontando ao servidor
+  existente em `127.0.0.1` com porta livre atribuída pelo SO. A API, storage,
+  dados e servidor CLI existentes permanecem os mesmos. Fechar a janela encerra
+  o servidor local daquela instância; uma exceção da UI também o encerra.
+  Dependências de desktop são opcionais e instaladas **somente para construir/usar
+  o desktop**, nunca para rodar `python run.py` ou `verify_alpha.py`. Primeiro
+  pacote proposto: PyInstaller `--onedir`, não instalador/atualização automática.
+  Distribuição só depois de build/reteste Windows com WebView2 disponível.
+- **Alternativas consideradas:** Electron adiciona Node e uma segunda cadeia de
+  distribuição à base Python; Tauri exige Rust e uma ponte para o Core local;
+  browser em modo `--app` não entrega shell própria isolada; reescrever a UI em
+  Tk/Qt duplicaria o fluxo aceito. Nenhuma dessas alternativas é proibida para
+  uma revisão futura. Não fundir runtime, provider, Skills e a shell desktop.
+- **Segurança e limites:** usar `127.0.0.1`, nunca `0.0.0.0` no launcher; não
+  embutir segredos, não expor uma API Python↔JS privilegiada, bloquear acesso a
+  `file://` e downloads no webview. A API loopback **não tem autenticação de
+  processos locais**: não declarar isolamento de processos/usuários hostis nem
+  colocar a porta em rede não confiável. Não iniciar duas instâncias gravando na
+  mesma pasta sem controle de concorrência entre processos; ainda não há mutex
+  global. WebView2 Runtime é pré-requisito; se ausente, falhar sem declarar
+  desktop suportado nem cair silenciosamente em MSHTML. `.exe` sem assinatura,
+  instalador, telemetria, update ou publicação neste incremento.
+- **Compatibilidade de dados:** recursos distribuídos (`app/static`, `.agents/skills`)
+  são somente leitura dentro do pacote; `LIA_PROJECTS_DIR` ou a pasta padrão no
+  perfil do Dev recebem as escritas. Não gravar no diretório do executável. Core,
+  contratos API, gates e simulações aceitas não mudam.
+- **Critério de verificação:** teste Linux com webview falso verifica porta
+  dinâmica/loopback, ciclo de vida e caminho de erro. No Windows, construir
+  `--onedir` numa venv, verificar arquivos distribuídos, abrir a janela real,
+  executar Home → projeto → Skill → reload → reinício usando pasta temporária,
+  fechar a janela e conferir que o listener parou. Simular falta de WebView2,
+  verificar versão/compatibilidade Python 3.14 e testar com dados descartáveis.
+  Até esse reteste, o `.exe` é **não executado/não validado**.
+
+Fontes técnicas consultadas: documentação oficial de
+[pywebview (instalação/WebView2)](https://pywebview.flowrl.com/guide/installation.html),
+[web engine](https://pywebview.flowrl.com/guide/web_engine.html),
+[usage](https://pywebview.flowrl.com/guide/usage.html),
+[freezing](https://pywebview.flowrl.com/guide/freezing.html) e
+[PyInstaller onedir](https://pyinstaller.org/en/stable/operating-mode.html).

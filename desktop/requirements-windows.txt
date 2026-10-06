@@ -1,0 +1,3 @@
+# Dependências opcionais para protótipo Windows; não instalar para a Alpha CLI.
+pywebview>=5,<7
+pyinstaller>=6,<7

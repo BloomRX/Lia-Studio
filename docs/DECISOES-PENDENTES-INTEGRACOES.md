@@ -2,7 +2,11 @@
 
 > Estado: **perguntas em aberto** para execução real, não autorização para iniciar agentes, modelo ou operações externas. Revisão: 2026-10-03.
 >
-> A Alpha offline/simulada foi aceita. O diagnóstico Ollama local e somente leitura (Decisão 20 em `arquitetura-decisoes.md`) não executa modelos; as decisões abaixo continuam bloqueando apenas as etapas indicadas.
+> A Alpha offline/simulada e a evolução visual UI.1 foram aceitas pelo Dev. O
+> marco desktop Windows foi escolhido em 2026-10-05 e tem shell protótipo
+> reversível (Decisão 22), ainda sem `.exe` validado. O diagnóstico Ollama local
+> somente leitura (Decisão 20) não executa modelos; as decisões abaixo continuam
+> bloqueando apenas as integrações indicadas.
 
 ## Contratos já estabelecidos
 

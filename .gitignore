@@ -8,3 +8,9 @@ __pycache__/
 LiaStudioProjects/
 # Dados efêmeros do preview na Arena (nunca versionar projetos de teste)
 .arena/
+
+# Build opcional da shell desktop (não versionar binários nem venv)
+.venv/
+build/
+dist/
+*.spec

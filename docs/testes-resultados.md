@@ -188,8 +188,9 @@ Capturas Home/Projeto/Skills/mobile foram inspecionadas localmente. A cópia de
 Skill com frontmatter e a ocultação visual dos itens filtrados falharam na primeira
 tentativa, foram corrigidas e passaram no reteste. Após reiniciar o servidor,
 projeto e Skill editada persistiram.
-Viewports CSS 390 e 720 px não tiveram overflow horizontal. **Ainda pendentes:**
-zoom nativo 200%, navegador Windows e aceite do Dev da UI.1. Roteiro em
+Viewports CSS 390 e 720 px não tiveram overflow horizontal. **Naquele momento**
+zoom nativo 200%, navegador Windows e aceite da UI.1 ainda estavam pendentes;
+foram tratados posteriormente, como registrado abaixo. Roteiro em
 [ALPHA-UI1-VALIDACAO.md](ALPHA-UI1-VALIDACAO.md). O aceite anterior da Alpha
 funcional permanece separado desta evolução visual.
 
@@ -201,8 +202,14 @@ e CRUD de Skills naquela versão, além de um overflow a 200% corrigido no commi
 e [ALPHA-UI1-VERIFY-WINDOWS-2026-10-05.txt](ALPHA-UI1-VERIFY-WINDOWS-2026-10-05.txt).
 **Não é uma validação Windows da UI.1 implementada depois**: 106 testes passaram
 naquela revisão, 11 casos de symlink foram pulados (não aprovados). A correção
-CSS foi mantida aqui; o fluxo UI.1 e o zoom nativo ainda precisam de reteste
-na revisão que contenha a UI.1.
+CSS foi mantida aqui. **Atualização em 2026-10-05:** o Copilot fez pull de
+`95b3ccc`, executou o [reteste UI.1 no Windows](ALPHA-UI1-EXECUCAO-WINDOWS-2026-10-05-95b3ccc.md)
+pela interface e encontrou duas regressões responsivas. Após corrigir apenas CSS
+(`df1742e`), repetiu os passos afetados: Home, pipeline, painéis, Skills CRUD,
+QA e persistência após reload/reinício passaram, inclusive zoom nativo 200%.
+A suíte Windows passou com 109 testes, **12 pulados por symlink sem privilégio**
+(não aprovados). O Dev deu aceite explícito à UI.1 nesta conversa em 2026-10-05;
+o aceite não implica teste pessoal nem execução dos pulados.
 
 ## 2. Smoke técnico anterior de API (via curl; não é teste de uso/aceite)
 Fluxo registrado anteriormente pelo desenvolvimento: criar projeto → bootstrap com ideia incompleta →
@@ -240,3 +247,16 @@ do Dev registrados acima. O aceite não foi inferido destas linhas.
 - Integração real com engine ou provedor de IA (fora do escopo da Alpha; tudo simulado).
 - Execução pessoal do roteiro pelo Dev não foi relatada; seu aceite explícito
   da Alpha foi registrado separadamente acima.
+
+### Marco desktop Windows 1 — shell opcional (2026-10-05)
+
+Após o aceite expresso do Dev à UI.1, o próximo marco escolhido foi desktop
+Windows. `desktop.py` hospeda a SPA já existente em janela pywebview/WebView2
+com API loopback de porta dinâmica e cleanup; o Core e `py run.py` não têm
+dependência nova. Quatro testes `tests/test_desktop.py` usam WebView falso para
+verificar startup, GET `/api/health`, loopback, renderer solicitado e porta
+fechada mesmo após falha de GUI. Essa cobertura **não** executa GUI real,
+WebView2, build PyInstaller nem `.exe`; o roteiro Windows está em
+[DESKTOP-WINDOWS-MARCO-1.md](DESKTOP-WINDOWS-MARCO-1.md). Nenhum pacote desktop
+foi instalado automaticamente ou gerado no Linux. Os 12 testes de symlink
+pulados no Windows anterior continuam não executados.

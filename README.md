@@ -53,7 +53,7 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   executa código, e não substitui a revisão humana antes de compartilhar.
 - Biblioteca de quatro Skills locais consultáveis, separada dos projetos; aplicação por agente ainda não conectada.
 
-## Alpha UI.1 — evolução pós-aceite (Chromium Linux validado; Windows pendente)
+## Alpha UI.1 — aceita pelo Dev em 2026-10-05
 - Home como **launcher** separado dos projetos, com criar/abrir projeto,
   recentes e entrada para Skills.
 - Project Workspace com pipeline **central única**. `delivery` segue sendo o ID
@@ -69,19 +69,22 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   Minhas Skills. Skills distribuídas são só leitura e podem ser duplicadas.
   Skills não são obrigatórias para Agents; salvar não aplica nem executa nada.
 - Decisões e limitações em `docs/arquitetura-decisoes.md` (Decisão 21) e roteiro
-  de validação em `docs/ALPHA-UI1-VALIDACAO.md`. Esta evolução **não está incluída
-  retroativamente no aceite da Alpha**; fluxo visual validado no Chromium Linux,
-  mas navegador Windows, zoom nativo 200% **nesta UI** e aceite da UI.1 seguem
-  pendentes. O [relatório Windows de 05/10](docs/ALPHA-UI1-EXECUCAO-WINDOWS-2026-10-05.md)
-  testou o commit `7ad7b19`, anterior à UI.1, e não valida os controles novos.
+  em `docs/ALPHA-UI1-VALIDACAO.md`. O Dev aceitou expressamente a UI.1 em
+  2026-10-05 após o [reteste Windows da versão correta](docs/ALPHA-UI1-EXECUCAO-WINDOWS-2026-10-05-95b3ccc.md)
+  e a correção responsiva `df1742e`. Os 12 casos de symlink pulados no Windows
+  permanecem **não executados**; aceite não os transforma em aprovação.
 
 ## O que é apenas simulado / não implementado
 - Inferência real de IA (Ollama/Gemini/OpenRouter): somente catálogo/modo e
   diagnóstico de disponibilidade Ollama sob demanda; nenhum modelo executado.
 - Integração real com engines (Unreal/Godot/Unity/MonoGame): perfis selecionáveis,
   mas adapters não implementados/verificados.
-- Empacotamento Windows (executável): a arquitetura prepara o alvo, mas o `.exe` não
-  foi gerado/testado neste ambiente (Linux). Veja `docs/arquitetura-decisoes.md`.
+- **Marco desktop Windows 1:** shell opcional `desktop.py` para janela própria
+  via WebView2 e receita de build `desktop/build_windows.ps1`. A shell usa
+  a mesma API/SPA, sem Agent real. `.exe`/janela WebView2 **ainda não foram
+  construídos nem testados no Windows**; leia
+  `docs/DESKTOP-WINDOWS-MARCO-1.md` antes de experimentar. A Alpha via
+  `python run.py` continua sem dependências de terceiros.
 
 ## Requisitos
 - Python 3.9+ (apenas biblioteca padrão — **sem `pip install`**).

@@ -1,5 +1,10 @@
 # Guia rápido do Dev — Lia Studio (alpha)
 
+A Alpha UI.1 foi aceita pelo Dev em 2026-10-05. O próximo marco desktop
+Windows é **um protótipo opcional**, não um `.exe` validado: pré-requisitos,
+limites e roteiro em [DESKTOP-WINDOWS-MARCO-1.md](DESKTOP-WINDOWS-MARCO-1.md).
+O fluxo via `run.py` abaixo continua disponível sem instalar dependências GUI.
+
 Este guia cobre os fluxos principais pela interface. Não exige conta externa.
 Na Alpha UI.1, a **Home é o launcher**. Ao abrir um projeto, a pipeline no topo
 seleciona o contexto visual (Preparação, MVP, Produção, Finalização); clicar numa
