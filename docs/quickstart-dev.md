@@ -1,8 +1,11 @@
 # Guia rápido do Dev — Lia Studio (alpha)
 
 A Alpha UI.1 foi aceita pelo Dev em 2026-10-05. O próximo marco desktop
-Windows é **um protótipo opcional**, não um `.exe` validado: pré-requisitos,
-limites e roteiro em [DESKTOP-WINDOWS-MARCO-1.md](DESKTOP-WINDOWS-MARCO-1.md).
+Windows é **um protótipo opcional**: o `.exe` abriu no Windows, mas ainda não foi
+qualificado para distribuição. Pré-requisitos em
+[DESKTOP-WINDOWS-MARCO-1.md](DESKTOP-WINDOWS-MARCO-1.md), resultados do
+[primeiro reteste](DESKTOP-WINDOWS-MARCO-1-2026-10-07.md) e
+[passos pendentes](DESKTOP-WINDOWS-RETESTE-2.md).
 O fluxo via `run.py` abaixo continua disponível sem instalar dependências GUI.
 
 Este guia cobre os fluxos principais pela interface. Não exige conta externa.

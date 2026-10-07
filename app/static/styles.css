@@ -391,3 +391,6 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
 @media(max-width:690px) { .mobile-stage-hint { display:block; color:var(--muted); font-size:11px; margin:-8px 0 12px; } }
 /* O atributo hidden precisa prevalecer sobre display de tiles/links. */
 [hidden] { display: none !important; }
+/* A ação de recarga só aparece na janela desktop, após pywebviewready. */
+.desktop-reload { white-space:nowrap; font-size:12px; padding:7px 10px; }
+@media(max-width:690px) { .desktop-reload { margin-left:auto; } }

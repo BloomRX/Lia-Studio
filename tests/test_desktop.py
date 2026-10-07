@@ -43,6 +43,7 @@ class TestDesktopShell(unittest.TestCase):
         self.assertEqual(view.gui, "edgechromium")
         title, url = view.window[0]
         self.assertEqual(title, "Lia Studio")
+        self.assertTrue(view.window[1]["zoomable"])  # pywebview desabilita por padrão
         parts = urlsplit(url)
         self.assertEqual(parts.hostname, "127.0.0.1")
         self.assertNotEqual(parts.port, 8080)  # sem conflito com o preview/CLI normal
@@ -65,6 +66,27 @@ class TestDesktopShell(unittest.TestCase):
         with mock.patch.object(desktop.sys, "platform", "linux"), contextlib.redirect_stderr(io.StringIO()) as errors:
             self.assertEqual(desktop.main(), 2)
         self.assertIn("Windows", errors.getvalue())
+
+    def test_webview2_registry_missing_or_invalid_fails_closed(self):
+        class Registry:
+            HKEY_CURRENT_USER = 1
+            HKEY_LOCAL_MACHINE = 2
+            def __init__(self, version=None): self.version = version
+            def OpenKey(self, root, path):
+                if root != 1 or not self.version: raise FileNotFoundError()
+                return contextlib.nullcontext("key")
+            def QueryValueEx(self, key, name): return self.version, 1
+        for version in (None, "", "0.0.0.0", "nonsense"):
+            self.assertFalse(desktop.webview2_available(Registry(version)))
+        self.assertTrue(desktop.webview2_available(Registry("154.0.4258.53")))
+
+    def test_missing_webview2_stops_before_server_or_gui_import(self):
+        with mock.patch.object(desktop.sys, "platform", "win32"), \
+             mock.patch.dict("os.environ", {"HOST": "127.0.0.1"}), \
+             mock.patch.object(desktop, "webview2_available", return_value=False), \
+             mock.patch.object(desktop, "_show_error") as show:
+            self.assertEqual(desktop.main(), 2)
+        self.assertIn("WebView2 Runtime", show.call_args.args[0])
 
     def test_external_host_is_rejected_by_desktop_before_importing_webview(self):
         with mock.patch.object(desktop.sys, "platform", "win32"), mock.patch.dict("os.environ", {"HOST": "0.0.0.0"}), mock.patch.object(desktop, "_show_error") as show:

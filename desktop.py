@@ -7,6 +7,7 @@ hospeda a SPA existente; não há ponte JS->Python nem execução de Agent.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from http.server import ThreadingHTTPServer
 from threading import Thread
@@ -27,7 +28,8 @@ def run_window(webview, *, server_factory=ThreadingHTTPServer) -> None:
         webview.settings["SHOW_DEFAULT_MENUS"] = False
         webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
         webview.create_window("Lia Studio", f"http://127.0.0.1:{port}/",
-                              width=1280, height=850, min_size=(760, 560))
+                              width=1280, height=850, min_size=(760, 560),
+                              zoomable=True)  # pywebview desabilita zoom por padrão
         # Forçar WebView2/Edge Chromium. Não selecionar MSHTML legado.
         webview.start(gui="edgechromium")
     finally:
@@ -45,12 +47,41 @@ def _show_error(message: str) -> None:
         ctypes.windll.user32.MessageBoxW(None, message, "Lia Studio — desktop", 0x10)
 
 
+def webview2_available(registry=None) -> bool:
+    """Pré-requisito do renderer Windows; não alterar registro nem instalar nada.
+
+    Microsoft documenta `pv` nas chaves HKCU/HKLM para o Runtime Evergreen.
+    Edge navegador, sozinho, não satisfaz esse pré-requisito.
+    """
+    if registry is None:
+        import winreg as registry  # stdlib, somente Windows
+    client = r"Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+    for root, path in (
+        (registry.HKEY_CURRENT_USER, "Software\\" + client),
+        (registry.HKEY_LOCAL_MACHINE, "SOFTWARE\\WOW6432Node\\" + client),
+        (registry.HKEY_LOCAL_MACHINE, "SOFTWARE\\" + client),
+    ):
+        try:
+            with registry.OpenKey(root, path) as key:
+                version, _ = registry.QueryValueEx(key, "pv")
+            if isinstance(version, str) and re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", version):
+                if any(int(part) for part in version.split(".")):
+                    return True
+        except OSError:  # chave não instalada ou sem acesso; buscar outra localização
+            continue
+    return False
+
+
 def main() -> int:
     if sys.platform != "win32":
         _show_error("O launcher desktop deste incremento requer Windows e WebView2. Use python run.py em outros sistemas.")
         return 2
     if os.environ.get("HOST") not in (None, "", "127.0.0.1"):
         _show_error("O launcher desktop não aceita HOST externo. Remova a variável HOST para continuar.")
+        return 2
+    if not webview2_available():
+        _show_error("Microsoft Edge WebView2 Runtime não encontrado. Instale-o manualmente "
+                    "pela Microsoft antes de abrir o Lia Studio; não usaremos o renderer legado.")
         return 2
     try:
         import webview  # dependência opcional do desktop; Core/CLI não precisa dela

@@ -391,3 +391,21 @@ Fontes técnicas consultadas: documentação oficial de
 [usage](https://pywebview.flowrl.com/guide/usage.html),
 [freezing](https://pywebview.flowrl.com/guide/freezing.html) e
 [PyInstaller onedir](https://pyinstaller.org/en/stable/operating-mode.html).
+
+### Complemento à Decisão 22 — qualificação parcial e controles da janela (2026-10-07)
+
+O Copilot comprovou no Windows build `--onedir`, abertura de `LiaStudio.exe`
+sem VS Code e persistência após reabrir (relatório
+`DESKTOP-WINDOWS-MARCO-1-2026-10-07.md`). Reload isolado e zoom nativo 200%
+**não foram confirmados**: o pywebview documenta `zoomable=False` por padrão.
+Sem mudar Core ou storage, a janela passa a pedir `zoomable=True` e a SPA exibe
+**somente quando `pywebviewready`** uma recarga explícita com confirmação para
+não perder rascunho sem aviso. Antes de importar GUI/iniciar servidor, a shell
+consulta **somente leitura** as chaves `pv` do WebView2 Runtime Evergreen no
+registro Windows; se ausentes/zeradas, falha com instrução, não tenta fallback
+legado ou instalação. Inspeção de registro fake é teste unitário, **não substitui**
+uma VM sem WebView2. Também continua pendente execução real sem Python no PC.
+Roteiro atualizado: `docs/DESKTOP-WINDOWS-RETESTE-2.md`.
+
+Referências: [API pywebview — `zoomable` padrão](https://pywebview.flowrl.com/api/)
+e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution).

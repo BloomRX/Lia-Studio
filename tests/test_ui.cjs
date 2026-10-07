@@ -10,12 +10,15 @@ const exportDest = { value: '' };
 const stageNote = { value: '' };
 const toast = { hidden: true, textContent: '' };
 const view = { innerHTML: '' };
+const desktopReload = {hidden:true};
+let reloads = 0;
 const requests = [];
 const context = {
   document: { getElementById: id => ({ view, toast, 'exec-task': pre, 'approve-task': approval,
-    'export-result': exportResult, 'export-dest': exportDest, 'stage-note': stageNote })[id] },
+    'export-result': exportResult, 'export-dest': exportDest, 'stage-note': stageNote,
+    'desktop-reload': desktopReload })[id] },
   window: { addEventListener: () => {} },
-  location: { hash: '#/home' },
+  location: { hash: '#/home', reload: () => { reloads++; } },
   fetch: async (url, options) => {
     requests.push({ url, options });
     return { ok: true, json: async () => ({ proposal: 'Proposta', preview_digest: 'preview-v1', simulated_result: options.body && JSON.parse(options.body).approved ? 'SIMULADO' : null, session: options.body && JSON.parse(options.body).approved ? {id: 'session-1'} : null, blockers: [], warning: 'Aviso' }) };
@@ -26,6 +29,17 @@ const context = {
 const source = fs.readFileSync(require('node:path').join(__dirname, '../app/static/app.js'), 'utf8');
 assert.doesNotMatch(source, /\bprompt\s*\(/); // navegador de automação não suporta diálogos prompt()
 vm.runInNewContext(source.replace(/navigate\(\);\s*$/, ''), context);
+assert.equal(desktopReload.hidden, true); // sem pywebview, botão invisível
+context.window.pywebview = {platform:'edgechromium'};
+context.showDesktopReload();
+assert.equal(desktopReload.hidden, false);
+context.confirm = () => false;
+context.reloadDesktop();
+assert.equal(reloads, 0); // não perder um rascunho sem confirmação
+context.confirm = () => true;
+context.reloadDesktop();
+assert.equal(reloads, 1);
+
 (async () => {
   const html = context.projectExecute('project-1', {
     modules: [{ id: 'module-1', name: 'Módulo', tasks: [{ id: 'task', status: 'pendente', name: 'Tarefa' }] }],

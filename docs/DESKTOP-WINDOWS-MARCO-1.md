@@ -73,8 +73,14 @@ O script verifica os três caminhos e encerra com erro se faltarem. `dist/` e
    pulados e bloqueios. **Não** transforme teste unitário Linux em aprovação do
    `.exe` Windows, nem aceite da UI.1 em aprovação deste marco novo.
 
-**Estado atual:** quatro testes locais da shell com WebView falso exercitam API
-loopback, porta dinâmica e cleanup. Build e janela reais no Windows: **não
-executados neste ambiente Linux**. A decisão de instalar WebView2 e o formato de
-distribuição final (assinatura, instalador, política de atualização) seguem
-pendentes após o protótipo.
+**Estado após o primeiro reteste Windows:** o [relatório de 07/10](DESKTOP-WINDOWS-MARCO-1-2026-10-07.md)
+comprova build `--onedir`, janela WebView2 real e abertura do `.exe` fora do VS Code,
+além de projeto/documentos persistentes e encerramento do listener. **Ainda não
+qualifica o pacote para distribuição**: zoom mensurável a 200%, recarga isolada,
+fluxos completos no `.exe`, ausência real de WebView2 e PC sem Python ficaram
+pendentes; 12 casos de symlink foram pulados. O incremento seguinte habilita
+`zoomable=True` (o padrão do pywebview era `False`), oferece botão Recarregar
+apenas na janela com confirmação de perda de rascunho, e faz pré-checagem do
+registro de WebView2 **sem instalar ou remover nada**. Seis testes locais com
+WebView/registro falsos cobrem os caminhos; a validação real continua sendo no
+Windows. Assinatura, instalador e política de atualização seguem indefinidos.

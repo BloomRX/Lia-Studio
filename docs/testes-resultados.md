@@ -260,3 +260,16 @@ WebView2, build PyInstaller nem `.exe`; o roteiro Windows está em
 [DESKTOP-WINDOWS-MARCO-1.md](DESKTOP-WINDOWS-MARCO-1.md). Nenhum pacote desktop
 foi instalado automaticamente ou gerado no Linux. Os 12 testes de symlink
 pulados no Windows anterior continuam não executados.
+
+**Reteste Windows de 07/10:** o Copilot fez pull de `755fc62`, construiu o
+[protótipo desktop](DESKTOP-WINDOWS-MARCO-1-2026-10-07.md) com PyInstaller e abriu
+`LiaStudio.exe` fora do VS Code. Home, projeto, documentos e Skills distribuídas
+foram vistos na janela; projeto persistiu após fechar/reabrir e o listener
+encerrou. `py verify_alpha.py`: 109 testes contabilizados, **12 pulados** de
+symlink (97 executados), mais 4 testes da shell. **Não executados/insuficientes**:
+zoom nativo mensurável a 200%, reload isolado, WebView2 ausente, máquina sem
+Python, e parte dos fluxos de painéis/QA/Skills editáveis no `.exe`. O build real
+foi comprovado, **não** sua aptidão para distribuição. O incremento posterior
+habilita zoom (`zoomable=True`), recarga com confirmação e pré-checagem
+somente leitura de WebView2; a suíte Linux passa com 109+6 testes, mas essas
+novidades ainda exigem reteste de janela/pacote Windows.

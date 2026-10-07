@@ -79,12 +79,13 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   diagnóstico de disponibilidade Ollama sob demanda; nenhum modelo executado.
 - Integração real com engines (Unreal/Godot/Unity/MonoGame): perfis selecionáveis,
   mas adapters não implementados/verificados.
-- **Marco desktop Windows 1:** shell opcional `desktop.py` para janela própria
-  via WebView2 e receita de build `desktop/build_windows.ps1`. A shell usa
-  a mesma API/SPA, sem Agent real. `.exe`/janela WebView2 **ainda não foram
-  construídos nem testados no Windows**; leia
-  `docs/DESKTOP-WINDOWS-MARCO-1.md` antes de experimentar. A Alpha via
-  `python run.py` continua sem dependências de terceiros.
+- **Marco desktop Windows:** shell opcional `desktop.py` para janela WebView2
+  e receita de build `desktop/build_windows.ps1`, com a mesma API/SPA e sem Agent
+  real. O [primeiro reteste Windows](docs/DESKTOP-WINDOWS-MARCO-1-2026-10-07.md)
+  comprovou build, abertura do `.exe` fora do VS Code e persistência básica,
+  **não** aptidão para distribuição. A revisão seguinte habilita zoom nativo,
+  recarga explícita e pré-checagem de WebView2; pede [reteste direcionado](docs/DESKTOP-WINDOWS-RETESTE-2.md).
+  A Alpha via `python run.py` continua sem dependências de terceiros.
 
 ## Requisitos
 - Python 3.9+ (apenas biblioteca padrão — **sem `pip install`**).

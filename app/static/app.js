@@ -1042,5 +1042,17 @@ async function renderGlobalConfig() {
   };
 }
 
+/* Comandos de janela: sem ponte privilegiada JS→Python, disponíveis só no webview. */
+function showDesktopReload() {
+  if (typeof window.pywebview === "undefined") return;
+  const button = document.getElementById("desktop-reload");
+  if (button) button.hidden = false;
+}
+function reloadDesktop() {
+  if (confirm("Recarregar a interface? Rascunhos não salvos serão perdidos.")) location.reload();
+}
+window.addEventListener("pywebviewready", showDesktopReload);
+showDesktopReload();
+
 /* ----------------------- boot ----------------------- */
 navigate();
