@@ -204,10 +204,95 @@ O ciclo documentado é: request/issue → planejamento/escopo → gate de aprova
 - Não automatizar merge, push, publicação ou ações destrutivas só porque o pipeline tem essas etapas.
 - Não usar a ausência de falhas no runner como prova de que o jogo/asset foi validado pela engine.
 
-## 6. Matriz de decisão para Lia Studio
+## 6. MagmaDev — processo de pesquisa, design, arte e implementação por agentes
+
+**Fonte analisada:** vídeo “Claude Crie um JOGO VIRAL DO ZERO e NÃO COMETA ERROS!”, por MagmaDev, a partir da transcrição fornecida nesta conversa: https://youtu.be/eUBAID6SAfw. Alguns nomes e versões na transcrição parecem falhas de reconhecimento de fala.
+
+**Limite da evidência:** esta seção registra o processo narrado e o resultado mostrado pelo criador; não é uma auditoria independente dos repositórios ou de todos os arquivos gerados. O próprio criador conclui que o jogo não atingiu convincentemente a meta de “jogo viral” e identifica divergência de escopo, bugs funcionais e arte inconsistente. Portanto, os métodos são hipóteses úteis para o Lia Studio testar, não prova de que a execução ponta a ponta funcionou bem.
+
+### 6.1 Preparar o produto antes de implementar
+
+O vídeo compara um experimento anterior, com um GDD extenso, à experiência principal, em que o agente pesquisa referências, levanta mecânicas e jogos recentes, calcula/simula números e entrega dois documentos antes do código: um GDD e um documento de direção de arte (aprox. 00:00–01:25 e 04:28–10:10). O GDD pretendia cobrir sistemas, interações, tabelas de balanceamento, loop, atividades principais/secundárias, progressão, árvores de habilidades, narrativa, UX, fluxo de telas, informações visíveis e desbloqueios. A direção de arte descrevia estilo, coerência visual, composição, nível de detalhe e perspectiva/câmera.
+
+**Aplicação ao Lia Studio — ADAPTAR:** na fase Preparação, oferecer pesquisa e especificação de produto como um fluxo explícito, com entregáveis versionados e aprováveis, em vez de confiar somente numa conversa extensa ou num prompt isolado. GDD/Design Contract e Art Direction Contract devem se referenciar por IDs de sistemas, telas e assets. Manter os dois documentos separados quando isso facilitar a coordenação; para projetos pequenos, um único contrato coeso pode bastar.
+
+### 6.2 Pesquisar referências sem copiar jogos
+
+O criador pediu ao agente que estudasse jogos de referência, buscasse mais títulos recentes, identificasse precedentes mecânicos e combinasse ideias numa proposta própria. Também distinguiu referências úteis para mecânica de referências visuais e destacou a importância de um loop que combine com a meta do produto (aprox. 05:46–08:01).
+
+**Aplicação ao Lia Studio — ADAPTAR:** produzir uma matriz rastreável de referências: jogo/fonte, mecanismo observado, evidência, por que pode funcionar, necessidade do projeto atendida, adaptação original, risco de imitação e elementos que não serão copiados. Distinguir fatos pesquisados de interpretação do agente e decisão do usuário. Não chamar um conceito de “viral” sem registrar o período e os sinais observáveis que sustentam a hipótese. Pesquisa externa deve obedecer permissões, privacidade e política Free-First.
+
+### 6.3 Normalizar intenção em um contrato sem contradições
+
+O criador descreve uma etapa que converteu suas instruções longas e espontâneas num prompt/briefing mais simples, para reduzir contradições antes de iniciar uma execução extensa. A justificativa foi converter intenção conversacional em ordem de implementação estável, não tornar o prompt artificialmente enorme (aprox. 16:05–17:09).
+
+**Aplicação ao Lia Studio — ADAPTAR:** antes do handoff, revisar conflitos, decisões ausentes e ambiguidades de alto impacto. Distinguir requisitos aprovados, hipóteses, sugestões do agente e pendências. Usar a hierarquia de fontes de verdade já definida pelo projeto; não apagar nem decidir silenciosamente em nome do usuário. Entregar aos workers um resumo implementável que referencia os documentos versionados, sem duplicar tudo no prompt. A verificação deve ser proporcional ao escopo, sem criar burocracia para tarefas pequenas.
+
+### 6.4 Usar cálculos e simulações quando o sistema é quantificável
+
+O criador relata que o agente calculou tabelas e simulou números antes de finalizar os documentos (aprox. 09:22–10:10). Isso pode revelar curvas de progressão ou economia inviáveis antes da implementação, mas a transcrição não prova que os números obtidos ficaram balanceados em jogo.
+
+**Aplicação ao Lia Studio — ADAPTAR QUANDO RELEVANTE:** permitir análises determinísticas para economia, probabilidades e progressão, registrando premissas, intervalo, resultado esperado e testes de sensibilidade. Não forçar simulações para sistemas narrativos/estéticos sem benefício claro. Uma simulação é evidência auxiliar, nunca substituto de playtest.
+
+### 6.5 Orquestrador e agentes especializados
+
+O briefing mostrado no vídeo propõe um responsável central que acumula direção criativa, game design e arquitetura técnica, com até dois subagentes: um de arte/assets e outro de código. A separação ocorre porque o fluxo de arte depende de ferramenta/repositório e Skills próprios. O coordenador precisa saber caminhos, formatos e contratos para escrever bons briefings, mas os especialistas leem suas próprias regras e Skills sem exigir que o orquestrador carregue tudo no contexto (aprox. 13:04–14:28 e 17:09–17:50).
+
+**Aplicação ao Lia Studio — ADAPTAR, sob as salvaguardas dos contratos multi-agent existentes:**
+- O Lead/Orchestrator mantém a coerência global e a responsabilidade pelas decisões; não recebe acesso irrestrito só por coordenar.
+- Cada worker recebe objetivo, entregável, critério de aceite, entradas autorizadas, caminhos permitidos, formato, dependências e budget.
+- Workers carregam as próprias Skills relevantes dentro das capacidades delegadas. O catálogo não precisa despejar todas as instruções especializadas no contexto do Lead.
+- A fronteira arte/código precisa de contratos concretos: IDs/nomenclatura, dimensões, pivô/origem, escala, paleta, animações, formato de exportação, importação na engine e caminhos.
+- O worker nunca ganha ferramenta, segredo, permissão ou escopo maior que o autorizado ao pai; o Runtime deve impor os limites, não apenas o prompt.
+- Dois workers são um padrão possível para certas tarefas, não uma regra global. Manter Single Agent como opção quando a divisão não gerar benefício verificável.
+
+### 6.6 O resultado também mostra o que evitar
+
+Embora o agente tenha produzido telas e sistemas, o criador encontrou uma divergência no produto: o jogo ganhou exploração de mapa, enquanto ele desejava uma experiência de loop mais curto e centrada em menus. Algumas interações com personagens, correio e negociação não funcionavam; havia bugs, assets incompletos e problemas de paleta/composição. O próprio criador concluiu que seria necessária bastante lapidação e que o jogo não atingiu convincentemente a meta viral (aprox. 25:24–26:09 e 31:40–35:35).
+
+A principal lição é que GDD e direção de arte **não eliminam erros**. Ainda houve espaço para interpretar mal uma decisão de produto, e a revisão de documentos não substituiu validação jogável.
+
+**Aplicação ao Lia Studio — ADAPTAR COMO GATE DE MVP:**
+- Descrever o loop principal numa sequência concreta de ações, feedback, recompensa/progressão e retorno ao loop.
+- Explicitar o que fica fora do MVP, inclusive opções sedutoras que mudam o tipo de experiência — por exemplo, mapa explorável versus fluxo por menus.
+- Validar uma fatia vertical executável — iniciar, completar o loop principal, receber progressão/recompensa e encerrar/retomar — antes de escalar conteúdo.
+- Listar interações críticas e o estado/resultado esperado. “Elemento aparece na tela” não significa “funcionalidade concluída”.
+- Rodar smoke tests e integração; para um jogo, exigir playtest humano ou declarar explicitamente que não aconteceu.
+- Comparar o resultado com critérios aprovados para loop, UX, arte, escopo e funcionalidade antes de marcar a etapa como concluída.
+- Registrar bloqueadores, falhas funcionais, divergências de design, polimento e melhorias futuras separadamente.
+
+### 6.7 Assets procedurais precisam de coerência e revisão no jogo
+
+O criador mostra uma ferramenta própria que gera pixel art por código. Relata que cenários/objetos pareciam mais promissores que personagens, cuja qualidade exigia mais iteração; também aponta problemas de paleta, composição e partes incompletas de sprites (aprox. 19:06–23:40 e 25:24–26:09). Produzir arquivos não significa alcançar direção de arte consistente.
+
+**Aplicação ao Lia Studio — ADAPTAR:** trabalhar a partir de uma referência visual aprovada, gerar famílias coerentes, manter escala/paleta/perspectiva e inspecionar os assets numa cena de teste ou na engine. Thumbnails/contact sheets e checagens técnicas ajudam, mas não substituem aprovação visual. Não presumir que a qualidade observada em objetos se repita em personagens. Geradores externos devem ser adapters opcionais; antes de integrar ou redistribuir qualquer ferramenta, auditar repositório, licença, dependências, compatibilidade e permissões.
+
+### 6.8 Orçamento e entrega verificável
+
+O criador relata consumo diferente entre a fase documental e a implementação/geração de assets, mas esses números dependem do plano, modelo, escopo e execução e não são generalizáveis (aprox. 15:05–15:25 e 26:09–26:21). O briefing de entrega pede um resumo curto do implementado, commit, pendências e modo de execução, além de atualizar o progresso do projeto (aprox. 18:02–18:21).
+
+**Aplicação ao Lia Studio — ADAPTAR:** quando houver medição real, registrar custo/uso por fase, provider e worker. Não exibir estimativas como consumo confirmado. O encerramento deve resumir alterações verificadas, branch/commit, testes e evidências, pendências e instruções de execução. Um arquivo de progresso é um resumo derivado do estado da execução, não uma fonte paralela em conflito com logs e commits.
+
+### 6.9 Síntese operacional para o agente do Lia Studio
+
+1. Na Preparação, pesquisar com fontes e preparar contratos de design/arte adequados ao tamanho do projeto.
+2. Antes do handoff, verificar consistência, decisões em aberto, escopo negativo e critérios de aceite.
+3. No MVP, validar primeiro uma fatia vertical e o loop principal.
+4. Só ampliar conteúdo depois do gate funcional/visual; usar especialistas onde existam fronteiras de trabalho reais.
+5. Simular sistemas quantitativos quando fizer sentido e validar depois na experiência real.
+6. Nunca inferir sucesso a partir do volume de código/assets, tempo gasto ou término do processo. Sucesso exige aceite verificável contra o produto pretendido.
+
+## 7. Matriz de decisão para Lia Studio
 
 | Ideia | Decisão | Prioridade | Condição/critério |
 |---|---|---:|---|
+| Pesquisa rastreável de referências antes do design | **ADAPTAR** | P1 | Evidências e abstrações registradas; não copiar um jogo nem afirmar viralidade sem sinais verificáveis. |
+| GDD/Design Contract + direção de arte quando necessário | **ADAPTAR** | P1 | Loop, UX, escopo, dependências, invariantes e critérios de aceite explícitos. |
+| Revisão de consistência e lacunas antes do handoff | **ADAPTAR** | P0/P1 | Resolver conflitos de alto impacto; hipótese e decisão aprovada não podem ser confundidas. |
+| Simulação de economia/progressão | **ADAPTAR QUANDO RELEVANTE** | P1/P2 | Premissas testáveis, resultados reproduzíveis e validação posterior em jogo. |
+| Workers separados para arte e código | **ADAPTAR OPCIONALMENTE** | P1/P2 | Contratos de handoff, permissões restritas e integração validada; não forçar multi-agent em tarefa simples. |
+| Fatia vertical jogável e verificação de critérios | **ADAPTAR** | P0 | Validar o loop antes de escalar conteúdo; processo concluído não equivale a produto aceite. |
+
 | Registry de Tools e resolução de capabilities | **ADAPTAR** | P0 | Contrato claro; catálogo não significa conexão/autorização. |
 | Preflight e diagnóstico de Runtime | **ADAPTAR** | P0 | Sem chamadas externas inesperadas; erros legíveis. |
 | Aprovações no servidor + permissões efetivas | **ADAPTAR** | P0 | Negações prevalecem; UI não é a única barreira. |
@@ -222,7 +307,14 @@ O ciclo documentado é: request/issue → planejamento/escopo → gate de aprova
 | Gateway de mensagens, voz, dashboard externo, fleet/cloud control | **NÃO ADOTAR AGORA** | P3 | Fora do escopo central da Alpha; custo e superfície de ataque. |
 | Dependência obrigatória de serviço vector/cloud | **REJEITAR PARA ALPHA** | P0 | Contraria a direção local-first/Free-First. |
 
-## 7. Roadmap sugerido
+## 8. Roadmap sugerido
+
+### Gate de produto aplicado a tarefas de desenvolvimento de jogos
+1. Na Preparação, produzir pesquisa rastreável e contratos de design/arte adequados ao tamanho do projeto.
+2. Antes de delegar, revisar conflitos, decisões abertas, escopo negativo e critérios verificáveis.
+3. No MVP, comprovar primeiro o loop principal em uma fatia vertical; não gerar todos os assets e sistemas antes desta validação.
+4. Na Produção, ampliar conteúdo somente após o gate funcional/visual; manter registro de bugs e divergências de design.
+5. Na Finalização, comunicar evidências, limitações de validação, pendências e instruções de execução.
 
 ### P0 — Antes de conectar um Runtime real
 1. Auditar e fechar os contratos existentes de Runtime, Session, Tool, permissions e cost policy.
@@ -252,7 +344,7 @@ O ciclo documentado é: request/issue → planejamento/escopo → gate de aprova
 3. Retenção e manutenção de memória/Skills, sempre revisáveis e reversíveis.
 4. UI de árvore Multi-Agent e custos/recursos reais, sem mostrar estados simulados como execução real.
 
-## 8. Regras para o agente de desenvolvimento
+## 9. Regras para o agente de desenvolvimento
 
 Ao usar este documento, o agente deve:
 
@@ -266,8 +358,13 @@ Ao usar este documento, o agente deve:
 8. Ao implementar, fazer uma mudança vertical pequena, adicionar testes (incluindo falhas e negações), executar a suíte existente e atualizar a documentação afetada.
 9. Nunca declarar que um jogo/build/asset foi validado apenas porque o processo terminou, o arquivo existe ou seu hash é conhecido.
 10. Respeitar a política Free-First: provedores locais, quotas gratuitas e provedores pagos autorizados são opções; nunca fazer fallback pago silencioso.
+11. Para desenvolvimento de jogos, não iniciar implementação ampla antes de definir loop principal, prioridades, limites de escopo e critérios de aceite proporcionais à tarefa.
+12. Tratar GDD e direção de arte como contratos versionados ligados à execução; resolver lacunas de alto impacto sem decisões silenciosas.
+13. Preferir uma fatia vertical validada antes da produção em escala; não declarar jogo funcional sem testar interações críticas e informar se houve playtest.
+14. Delegar arte/código por entregáveis e contratos de integração, não apenas por nomes de papéis; cada worker recebe somente ferramentas e caminhos de que precisa.
+15. Não confundir pesquisa de referências com prova de sucesso comercial/viral, nem simulação numérica com balanceamento comprovado.
 
-## 9. Pendências de pesquisa
+## 10. Pendências de pesquisa
 
 - [ ] Obter acesso ao repositório/código-fonte de Nectar para auditar indexação, identidade de arquivo, incrementalidade, segurança, dependências e licença do pacote.
 - [ ] Confirmar versão/commit exato de Hermes que será usado como referência para qualquer proposta futura; a branch `main` é mutável.
@@ -298,6 +395,9 @@ Ao usar este documento, o agente deve:
 
 ### Alfred
 - https://github.com/luminik-io/alfred
+
+### MagmaDev — processo de game design e execução por agentes
+- https://youtu.be/eUBAID6SAfw — transcrição analisada; referências aproximadas em 04:28–10:10 (pesquisa e GDD), 13:04–17:50 (orquestração e briefings), 25:24–26:09 e 31:40–35:35 (resultado, limitações e lições).
 - https://github.com/luminik-io/alfred/blob/main/ARCHITECTURE.md
 - https://github.com/luminik-io/alfred/blob/main/SECURITY.md
 - https://github.com/luminik-io/alfred/blob/main/docs/THREAT_MODEL.md
