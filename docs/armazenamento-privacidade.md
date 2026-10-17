@@ -15,7 +15,11 @@
     `validation_sessions.json` (opcional; processo de sintaxe Python real,
     separado de Session simulada e sem saída bruta) e `code_changes.json`
     (opcional; hashes, IDs, criação inicial sem backup anterior e caminhos de
-    backup de edições assistidas aprovadas).
+    backup de edições assistidas aprovadas). Na **raiz local** da instalação,
+    fora da pasta exportável do projeto, `runtime_policy.json` opcional guarda
+    capacidades fixas, grants/negações por projeto e Task vinculados ao local;
+    ausente significa negar operações reais restritas. Não contém segredos, mas
+    não é proteção contra processos locais hostis; exportar projeto não o copia.
 - O registro de decisões usa `decisions.json` como fonte estruturada; a aba Decisões
   reescreve a projeção `DECISIONS.md` após revisão. Se o Markdown foi editado
   manualmente, substituí-lo exige confirmação explícita. A revisão SHA-256 do

@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from . import ollama_chat, planning, validation_sessions
+from . import ollama_chat, planning, runtime_policy, validation_sessions
 from .storage import Storage, StorageError
 
 NAME = "code_changes.json"
@@ -114,6 +114,8 @@ def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
     if confirm_send is not True:
         raise StorageError("confirme o envio de objetivo e arquivo ao modelo escolhido")
     with storage.stage_lock:
+        runtime_policy.require(storage, project_id, module_id, task_id, "project.python.read", confirm_send)
+        runtime_policy.require(storage, project_id, module_id, task_id, "model.ollama.infer", confirm_send)
         original, task = _snapshot(storage, project_id, module_id, task_id, path)
         goal = task.get("objective", "")
         if not isinstance(goal, str) or not goal.strip() or len(goal) > 250:
@@ -132,6 +134,8 @@ def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
     except (SyntaxError, ValueError, TypeError, UnicodeError) as exc:
         raise StorageError("modelo não devolveu arquivo Python sintaticamente válido; nada foi escrito") from exc
     with storage.stage_lock:
+        runtime_policy.require(storage, project_id, module_id, task_id, "project.python.read", True)
+        runtime_policy.require(storage, project_id, module_id, task_id, "model.ollama.infer", True)
         current, task_now = _snapshot(storage, project_id, module_id, task_id, path)
         if _digest(current) != original_hash or task_now != task:
             raise StorageError("tarefa ou arquivo mudou durante a proposta; solicite nova prévia")
@@ -163,6 +167,10 @@ def apply(storage: Storage, project_id: str, proposal_id: str, confirmed: bool) 
             raise StorageError("proposta ausente/expirada; gere outra prévia")
         _pending.pop(proposal_id)  # consumir: nunca retry cego
     with storage.stage_lock:
+        runtime_policy.require(storage, project_id, proposal["module_id"], proposal["task_id"],
+                               "project.python.read", confirmed)
+        runtime_policy.require(storage, project_id, proposal["module_id"], proposal["task_id"],
+                               "project.python.write", confirmed)
         before, task = _snapshot(storage, project_id, proposal["module_id"],
                                  proposal["task_id"], proposal["path"])
         if _digest(before) != proposal["base"] or task != proposal["task"]:
@@ -212,6 +220,8 @@ def create_stub(storage: Storage, project_id: str, module_id: str, task_id: str,
     if confirmed is not True or not validation_sessions._safe_path(path):
         raise StorageError("confirme a criação de arquivo .py vinculado à Task")
     with storage.stage_lock:
+        runtime_policy.require(storage, project_id, module_id, task_id,
+                               "project.python.write", confirmed)
         project = storage.get_entry(project_id)
         if not project or project.get("archived"):
             raise StorageError("projeto indisponível ou arquivado")

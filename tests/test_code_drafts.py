@@ -11,7 +11,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.lia import code_drafts, planning, storage, validation_sessions
+from app.lia import code_drafts, planning, runtime_policy, storage, validation_sessions
 
 
 class TestCodeDrafts(unittest.TestCase):
@@ -23,6 +23,10 @@ class TestCodeDrafts(unittest.TestCase):
         self.task = planning.create_task(self.store, self.pid, self.mod["id"], {
             "name": "Movimento", "objective": "Retornar valor ajustado no loop.",
             "files": ["game/loop.py"], "verify": "rodar o jogo"})
+        for cap in ("project.python.read", "project.python.write", "model.ollama.infer"):
+            revision = runtime_policy.snapshot(self.store, self.pid)["revision"]
+            runtime_policy.change_task(self.store, self.pid, self.mod["id"], self.task["id"],
+                                       cap, "allow", revision, True)
         self.path = self.store.project_path(self.pid) / "game" / "loop.py"
         self.path.parent.mkdir()
         self.original = "def loop():\n    return 1\n"

@@ -815,6 +815,8 @@ function wireHandoff(pid, modules, existing = {}) {
 /* ----- execute ----- */
 function projectExecute(pid, data) {
   const modules = data.modules || [];
+  const policy = data.runtime_policy || {revision:"", project:{allow:[],deny:[]}, tasks:{},capabilities:{}};
+  const caps = Object.entries(policy.capabilities || {});
   const tasks = [];
   modules.forEach(m => (m.tasks||[]).forEach(t => {
     previewedTasks.delete(previewKey(pid, m.id, t.id));
@@ -824,6 +826,16 @@ function projectExecute(pid, data) {
     <div class="card"><h3>${pill(t.status)} ${esc(t.name)}</h3>
       <div class="muted">Módulo: ${esc(m.name)}</div>
       ${blockers.length ? `<div class="banner warn">Execução bloqueada: ${blockers.map(b=>esc(b.message)).join(" · ")}</div>` : ""}
+      ${caps.length ? `<details><summary>Capacidades reais desta Task (negadas por padrão)</summary>
+        <p class="muted">Conceder registra pedido/grant da Task e grant do projeto; outras Tasks continuam negadas. Negações vencem grants. Cada ação real ainda exige confirmação e verificações próprias; não há sandbox.</p>
+        ${caps.map(([cap,label]) => {
+          const settings = (policy.tasks || {})[t.id] || {request:[],allow:[],deny:[]};
+          const denied = settings.deny.includes(cap) || policy.project.deny.includes(cap);
+          const granted = settings.allow.includes(cap) && settings.request.includes(cap) && policy.project.allow.includes(cap);
+          return `<div class="policy-cap"><b>${esc(label)}</b> · ${denied ? "NEGADA" : granted ? "concedida para esta Task" : "sem grant"}
+            <div class="row"><button type="button" class="ghost small" data-policy-task="${esc(t.id)}" data-policy-module="${esc(m.id)}" data-policy-cap="${esc(cap)}" data-policy-action="${granted ? "remove_allow" : "allow"}" data-policy-revision="${esc(policy.revision)}">${granted ? "Revogar grant" : "Conceder"}</button>
+            <button type="button" class="ghost small" data-policy-task="${esc(t.id)}" data-policy-module="${esc(m.id)}" data-policy-cap="${esc(cap)}" data-policy-action="${settings.deny.includes(cap) ? "remove_deny" : "deny"}" data-policy-revision="${esc(policy.revision)}">${settings.deny.includes(cap) ? "Remover negação da Task" : "Negar na Task"}</button></div></div>`;
+        }).join("")}</details>` : ""}
       <div><b>Objetivo:</b> ${esc(t.objective||"—")}</div>
       <div><b>Verificar:</b> ${esc(t.verify||"—")}</div>
       <div class="row" style="margin-top:10px">
@@ -852,6 +864,10 @@ function projectExecute(pid, data) {
     `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} · ${c.backup_path ? `backup: ${esc(c.backup_path)}` : "criação inicial (sem arquivo anterior para backup)"} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
   return `<h1>Execução e validação local</h1>
     <div class="banner warn"><b>Simulador:</b> “Aprovar e simular” não escreve código. <b>Edição assistida:</b> modelo Ollama opcional propõe UM arquivo Python para revisão; somente confirmação aplica a mudança e salva backup. Isso NÃO executa o jogo ou aprova a Task. “Verificar sintaxe” inicia apenas um parser local.</div>
+    ${caps.length ? `<div class="card"><details><summary>Negações gerais do projeto (operações reais)</summary>
+      <p class="muted">Uma negação geral bloqueia todas as Tasks mesmo com grant. Remover negação não cria novos grants. Skills e texto de Task não têm autoridade.</p>
+      ${caps.map(([cap,label]) => `<div class="policy-cap">${esc(label)} · ${policy.project.deny.includes(cap) ? "NEGADA no projeto" : "sem negação geral"}
+        <button type="button" class="ghost small" data-project-policy-cap="${esc(cap)}" data-project-policy-action="${policy.project.deny.includes(cap) ? "remove_deny" : "deny"}" data-policy-revision="${esc(policy.revision)}">${policy.project.deny.includes(cap) ? "Remover negação geral" : "Negar no projeto"}</button></div>`).join("")}</details></div>` : ""}
     <div class="card"><h3>Modelo para rascunho de código (opcional)</h3><button type="button" id="draft-probe" class="ghost">Buscar modelos Ollama</button>
       <select id="draft-model"><option value="">Consulte modelos primeiro</option></select>
       <p id="draft-status" class="muted" role="status">Objetivo e fonte do arquivo escolhido podem sair do PC conforme o modelo Ollama. Você confirma antes de cada pedido.</p></div>
@@ -861,6 +877,28 @@ function projectExecute(pid, data) {
     <div class="card"><h2>Sessions simuladas (somente leitura)</h2>${sessionsHtml}</div>`;
 }
 async function wireExecute(pid) {
+  document.querySelectorAll("[data-policy-task]").forEach(button => button.addEventListener("click", async () => {
+    const {policyTask,policyModule,policyCap,policyAction,policyRevision} = button.dataset;
+    if (!confirm(`${policyAction === "allow" ? "CONCEDER" : policyAction === "deny" ? "NEGAR" : "ALTERAR"} ${policyCap} nesta Task? Grants não liberam automaticamente ação, gasto ou jogo; modelo Ollama pode usar nuvem/custo.`)) return;
+    button.disabled = true;
+    try {
+      await api("POST", `/api/projects/${pid}/tasks/${policyModule}/${policyTask}/runtime-policy`,
+        {capability:policyCap,action:policyAction,revision:policyRevision,confirm:true});
+      toast("Política atualizada. Releia os grants e negações antes de agir.");
+      await renderProject(pid, "execute");
+    } catch (e) { toast("Política não alterada: " + e.message); button.disabled = false; }
+  }));
+  document.querySelectorAll("[data-project-policy-cap]").forEach(button => button.addEventListener("click", async () => {
+    const {projectPolicyCap,projectPolicyAction,policyRevision} = button.dataset;
+    if (!confirm(`${projectPolicyAction === "deny" ? "NEGAR" : "REMOVER NEGAÇÃO"} ${projectPolicyCap} para todo o projeto? Negações prevalecem sobre todos os grants.`)) return;
+    button.disabled = true;
+    try {
+      await api("POST", `/api/projects/${pid}/runtime-policy/project-deny`,
+        {capability:projectPolicyCap,action:projectPolicyAction,revision:policyRevision,confirm:true});
+      toast("Negações atualizadas; outras Tasks não recebem grant por isso.");
+      await renderProject(pid, "execute");
+    } catch (e) { toast("Política não alterada: " + e.message); button.disabled = false; }
+  }));
   document.querySelectorAll("[data-create-task]").forEach(button => button.addEventListener("click", async () => {
     if (!confirm(`Criar arquivo Python inicial ${button.dataset.createPath} nesta Task? Não substitui arquivo existente, não executa código e não valida o jogo.`)) return;
     button.disabled = true;

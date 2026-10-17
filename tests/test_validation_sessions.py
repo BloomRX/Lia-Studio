@@ -13,7 +13,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.lia import bootstrap, planning, stages, storage, validation_sessions
+from app.lia import bootstrap, planning, runtime_policy, stages, storage, validation_sessions
 
 
 class TestLocalSyntaxValidation(unittest.TestCase):
@@ -24,6 +24,10 @@ class TestLocalSyntaxValidation(unittest.TestCase):
         self.mod = planning.create_module(self.store, self.pid, {"name": "Módulo"})
         self.task = planning.create_task(self.store, self.pid, self.mod["id"], {
             "name": "Código", "files": ["game/loop.py"], "verify": "sintaxe e jogo"})
+        for cap in ("project.python.read", "python.syntax.parse"):
+            revision = runtime_policy.snapshot(self.store, self.pid)["revision"]
+            runtime_policy.change_task(self.store, self.pid, self.mod["id"], self.task["id"],
+                                       cap, "allow", revision, True)
         folder = self.store.project_path(self.pid) / "game"
         folder.mkdir()
         self.file = folder / "loop.py"

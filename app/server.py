@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -111,6 +111,7 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
             "recent_sessions": sessions.list_sessions(storage, pid)[-5:],
             "recent_validations": validation_sessions.list_sessions(storage, pid)[-5:],
             "recent_code_changes": code_drafts.list_changes(storage, pid)[-5:],
+            "runtime_policy": runtime_policy.snapshot(storage, pid),
             "qa": qa.get_verifications(storage, pid),
             "release": release.get_release(storage, pid),
             "resume": planning.build_resume(storage, pid),
@@ -177,6 +178,18 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         return {"sessions": sessions.list_sessions(storage, pid)}
     if method == "GET" and sub == ["code-changes"]:
         return {"changes": code_drafts.list_changes(storage, pid)}
+    if method == "GET" and sub == ["runtime-policy"]:
+        return runtime_policy.snapshot(storage, pid)
+    if method == "POST" and sub == ["runtime-policy", "project-deny"]:
+        if set(body) != {"capability", "action", "revision", "confirm"}:
+            raise StorageError("envie capacidade, ação, revisão e confirmação")
+        return runtime_policy.change_project_deny(storage, pid, body["capability"],
+                                                  body["action"], body["revision"], body["confirm"])
+    if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "runtime-policy":
+        if set(body) != {"capability", "action", "revision", "confirm"}:
+            raise StorageError("envie capacidade, ação, revisão e confirmação")
+        return runtime_policy.change_task(storage, pid, sub[1], sub[2], body["capability"],
+                                          body["action"], body["revision"], body["confirm"])
     if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "create-python":
         if set(body) != {"path", "confirm"}:
             raise StorageError("envie arquivo e confirmação")

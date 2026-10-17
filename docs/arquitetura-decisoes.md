@@ -668,3 +668,29 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   criados. `validation_status=not_run` e `verified_result=false`; editar depois
   exige revisão/backup por operação separada. Ausência de backup na criação não
   deve ser confundida com backup das edições assistidas.
+
+## Decisão 32 — grants locais para operações reais e limitadas (2026-10-17)
+
+- `runtime_policy.json` é opcional, v2, na **raiz local da instalação**, fora das
+  pastas exportáveis dos projetos. Cada entrada vincula ID à localização do
+  projeto nesta instalação; ausente ou divergente **nega por padrão** apenas
+  as quatro capacidades fixas do código do Studio: leitura de `.py` da Task,
+  criação/aplicação de `.py`, parser sintático Python e envio de fonte/objetivo
+  ao Ollama. Não autoriza shell genérico, engine, Git, build, browser ou Agent.
+  Catálogo de IDs/Tools vem somente de código confiável; Skills, arquivos de
+  projeto, importação/exportação, texto livre de `Task.permissions` e resposta do
+  modelo não criam capacidades nem concedem grants. Importação exige novos
+  grants nesta instalação (não carregar políticas do pacote).
+- O Dev pode conceder por Task via ação explícita da UI: registra simultaneamente
+  solicitação e grant daquela Task e grant de escopo do projeto (o projeto sozinho
+  nunca autoriza outra Task). Pode negar por Task ou por projeto; **negação
+  prevalece** até remoção expressa. Retirar grant não cancela operação já iniciada
+  (exceto cancelamento específico do parser), mas a aplicação de diff revalida
+  a política antes de escrever. Concessão não substitui confirmação por ação,
+  checagem de arquivo, conectividade nem possível custo de modelo.
+- Configuração usa revisão otimista, validação estrita, backups e recuperação
+  existente; corrupção/versionamento futuro falham fechados. Registro de política
+  local pode ser editado pelo próprio usuário no disco; API em loopback não
+  autentica outros processos locais. Não é ACL de SO nem sandbox; há risco de
+  corrida de múltiplos processos, como nos demais arquivos do produto. UI
+  preserva simulador/Alpha sem exigir grants para tarefas simuladas.

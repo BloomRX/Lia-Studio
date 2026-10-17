@@ -103,8 +103,10 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   (visível em outra aba durante a requisição síncrona) e histórico próprio.
   Testa sintaxe, não gameplay, build ou critério de aceite. Não abre gate do MVP.
 - Roteiro de fatia vertical por Task vinculado ao QA manual, sem validação de
-  jogo ou playtest pelo Studio. Permissões e Tool Registry continuam sem
-  enforcement de processos arbitrários; não são sandbox do sistema operacional.
+  jogo ou playtest pelo Studio. Grants explícitos por Task/projeto, com negação
+  prevalecendo, são checados no uso das quatro capacidades reais restritas
+  (arquivo Python e Ollama). Não liberam comandos arbitrários; não são sandbox
+  do sistema operacional nem autorização para engines, build ou publicação.
 
 ## Requisitos
 - Python 3.9+ (apenas biblioteca padrão — **sem `pip install`**).
@@ -121,10 +123,14 @@ confiável; ainda não há autenticação para publicação na internet. Abra a 
 
 Para experimentar o incremento de código (não equivale a aceite do jogo): crie
 um projeto e uma Task cujo campo **arquivos** aponte para um `.py` relativo ao
-projeto. Em Execução, **Criar arquivo inicial** cria o `.py` se ainda não existe
-(ou crie-o manualmente na pasta do projeto); a criação salva hash mas não tem
-backup de original inexistente. Use **Validar sintaxe** para análise local sem
-executar o jogo. Para usar
+projeto. Em Execução, abra **Capacidades reais desta Task** e conceda, por
+capacidade, as permissões necessárias: escrita para criar arquivo, leitura e
+parser para validar sintaxe, leitura e inferência Ollama para pedir rascunho,
+leitura e escrita para aplicar diff. A concessão também registra grant de escopo
+projeto, mas outras Tasks continuam negadas; qualquer negação prevalece.
+**Criar arquivo inicial** cria o `.py` ausente (ou crie-o manualmente na pasta
+projeto); a criação salva hash, sem backup de original inexistente. Use
+**Validar sintaxe** para análise local sem executar o jogo. Para usar
 **Pedir rascunho**, instale/inicie Ollama por conta própria, consulte os modelos,
 selecione um, confirme o envio do objetivo da Task e do arquivo ao serviço e
 revise o diff antes de confirmar a aplicação. Pode haver custo ou transferência

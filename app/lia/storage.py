@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 INDEX_FILE = "lia_index.json"
 INDEX_VERSION = 2
 SCHEMA_VERSION = 2
-GLOBAL_FILES = {"lia_settings.json"}
+GLOBAL_FILES = {"lia_settings.json", "runtime_policy.json"}
 
 # Documentos em Markdown (editáveis pelo Dev) e dados estruturados (JSON).
 MARKDOWN_DOCS = [
@@ -411,6 +411,9 @@ class Storage:
         if path.name in ("code_changes.json", "code_changes.json.bak"):
             from . import code_drafts
             code_drafts.validate_entries(data, expected_project_id=project_id)
+        if path.name in ("runtime_policy.json", "runtime_policy.json.bak"):
+            from . import runtime_policy
+            runtime_policy.validate_global(data)
         if path.name in ("evidence.json", "evidence.json.bak"):
             from . import evidence
             evidence.validate_entries(data)

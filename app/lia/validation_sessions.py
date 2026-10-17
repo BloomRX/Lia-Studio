@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Optional
 
-from . import planning
+from . import planning, runtime_policy
 from .storage import Storage, StorageError
 
 NAME = "validation_sessions.json"
@@ -149,6 +149,8 @@ def run_syntax_check(storage: Storage, project_id: str, module_id: str,
     if confirmed is not True:
         raise StorageError("confirme a validação sintática local")
     with storage.stage_lock:
+        runtime_policy.require(storage, project_id, module_id, task_id, "project.python.read", confirmed)
+        runtime_policy.require(storage, project_id, module_id, task_id, "python.syntax.parse", confirmed)
         project = storage.get_entry(project_id)
         if not project or project.get("archived"):
             raise StorageError("projeto indisponível ou arquivado")

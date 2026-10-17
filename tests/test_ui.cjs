@@ -76,10 +76,14 @@ assert.equal(reloads, 1);
   const syntaxHtml = context.projectExecute('project-1', {modules: [{id:'module-1', name:'M',
     tasks:[{id:'task', name:'T', files:['game/loop.py', '<img src=x onerror=alert(1)>.py']}]}],
     recent_validations:[{id:'v1', task_id:'task', path:'game/loop.py',
-      display_state:'completed', validation_status:'passed'}]});
+      display_state:'completed', validation_status:'passed'}],
+    runtime_policy:{revision:'r1',project:{allow:[],deny:[]},tasks:{},
+      capabilities:{'project.python.write':'Escrever arquivo Python'}}});
   assert.match(syntaxHtml, /data-syntax-path="game\/loop.py"/);
   assert.match(syntaxHtml, /data-draft-path="game\/loop.py"/);
   assert.match(syntaxHtml, /data-create-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /data-policy-cap="project.python.write"/);
+  assert.match(syntaxHtml, /data-project-policy-cap="project.python.write"/);
   assert.match(syntaxHtml, /id="apply-task"[^>]*disabled/);
   assert.match(syntaxHtml, /somente sintaxe Python/);
   assert.match(syntaxHtml, /jogo NÃO VERIFICADO/);
@@ -172,11 +176,18 @@ assert.equal(reloads, 1);
     addEventListener:(_,fn)=>draftHandlers.generate=fn};
   const createButton = {disabled:false, dataset:{createTask:'task',createModule:'module-1',createPath:'game/loop.py'},
     addEventListener:(_,fn)=>draftHandlers.create=fn};
+  const policyButton = {disabled:false,dataset:{policyTask:'task',policyModule:'module-1',
+    policyCap:'project.python.write',policyAction:'allow',policyRevision:'rev'},
+    addEventListener:(_,fn)=>draftHandlers.policy=fn};
+  const denyButton = {disabled:false,dataset:{projectPolicyCap:'project.python.write',
+    projectPolicyAction:'deny',policyRevision:'rev'},addEventListener:(_,fn)=>draftHandlers.deny=fn};
   const draftDom = {'draft-probe':draftProbe,'draft-model':draftModel,
     'draft-status':{textContent:''},'draft-task':draftPre,'apply-task':draftApply};
   context.document.getElementById = id => draftDom[id] || oldGetElementById(id);
   context.document.querySelectorAll = selector => selector === '[data-draft-task]' ? [draftButton]
     : selector === '[data-create-task]' ? [createButton]
+    : selector === '[data-policy-task]' ? [policyButton]
+    : selector === '[data-project-policy-cap]' ? [denyButton]
     : selector === "[id^='apply-']" ? [draftApply] : [];
   const draftRequests = [];
   context.fetch = async (url,opts) => {
@@ -207,6 +218,14 @@ assert.equal(reloads, 1);
   assert.equal(draftRequests[3].url, '/api/projects/project-1/tasks/module-1/task/create-python');
   assert.deepEqual(JSON.parse(draftRequests[3].opts.body),
     {path:'game/loop.py',confirm:true});
+  await draftHandlers.policy();
+  assert.equal(draftRequests[4].url,'/api/projects/project-1/tasks/module-1/task/runtime-policy');
+  assert.deepEqual(JSON.parse(draftRequests[4].opts.body),
+    {capability:'project.python.write',action:'allow',revision:'rev',confirm:true});
+  await draftHandlers.deny();
+  assert.equal(draftRequests[5].url,'/api/projects/project-1/runtime-policy/project-deny');
+  assert.deepEqual(JSON.parse(draftRequests[5].opts.body),
+    {capability:'project.python.write',action:'deny',revision:'rev',confirm:true});
   context.renderProject=renderOriginal;
   context.fetch=priorFetch;
   context.document.getElementById=oldGetElementById;
