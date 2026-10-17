@@ -98,8 +98,9 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   cria backup e registra hashes/IDs, mas não executa o código nem declara a
   Task aprovada. Arquivos alterados por outros processos bloqueiam aplicação.
 - Validação sintática local em processo Python separado da interface, limitada
-  a arquivo `.py` vinculado à Task; timeout e histórico próprio. Testa sintaxe,
-  não gameplay, build ou critério de aceite. Não abre gate do MVP.
+  a arquivo `.py` vinculado à Task; timeout, cancelamento do parser ativo
+  (visível em outra aba durante a requisição síncrona) e histórico próprio.
+  Testa sintaxe, não gameplay, build ou critério de aceite. Não abre gate do MVP.
 - Roteiro de fatia vertical por Task vinculado ao QA manual, sem validação de
   jogo ou playtest pelo Studio. Permissões e Tool Registry continuam sem
   enforcement de processos arbitrários; não são sandbox do sistema operacional.
@@ -116,6 +117,18 @@ python run.py              # sobe em http://127.0.0.1:8080 (ou env PORT)
 confiável; ainda não há autenticação para publicação na internet. Abra a URL no navegador. Para experimentar sem configurar conta, use o botão
 **"Carregar exemplo demonstrativo"** na tela inicial. Projetos são salvos em
 `~/LiaStudioProjects` (configurável via `LIA_PROJECTS_DIR`).
+
+Para experimentar o incremento de código (não equivale a aceite do jogo): crie
+um projeto e uma Task cujo campo **arquivos** aponte para um `.py` relativo ao
+projeto. Crie esse arquivo manualmente dentro da pasta do projeto antes de
+acionar os botões de Execução — o Studio ainda não cria código de projeto do
+zero. Use **Validar sintaxe** para análise local sem executar o jogo. Para usar
+**Pedir rascunho**, instale/inicie Ollama por conta própria, consulte os modelos,
+selecione um, confirme o envio do objetivo da Task e do arquivo ao serviço e
+revise o diff antes de confirmar a aplicação. Pode haver custo ou transferência
+para nuvem conforme o modelo/configuração do Ollama. Confirme o backup indicado
+antes de qualquer revisão manual. Se o Ollama não estiver disponível, o
+projeto/Skills/QA continuam utilizáveis; nenhuma instalação é disparada.
 
 ## Testar a Alpha
 ```bash

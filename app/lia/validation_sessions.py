@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import re
 import subprocess
+import threading
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -29,6 +30,8 @@ TARGET = re.compile(r"[0-9a-f]{8}\Z")
 HASH = re.compile(r"[0-9a-f]{64}\Z")
 OUTCOMES = {
     "running": ("not_run", "none"),
+    "cancellation_pending": ("not_run", "cancel_requested"),
+    "cancelled": ("not_run", "cancelled"),
     "completed": ("passed", "syntax_ok"),
     "failed": ("failed", "syntax_error"),
     "timed_out": ("not_run", "timeout"),
@@ -40,6 +43,9 @@ PARSER = ("import ast,sys\n"
           " ast.parse(sys.stdin.buffer.read(), filename='<source>')\n"
           "except (SyntaxError, ValueError, TypeError, UnicodeError):\n"
           " sys.exit(2)\n")
+_process_lock = threading.RLock()
+_processes: Dict[tuple[str, str], subprocess.Popen] = {}
+_cancel_requests: set[tuple[str, str]] = set()
 
 
 def _now() -> str:
@@ -80,7 +86,7 @@ def validate_entries(records: Any, expected_project_id: Optional[str] = None) ->
             end = datetime.fromisoformat(item["finished_at"]) if item["finished_at"] is not None else None
             if start.tzinfo is None or start.utcoffset() is None or (end and (end.tzinfo is None or end < start)):
                 raise ValueError()
-            if (item["state"] == "running") != (end is None):
+            if (item["state"] in ("running", "cancellation_pending")) != (end is None):
                 raise ValueError()
         except (ValueError, TypeError, OverflowError) as exc:
             raise StorageError("tempo de validação inválido") from exc
@@ -102,8 +108,15 @@ def list_sessions(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
             integrity = "intact" if current_hash == r["sha256"] else "changed"
         except StorageError:
             integrity = "unavailable"
-        result.append({**r, "source_integrity": integrity,
-                       "display_state": "interrupted_or_running" if r["state"] == "running" else r["state"]})
+        with _process_lock:
+            active = (project_id, r["id"]) in _processes
+        if r["state"] == "cancellation_pending":
+            display = "cancel_requested" if active else "interrupted_or_running"
+        elif r["state"] == "running":
+            display = "running" if active else "interrupted_or_running"
+        else:
+            display = r["state"]
+        result.append({**r, "source_integrity": integrity, "display_state": display})
     return result
 
 
@@ -161,22 +174,75 @@ def run_syntax_check(storage: Storage, project_id: str, module_id: str,
         records.append(record)
         storage.write_structured(project_id, NAME, records)
 
+    proc = None
     try:
-        result = subprocess.run([sys.executable, "-I", "-S", "-B", "-c", PARSER],
-                                input=data, stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL, timeout=TIMEOUT, check=False)
-        state = "completed" if result.returncode == 0 else ("failed" if result.returncode == 2 else "error")
-    except subprocess.TimeoutExpired:
-        state = "timed_out"
+        proc = subprocess.Popen([sys.executable, "-I", "-S", "-B", "-c", PARSER],
+                                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        with _process_lock:
+            _processes[(project_id, sid)] = proc
+        try:
+            proc.communicate(data, timeout=TIMEOUT)
+            with _process_lock:
+                cancelled = (project_id, sid) in _cancel_requests
+            if cancelled and proc.returncode != 0:
+                state = "cancelled"
+            else:
+                state = ("completed" if proc.returncode == 0 else
+                         "failed" if proc.returncode == 2 else "error")
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            state = "timed_out"
     except (OSError, ValueError):
         state = "error"
+    finally:
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.kill()
+                proc.communicate(timeout=1)
+            except (OSError, subprocess.TimeoutExpired):
+                pass  # resultado incerto; o histórico running não vira sucesso
+        with _process_lock:
+            _processes.pop((project_id, sid), None)
+            _cancel_requests.discard((project_id, sid))
     with storage.stage_lock:
         records = _load(storage, project_id)
         current = next((r for r in records if r["id"] == sid), None)
-        if current != record:
+        if (current is None or current["state"] not in ("running", "cancellation_pending")
+            or any(current[k] != record[k] for k in FIELDS - {"state", "validation_status", "result_code"})):
             raise StorageError("registro mudou durante a validação; não repita sem inspeção")
         current.update(state=state, validation_status=OUTCOMES[state][0],
                        result_code=OUTCOMES[state][1], finished_at=_now())
         validate_entries(records, expected_project_id=project_id)
         storage.write_structured(project_id, NAME, records)
         return {**current, "display_state": state}
+
+
+def request_cancel(storage: Storage, project_id: str, session_id: str, confirmed: bool) -> Dict[str, str]:
+    """Solicita parada do parser deste processo; não cancela outros workers."""
+    if confirmed is not True or type(session_id) is not str or not ID.fullmatch(session_id):
+        raise StorageError("confirme o cancelamento da Session local")
+    with storage.stage_lock:
+        records = _load(storage, project_id)
+        record = next((r for r in records if r["id"] == session_id), None)
+        if not record or record["state"] != "running":
+            raise StorageError("Session não está executando; confira estado antes de cancelar")
+        with _process_lock:
+            proc = _processes.get((project_id, session_id))
+            if proc is None:
+                raise StorageError("processo não está ativo neste Studio; inspecione o histórico")
+            _cancel_requests.add((project_id, session_id))
+        record.update(state="cancellation_pending", result_code="cancel_requested")
+        try:
+            storage.write_structured(project_id, NAME, records)
+        except Exception:
+            with _process_lock:
+                _cancel_requests.discard((project_id, session_id))
+            raise
+    try:
+        proc.terminate()
+    except OSError as exc:
+        raise StorageError("cancelamento solicitado, mas parada do processo incerta; inspecione estado") from exc
+    return {"id": session_id, "state": "cancellation_pending",
+            "warning": "Pedido enviado ao processo; aguarde confirmação terminal. Task/jogo não verificados."}

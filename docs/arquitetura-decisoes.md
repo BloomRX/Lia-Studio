@@ -584,7 +584,12 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   `attempt_events.json`. Grava `running` antes do processo e estado terminal
   depois, com backup e validação na leitura. Se o processo/Studio cair entre
   escritas, `running` é exibido como interrompido/estado incerto após reload;
-  não é promovido nem executado automaticamente outra vez. Não prometer
+  não é promovido nem executado automaticamente outra vez. Um cancelamento
+  confirmado para processo ativo **nesta instância** grava `cancellation_pending`,
+  solicita `terminate` ao filho e só registra `cancelled` quando a execução
+  retorna; restart/interrupção deixam o estado incerto, sem promover resultado.
+  A UI permite pedir parada ao visualizar a Session ativa (por exemplo em outra
+  aba enquanto a requisição síncrona inicial aguarda). Não prometer
   transação entre JSONs ou segurança contra dois processos independentes.
 - **Segurança/gates:** não interpretar Task.permissions ou Skill como grant, não
   aceitar comando/caminho arbitrário, não capturar saída/código potencialmente
@@ -596,7 +601,7 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   livres de um projeto sem sandbox, acoplar DevKit.bat e colar estado real em
   `sessions.json` quebrariam isolamento/compatibilidade. Uma primeira operação
   estreita permite testar I/O de processo, timeout e persistência sem fingir
-  que o trabalho de Agent, engine e cancelamento seguro já existe.
+  que o trabalho de Agent, engine e cancelamento generalizado já existe.
 
 ## Decisão 28 — chat Ollama opt-in, separado de execução de Task (2026-10-17)
 

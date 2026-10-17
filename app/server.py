@@ -188,6 +188,10 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         return code_drafts.apply(storage, pid, body["proposal_id"], body["confirm"]), 201
     if method == "GET" and sub == ["validation-sessions"]:
         return {"sessions": validation_sessions.list_sessions(storage, pid)}
+    if method == "POST" and len(sub) == 3 and sub[0] == "validation-sessions" and sub[2] == "cancel":
+        if set(body) != {"confirm"}:
+            raise StorageError("envie confirmação do cancelamento")
+        return validation_sessions.request_cancel(storage, pid, sub[1], body["confirm"])
     if method == "POST" and sub == ["validation-sessions"]:
         if set(body) != {"module_id", "task_id", "path", "confirm"}:
             raise StorageError("envie módulo, tarefa, arquivo e confirmação")

@@ -83,6 +83,11 @@ assert.equal(reloads, 1);
   assert.match(syntaxHtml, /somente sintaxe Python/);
   assert.match(syntaxHtml, /jogo NÃO VERIFICADO/);
   assert.doesNotMatch(syntaxHtml, /<img src=x onerror/);
+  const runningHtml = context.projectExecute('project-1', {modules:[],
+    recent_validations:[{id:'v1',task_id:'task',path:'game/loop.py',
+      display_state:'running',validation_status:'not_run'}]});
+  assert.match(runningHtml, /data-cancel-validation="v1"/);
+  assert.doesNotMatch(syntaxHtml, /data-cancel-validation/);
   const planHtml = context.projectPlan('project-1', {
     modules: [{ id: 'base', name: 'Base', tasks: [] },
               { id: 'module-1', name: 'M', depends_on: ['base'], tasks: [] }],
