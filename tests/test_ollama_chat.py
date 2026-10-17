@@ -62,6 +62,18 @@ class TestOllamaChat(unittest.TestCase):
         self.http.server_close()
         self.thread.join(timeout=5)
 
+    def test_prompt_limits_keep_chat_small_and_allow_bounded_task_context(self):
+        with self.assertRaises(StorageError):
+            ollama_chat.chat("A"*2001, "test-local", True)
+        with self.assertRaises(StorageError):
+            ollama_chat.chat("A"*6001, "test-local", True, max_prompt=6000)
+        with self.assertRaises(StorageError):
+            ollama_chat.chat("oi", "test-local", True, max_prompt=100000)
+        self.assertEqual(FakeOllama.requests, [])
+        result = ollama_chat.chat("A"*2200, "test-local", True, max_prompt=6000)
+        self.assertEqual(result["task_executed"], False)
+        self.assertEqual([x[0] for x in FakeOllama.requests], ["GET", "POST"])
+
     def test_no_call_without_confirmation_or_known_model(self):
         with self.assertRaises(StorageError):
             ollama_chat.chat("oi", "test-local", False)
@@ -107,6 +119,7 @@ class TestOllamaChat(unittest.TestCase):
                     urlopen(Request(endpoint, method="POST", data=json.dumps(data).encode(),
                                     headers={"Content-Type": "application/json"}))
                 self.assertEqual(error.exception.code, 400)
+                error.exception.close()
             self.assertEqual(FakeOllama.requests, [])
             with urlopen(Request(endpoint, method="POST", data=json.dumps({
                 "prompt": "oi", "model": "cloud:maybe", "confirm": True}).encode(),

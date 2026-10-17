@@ -183,7 +183,10 @@ assert.equal(reloads, 1);
     addEventListener:(_,fn)=>draftHandlers.policy=fn};
   const denyButton = {disabled:false,dataset:{projectPolicyCap:'project.python.write',
     projectPolicyAction:'deny',policyRevision:'rev'},addEventListener:(_,fn)=>draftHandlers.deny=fn};
+  const draftSkill = {value:'', options:[], replaceChildren(o) {this.options=[o];},add(o) {this.options.push(o);}};
+  const draftSkillProbe = {disabled:false,addEventListener:(_,fn)=>draftHandlers.skillProbe=fn};
   const draftDom = {'draft-probe':draftProbe,'draft-model':draftModel,
+    'draft-skill-probe':draftSkillProbe,'draft-skill':draftSkill,
     'draft-status':{textContent:''},'draft-task':draftPre,'apply-task':draftApply};
   context.document.getElementById = id => draftDom[id] || oldGetElementById(id);
   context.document.querySelectorAll = selector => selector === '[data-draft-task]' ? [draftButton]
@@ -195,6 +198,7 @@ assert.equal(reloads, 1);
   context.fetch = async (url,opts) => {
     draftRequests.push({url,opts});
     return {ok:true,json:async()=>url.endsWith('/probe') ? {models:['local'],message:'ok'}
+      : url === '/api/skills' ? {skills:[{id:'lia-user-abcdef123456',title:'Skill curta',origin:'user'}]}
       : url.endsWith('/draft') ? {proposal_id:'preview123', diff:'-old\n+new'}
       : {backup_path:'game/loop.py.lia-backup-preview123'}};
   };
@@ -228,6 +232,13 @@ assert.equal(reloads, 1);
   assert.equal(draftRequests[5].url,'/api/projects/project-1/runtime-policy/project-deny');
   assert.deepEqual(JSON.parse(draftRequests[5].opts.body),
     {capability:'project.python.write',action:'deny',revision:'rev',confirm:true});
+  await draftHandlers.skillProbe();
+  assert.equal(draftRequests[6].url,'/api/skills');
+  assert.equal(draftSkill.options[1].value,'lia-user-abcdef123456');
+  draftSkill.value='lia-user-abcdef123456';
+  await draftHandlers.generate();
+  assert.equal(draftRequests[7].url,'/api/projects/project-1/tasks/module-1/task/draft');
+  assert.equal(JSON.parse(draftRequests[7].opts.body).skill_id,'lia-user-abcdef123456');
   context.renderProject=renderOriginal;
   context.fetch=priorFetch;
   context.document.getElementById=oldGetElementById;

@@ -122,7 +122,8 @@
   pode ser exibido quando hashes de bytes/Task/arquivo coincidem, sem reescrever
   históricos nem atribuir causalidade ou aceite.
 - `code_changes.json` não guarda prompt/fonte gerada; somente IDs, modelo,
-  arquivo relativo, hashes e caminho de backup quando há original. Criar um
+  arquivo relativo, hashes, Skill escolhida/revisão (quando houver) e caminho
+  de backup quando há original. Criar um
   arquivo inicial não gera backup: registra hash e estado `file_created`.
   O backup `*.lia-backup-<id>` das edições é uma cópia local do arquivo anterior,
   e pode conter segredos de projeto: revisar
@@ -136,7 +137,11 @@
   loopback. Dependendo do modelo/configuração do Ollama, a mensagem pode sair
   do computador e ter custo: não use sem entender o modelo selecionado. O
   Studio não salva prompt/resposta; um modelo pode ter seus próprios logs. O
-  chat não lê documentos do projeto nem executa Task. Providers cloud do
+  chat não lê documentos do projeto nem executa Task. No rascunho de código,
+  somente uma Skill escolhida explicitamente (até 2400 caracteres) pode ser
+  enviada junto com objetivo/arquivo: não adiciona grants. Revisão da Skill é
+  checada antes de aplicar, e seu conteúdo não fica no registro de alterações.
+  Providers cloud do
   catálogo seguem não conectados; nenhuma chave é persistida no Studio.
 
 ## Limpeza

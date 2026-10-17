@@ -195,10 +195,11 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
             raise StorageError("envie arquivo e confirmação")
         return code_drafts.create_stub(storage, pid, sub[1], sub[2], body["path"], body["confirm"]), 201
     if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "draft":
-        if set(body) != {"path", "model", "confirm_send"}:
-            raise StorageError("envie arquivo, modelo e confirmação do envio")
+        if set(body) not in ({"path", "model", "confirm_send"},
+                             {"path", "model", "confirm_send", "skill_id"}):
+            raise StorageError("envie arquivo, modelo, Skill opcional e confirmação do envio")
         return code_drafts.preview(storage, pid, sub[1], sub[2], body["path"],
-                                   body["model"], body["confirm_send"])
+                                   body["model"], body["confirm_send"], body.get("skill_id"))
     if method == "POST" and sub == ["code-changes", "apply"]:
         if set(body) != {"proposal_id", "confirm"}:
             raise StorageError("envie proposta e confirmação")

@@ -11,7 +11,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.lia import code_drafts, planning, runtime_policy, storage, validation_sessions
+from app.lia import code_drafts, planning, runtime_policy, skills, storage, validation_sessions
 
 
 class TestCodeDrafts(unittest.TestCase):
@@ -40,10 +40,56 @@ class TestCodeDrafts(unittest.TestCase):
         with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}) as chat:
             result = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                          kwargs.get("path", "game/loop.py"), "mock-model",
-                                         kwargs.get("confirm_send", True))
+                                         kwargs.get("confirm_send", True), kwargs.get("skill_id"))
             self.assertEqual(chat.call_count, 1)
             self.assertIn("Arquivo atual:", chat.call_args.args[0])
             return result
+
+    def test_selected_skill_is_untrusted_context_and_revision_checked(self):
+        selected = skills.create_skill(self.store, "# Dica\n\nMantenha o loop pequeno.\n")
+        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}) as chat:
+            preview = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                          "game/loop.py", "mock-model", True, selected["id"])
+            self.assertIn("SKILL NÃO CONFIÁVEL", chat.call_args.args[0])
+            self.assertIn("Mantenha o loop pequeno", chat.call_args.args[0])
+            self.assertEqual(chat.call_args.kwargs["max_prompt"], 6000)
+        skills.save_skill(self.store, selected["id"], "# Dica\n\nRevisada.\n", selected["revision"])
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, preview["proposal_id"], True)
+        self.assertEqual(self.path.read_text(), self.original)
+        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}):
+            new = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                      "game/loop.py", "mock-model", True, selected["id"])
+        record = code_drafts.apply(self.store, self.pid, new["proposal_id"], True)
+        self.assertEqual(record["skill_id"], selected["id"])
+        self.assertEqual(record["skill_revision"], skills.get_skill(selected["id"], self.store)["revision"])
+        # Leitura de registros antigos sem os dois campos permanece válida.
+        legacy = {k:v for k,v in record.items() if k not in ("skill_id", "skill_revision", "warning")}
+        self.store.write_structured(self.pid, code_drafts.NAME, [legacy])
+        self.assertEqual(code_drafts.list_changes(self.store, self.pid)[0]["id"], record["id"])
+
+    def test_skill_changed_during_inference_discards_preview(self):
+        selected = skills.create_skill(self.store, "# Dica\n\nOriginal.\n")
+        def mutate_then_answer(*args, **kwargs):
+            skills.save_skill(self.store, selected["id"], "# Dica\n\nMudou.\n", selected["revision"])
+            return {"answer": self.generated}
+        with patch.object(code_drafts.ollama_chat, "chat", side_effect=mutate_then_answer):
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "mock-model", True, selected["id"])
+        self.assertEqual(self.path.read_text(), self.original)
+        self.assertFalse((self.store.project_path(self.pid) / code_drafts.NAME).exists())
+
+    def test_invalid_or_oversized_skill_never_reaches_model(self):
+        selected = skills.create_skill(self.store, "# Dica\n\n" + "A"*2500 + "\n")
+        with patch.object(code_drafts.ollama_chat, "chat") as chat:
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "mock-model", True, selected["id"])
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "mock-model", True, "../SKILL.md")
+            chat.assert_not_called()
 
     def test_create_initial_file_without_model_then_edit_with_diff(self):
         self.path.unlink()
@@ -192,6 +238,7 @@ class TestCodeDrafts(unittest.TestCase):
 
     def test_api_preview_and_apply(self):
         from app import server
+        selected = skills.create_skill(self.store, "# Curta\n\nRefine o loop.\n")
         with patch.object(server, "storage", self.store), patch.object(
                 code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}):
             api = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
@@ -206,13 +253,15 @@ class TestCodeDrafts(unittest.TestCase):
                 with self.assertRaises(HTTPError) as error:
                     post(path, {"path": "game/loop.py", "model": "mock-model"})
                 self.assertEqual(error.exception.code, 400)
-                with post(path, {"path": "game/loop.py", "model": "mock-model", "confirm_send": True}) as response:
+                with post(path, {"path": "game/loop.py", "model": "mock-model", "confirm_send": True,
+                                 "skill_id": selected["id"]}) as response:
                     draft = json.load(response)
                 self.assertEqual(self.path.read_text(), self.original)
                 with post("/code-changes/apply", {"proposal_id": draft["proposal_id"], "confirm": True}) as response:
                     saved = json.load(response)
                     self.assertEqual(response.status, 201)
                 self.assertEqual(saved["path"], "game/loop.py")
+                self.assertEqual(saved["skill_id"], selected["id"])
                 with urlopen(root + "/code-changes") as response:
                     self.assertEqual(json.load(response)["changes"][0]["id"], saved["id"])
             finally:

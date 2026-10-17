@@ -861,7 +861,7 @@ function projectExecute(pid, data) {
   ).join("")}</ul>` : `<p class="muted">Nenhuma análise sintática local registrada.</p>`;
   const changes = (data.recent_code_changes || []).slice().reverse();
   const changesHtml = changes.length ? `<ul class="clean">${changes.map(c =>
-    `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} · ${c.backup_path ? `backup: ${esc(c.backup_path)}` : "criação inicial (sem arquivo anterior para backup)"} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
+    `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} ${c.skill_id ? `· Skill escolhida: ${esc(c.skill_id)}` : ""} · ${c.backup_path ? `backup: ${esc(c.backup_path)}` : "criação inicial (sem arquivo anterior para backup)"} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
   return `<h1>Execução e validação local</h1>
     <div class="banner warn"><b>Simulador:</b> “Aprovar e simular” não escreve código. <b>Edição assistida:</b> modelo Ollama opcional propõe UM arquivo Python para revisão; somente confirmação aplica a mudança e salva backup. Isso NÃO executa o jogo ou aprova a Task. “Verificar sintaxe” inicia apenas um parser local.</div>
     ${caps.length ? `<div class="card"><details><summary>Negações gerais do projeto (operações reais)</summary>
@@ -870,6 +870,9 @@ function projectExecute(pid, data) {
         <button type="button" class="ghost small" data-project-policy-cap="${esc(cap)}" data-project-policy-action="${policy.project.deny.includes(cap) ? "remove_deny" : "deny"}" data-policy-revision="${esc(policy.revision)}">${policy.project.deny.includes(cap) ? "Remover negação geral" : "Negar no projeto"}</button></div>`).join("")}</details></div>` : ""}
     <div class="card"><h3>Modelo para rascunho de código (opcional)</h3><button type="button" id="draft-probe" class="ghost">Buscar modelos Ollama</button>
       <select id="draft-model"><option value="">Consulte modelos primeiro</option></select>
+      <button type="button" id="draft-skill-probe" class="ghost">Listar Skills (somente metadados)</button>
+      <select id="draft-skill"><option value="">Sem Skill (padrão)</option></select>
+      <p class="muted">Skill opcional: conteúdo de até 2400 caracteres será lido somente ao pedir rascunho e enviado ao modelo após confirmação. Instruções de Skill não concedem acesso a Tools.</p>
       <p id="draft-status" class="muted" role="status">Objetivo e fonte do arquivo escolhido podem sair do PC conforme o modelo Ollama. Você confirma antes de cada pedido.</p></div>
     ${html}
     <div class="card"><h2>Sessions de edição assistida (arquivos não validados)</h2>${changesHtml}</div>
@@ -943,10 +946,23 @@ async function wireExecute(pid) {
     } catch (e) { document.getElementById("draft-status").textContent = "Ollama indisponível: " + e.message; }
     finally { probe.disabled = false; }
   });
+  const skillProbe = document.getElementById("draft-skill-probe");
+  if (skillProbe) skillProbe.addEventListener("click", async () => {
+    skillProbe.disabled = true;
+    const select = document.getElementById("draft-skill");
+    select.replaceChildren(new Option("Sem Skill (padrão)", ""));
+    try {
+      const found = await api("GET", "/api/skills");
+      (found.skills || []).forEach(item => select.add(new Option(`${item.title} · ${item.origin}`, item.id)));
+      toast("Escolha opcional. Listagem não enviou conteúdo da Skill ao modelo.");
+    } catch (e) { toast("Skills indisponíveis: " + e.message); }
+    finally { skillProbe.disabled = false; }
+  });
   document.querySelectorAll("[data-draft-task]").forEach(button => button.addEventListener("click", async () => {
     const model = document.getElementById("draft-model").value;
     if (!model) return toast("Selecione um modelo Ollama após consultar a lista.");
-    if (!confirm("Enviar objetivo da Task e conteúdo deste arquivo ao modelo? Ele pode operar na nuvem/cobrar conforme configuração. Nenhuma mudança será aplicada sem revisar o diff.")) return;
+    const selectedSkill = document.getElementById("draft-skill")?.value || "";
+    if (!confirm(`Enviar objetivo da Task, conteúdo deste arquivo${selectedSkill ? " e conteúdo da Skill escolhida" : ""} ao modelo? Ele pode operar na nuvem/cobrar conforme configuração. Skill não concede permissões. Nenhuma mudança será aplicada sem revisar o diff.`)) return;
     const tid = button.dataset.draftTask;
     const pre = document.getElementById(`draft-${tid}`);
     const apply = document.getElementById(`apply-${tid}`);
@@ -954,7 +970,8 @@ async function wireExecute(pid) {
     button.disabled = true;
     try {
       const r = await api("POST", `/api/projects/${pid}/tasks/${button.dataset.draftModule}/${tid}/draft`,
-                          {path: button.dataset.draftPath, model, confirm_send: true});
+                          {path: button.dataset.draftPath, model, confirm_send: true,
+                           ...(selectedSkill ? {skill_id:selectedSkill} : {})});
       pre.style.display = "block"; pre.textContent = r.diff || "Sem diferenças: reveja a proposta.";
       apply.dataset.proposalId = r.proposal_id;
       apply.disabled = !r.diff;

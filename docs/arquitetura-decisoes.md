@@ -721,3 +721,20 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   jogo funciona. Nenhum JSON antigo muda; nenhuma Task, QA ou gate recebe
   aprovação. Arquivos/históricos corrompidos falham fechados; texto do código
   não é duplicado no vínculo derivado.
+
+## Decisão 35 — contexto de uma Skill escolhida explicitamente no rascunho (2026-10-17)
+
+- O catálogo de Skills mostra só metadados; a chamada de rascunho pode receber
+  **um** ID escolhido pelo Dev, que autoriza expressamente enviar objetivo,
+  fonte `.py` e conteúdo dessa Skill ao modelo selecionado. Limite de 2400
+  caracteres UTF-8 de Skill e 6000 de prompt; Skill grande falha sem recortar
+  instruções silenciosamente. Sem escolha, o fluxo existente não lê Skills.
+- Skill é **dado não confiável**, delimitado no prompt; nunca vira grant, Tool,
+  comando ou política. O diff ainda requer aprovação humana, com grants de
+  leitura/inferência/escrita aplicados separadamente; texto gerado não é
+  executado nem libera gates. Revalidar revisão SHA-256 da Skill depois da
+  inferência e antes de aplicar; alterações exigem novo rascunho.
+- Novo registro de edição inclui ID/revisão da Skill quando escolhida (não
+  conteúdo). Registros v2 anteriores continuam válidos sem esses campos; chat
+  avulso permanece sem contexto. Dados enviados podem sair do dispositivo ou
+  envolver custo conforme modelo Ollama: avisar antes de cada requisição.

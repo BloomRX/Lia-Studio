@@ -16,11 +16,13 @@ MAX_PROMPT = 2000
 MAX_ANSWER = 8000
 
 
-def chat(prompt: str, model: str, confirm: bool) -> dict:
+def chat(prompt: str, model: str, confirm: bool, *, max_prompt: int = MAX_PROMPT) -> dict:
     """Envia somente mensagem digitada, após escolha explícita do modelo."""
     if confirm is not True:
         raise StorageError("confirme o envio da mensagem ao modelo escolhido")
-    if (type(prompt) is not str or not prompt.strip() or len(prompt) > MAX_PROMPT
+    if (type(max_prompt) is not int or max_prompt not in (MAX_PROMPT, 6000)
+        or type(prompt) is not str
+        or not prompt.strip() or len(prompt) > max_prompt
         or "\x00" in prompt or type(model) is not str or not model or len(model) > 200):
         raise StorageError("mensagem ou modelo inválido")
     available = ollama_discovery.probe_local_ollama(True)
@@ -47,6 +49,8 @@ def chat(prompt: str, model: str, confirm: bool) -> dict:
     except (HTTPError, URLError, HTTPException, TimeoutError, OSError, ValueError,
             UnicodeError, TypeError, AttributeError) as exc:
         # Nunca devolver corpo do provider, URL ou erro bruto (pode conter prompt).
+        if isinstance(exc, HTTPError):
+            exc.close()
         raise StorageError("Ollama não concluiu a resposta; confira o modelo e tente novamente conscientemente") from exc
     return {"model": model, "answer": answer, "inference": "ollama_user_confirmed",
             "task_executed": False, "validation_status": "not_verified",
