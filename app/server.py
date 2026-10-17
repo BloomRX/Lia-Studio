@@ -177,6 +177,10 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         return {"sessions": sessions.list_sessions(storage, pid)}
     if method == "GET" and sub == ["code-changes"]:
         return {"changes": code_drafts.list_changes(storage, pid)}
+    if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "create-python":
+        if set(body) != {"path", "confirm"}:
+            raise StorageError("envie arquivo e confirmação")
+        return code_drafts.create_stub(storage, pid, sub[1], sub[2], body["path"], body["confirm"]), 201
     if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "draft":
         if set(body) != {"path", "model", "confirm_send"}:
             raise StorageError("envie arquivo, modelo e confirmação do envio")

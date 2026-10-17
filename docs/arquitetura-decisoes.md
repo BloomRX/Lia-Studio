@@ -651,3 +651,20 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   existentes, sem tornar Skills obrigatórias nem enviar conteúdo ao modelo.
   Pastas/symlinks/tamanhos inválidos continuam falhando fechado. Isso é
   recuperação local de metadados, não busca semântica ou aplicação de Skill.
+
+## Decisão 31 — criação inicial explícita de arquivo Python da Task (2026-10-17)
+
+- Para não depender de um editor externo na primeira iteração, uma Task pode
+  criar **somente** um `.py` ausente já listado em `Task.files`, sob projeto
+  não arquivado e módulo sem bloqueios, após confirmação específica. Escreve um
+  comentário inicial fixo por abertura exclusiva (`O_EXCL`), sem modelo, sem
+  executar código, sem testes ou aprovação implícita. Recusa links, travessia,
+  arquivo existente e histórico corrompido. A pasta intermediária pode ser
+  criada, mas não há sandbox/isolamento de processos hostis ou transação entre
+  arquivo e JSON; falha de log requer revisão manual da pasta.
+- A criação vai ao mesmo `code_changes.json`, diferenciada por
+  `runtime_id=user-stub`, `state=file_created`, `model=none`, backup vazio
+  (não havia arquivo original), hash-base de bytes vazios e hash dos bytes
+  criados. `validation_status=not_run` e `verified_result=false`; editar depois
+  exige revisão/backup por operação separada. Ausência de backup na criação não
+  deve ser confundida com backup das edições assistidas.

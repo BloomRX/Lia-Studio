@@ -41,6 +41,44 @@ class TestCodeDrafts(unittest.TestCase):
             self.assertIn("Arquivo atual:", chat.call_args.args[0])
             return result
 
+    def test_create_initial_file_without_model_then_edit_with_diff(self):
+        self.path.unlink()
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", False)
+        self.assertFalse(self.path.exists())
+        created = code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertEqual(self.path.read_bytes(), code_drafts.STUB)
+        self.assertEqual((created["runtime_id"], created["state"], created["backup_path"]),
+                         ("user-stub", "file_created", ""))
+        self.assertEqual(code_drafts.list_changes(self.store, self.pid)[0]["source_integrity"], "intact")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertEqual(self.path.read_bytes(), code_drafts.STUB)
+        proposal = self.preview()
+        edited = code_drafts.apply(self.store, self.pid, proposal["proposal_id"], True)
+        self.assertEqual(edited["runtime_id"], "ollama-draft")
+        self.assertEqual((self.store.project_path(self.pid) / edited["backup_path"]).read_bytes(), code_drafts.STUB)
+        self.assertEqual(len(code_drafts.list_changes(self.store, self.pid)), 2)
+
+    def test_create_rejects_path_symlink_and_bad_history_before_write(self):
+        self.path.unlink()
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "../game/loop.py", True)
+        outside = Path(self.tmp.name) / "outside.py"
+        outside.write_text("protected")
+        try:
+            self.path.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlink não disponível")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertEqual(outside.read_text(), "protected")
+        self.path.unlink()
+        (self.store.project_path(self.pid) / code_drafts.NAME).write_text("{bad", encoding="utf-8")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertFalse(self.path.exists())
+
     def test_preview_requires_consent_and_only_apply_writes_backup(self):
         with patch.object(code_drafts.ollama_chat, "chat") as chat:
             with self.assertRaises(storage.StorageError):
@@ -108,6 +146,33 @@ class TestCodeDrafts(unittest.TestCase):
         self.assertEqual(len(list(self.path.parent.glob("*.lia-backup-*"))), 1)
         with self.assertRaises(storage.StorageError):
             code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
+
+    def test_http_creates_file_only_on_confirm(self):
+        from app import server
+        self.path.unlink()
+        with patch.object(server, "storage", self.store):
+            api = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+            thread = threading.Thread(target=api.serve_forever, daemon=True)
+            thread.start()
+            url = (f"http://127.0.0.1:{api.server_address[1]}/api/projects/{self.pid}"
+                   f"/tasks/{self.mod['id']}/{self.task['id']}/create-python")
+            def post(data):
+                return urlopen(Request(url, method="POST", data=json.dumps(data).encode(),
+                                       headers={"Content-Type": "application/json"}))
+            try:
+                with self.assertRaises(HTTPError) as error:
+                    post({"path": "game/loop.py", "confirm": False})
+                self.assertEqual(error.exception.code, 400)
+                self.assertFalse(self.path.exists())
+                with post({"path": "game/loop.py", "confirm": True}) as response:
+                    saved = json.load(response)
+                    self.assertEqual(response.status, 201)
+                self.assertEqual(saved["state"], "file_created")
+                self.assertEqual(self.path.read_bytes(), code_drafts.STUB)
+            finally:
+                api.shutdown()
+                api.server_close()
+                thread.join(timeout=5)
 
     def test_api_preview_and_apply(self):
         from app import server

@@ -79,6 +79,7 @@ assert.equal(reloads, 1);
       display_state:'completed', validation_status:'passed'}]});
   assert.match(syntaxHtml, /data-syntax-path="game\/loop.py"/);
   assert.match(syntaxHtml, /data-draft-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /data-create-path="game\/loop.py"/);
   assert.match(syntaxHtml, /id="apply-task"[^>]*disabled/);
   assert.match(syntaxHtml, /somente sintaxe Python/);
   assert.match(syntaxHtml, /jogo NÃO VERIFICADO/);
@@ -169,10 +170,13 @@ assert.equal(reloads, 1);
   const draftProbe = {disabled:false, addEventListener:(_,fn)=>draftHandlers.probe=fn};
   const draftButton = {disabled:false, dataset:{draftTask:'task', draftModule:'module-1', draftPath:'game/loop.py'},
     addEventListener:(_,fn)=>draftHandlers.generate=fn};
+  const createButton = {disabled:false, dataset:{createTask:'task',createModule:'module-1',createPath:'game/loop.py'},
+    addEventListener:(_,fn)=>draftHandlers.create=fn};
   const draftDom = {'draft-probe':draftProbe,'draft-model':draftModel,
     'draft-status':{textContent:''},'draft-task':draftPre,'apply-task':draftApply};
   context.document.getElementById = id => draftDom[id] || oldGetElementById(id);
   context.document.querySelectorAll = selector => selector === '[data-draft-task]' ? [draftButton]
+    : selector === '[data-create-task]' ? [createButton]
     : selector === "[id^='apply-']" ? [draftApply] : [];
   const draftRequests = [];
   context.fetch = async (url,opts) => {
@@ -199,6 +203,10 @@ assert.equal(reloads, 1);
   await draftHandlers.apply();
   assert.deepEqual(JSON.parse(draftRequests[2].opts.body),
     {proposal_id:'preview123',confirm:true});
+  await draftHandlers.create();
+  assert.equal(draftRequests[3].url, '/api/projects/project-1/tasks/module-1/task/create-python');
+  assert.deepEqual(JSON.parse(draftRequests[3].opts.body),
+    {path:'game/loop.py',confirm:true});
   context.renderProject=renderOriginal;
   context.fetch=priorFetch;
   context.document.getElementById=oldGetElementById;

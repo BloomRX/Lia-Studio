@@ -93,7 +93,8 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   confirmação por mensagem. Modelo anunciado pode usar nuvem/custo segundo a
   configuração do usuário; o Studio não instala modelo, não guarda prompt e
   não lê documentos automaticamente. Sem Ollama, o aplicativo continua offline.
-- Na aba Execução, uma Task com arquivo Python existente pode pedir rascunho
+- Na aba Execução, uma Task pode criar um arquivo `.py` inicial vinculado,
+  sem sobrescrever um existente. Uma Task com arquivo Python existente pode pedir rascunho
   via Ollama, revisar diff e **aplicar** após segunda confirmação. O Studio
   cria backup e registra hashes/IDs, mas não executa o código nem declara a
   Task aprovada. Arquivos alterados por outros processos bloqueiam aplicação.
@@ -120,9 +121,10 @@ confiável; ainda não há autenticação para publicação na internet. Abra a 
 
 Para experimentar o incremento de código (não equivale a aceite do jogo): crie
 um projeto e uma Task cujo campo **arquivos** aponte para um `.py` relativo ao
-projeto. Crie esse arquivo manualmente dentro da pasta do projeto antes de
-acionar os botões de Execução — o Studio ainda não cria código de projeto do
-zero. Use **Validar sintaxe** para análise local sem executar o jogo. Para usar
+projeto. Em Execução, **Criar arquivo inicial** cria o `.py` se ainda não existe
+(ou crie-o manualmente na pasta do projeto); a criação salva hash mas não tem
+backup de original inexistente. Use **Validar sintaxe** para análise local sem
+executar o jogo. Para usar
 **Pedir rascunho**, instale/inicie Ollama por conta própria, consulte os modelos,
 selecione um, confirme o envio do objetivo da Task e do arquivo ao serviço e
 revise o diff antes de confirmar a aplicação. Pode haver custo ou transferência

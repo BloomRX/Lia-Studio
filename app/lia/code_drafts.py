@@ -1,4 +1,4 @@
-"""Edição assistida de UM arquivo Python existente, com diff e aceite explícito.
+"""Criação inicial explícita e edição assistida de UM arquivo Python, com diff.
 
 Modelo é fonte de texto não confiável. Nenhum código gerado é executado, e uma
 mudança em disco NÃO comprova que a Task ou o jogo foram validados.
@@ -46,12 +46,16 @@ def validate_entries(entries: Any, expected_project_id: Optional[str] = None) ->
             or any(type(r[k]) is not str or not re.fullmatch(r"[0-9a-f]{8}", r[k])
                    for k in ("module_id", "task_id"))
             or not validation_sessions._safe_path(r["path"])
-            or r["runtime_id"] != "ollama-draft" or r["state"] != "file_changed"
+            or (r["runtime_id"], r["state"]) not in
+                (("ollama-draft", "file_changed"), ("user-stub", "file_created"))
             or r["validation_status"] != "not_run"
             or type(r["model"]) is not str or not 1 <= len(r["model"]) <= 200
             or any(type(r[k]) is not str or not _HASH.fullmatch(r[k])
                    for k in ("base_sha256", "new_sha256", "objective_sha256"))
-            or r["backup_path"] != r["path"] + ".lia-backup-" + r["id"]
+            or (r["backup_path"] != (r["path"] + ".lia-backup-" + r["id"]
+                                      if r["runtime_id"] == "ollama-draft" else ""))
+            or (r["runtime_id"] == "user-stub" and
+                (r["model"] != "none" or r["base_sha256"] != _digest(b"")))
             or r["verified_result"] is not False):
             raise StorageError("alteração de código inválida")
         seen.add(r["id"])
@@ -198,3 +202,70 @@ def apply(storage: Storage, project_id: str, proposal_id: str, confirmed: bool) 
         except OSError as exc:
             raise StorageError("arquivo editado, mas índice de alterações incerto; inspecione backup antes de repetir") from exc
         return {**record, "warning": "Arquivo alterado e backup salvo; Task/jogo/QA NÃO verificados."}
+
+STUB = b"# Arquivo inicial criado por Lia Studio. Revise antes de executar.\n"
+
+
+def create_stub(storage: Storage, project_id: str, module_id: str, task_id: str,
+                path: str, confirmed: bool) -> Dict[str, Any]:
+    """Criar arquivo Python inicial de Task, sem modelo ou execução."""
+    if confirmed is not True or not validation_sessions._safe_path(path):
+        raise StorageError("confirme a criação de arquivo .py vinculado à Task")
+    with storage.stage_lock:
+        project = storage.get_entry(project_id)
+        if not project or project.get("archived"):
+            raise StorageError("projeto indisponível ou arquivado")
+        modules = planning.get_modules(storage, project_id)
+        planning.validate_dependencies(modules)
+        task = next((t for m in modules if m["id"] == module_id for t in m["tasks"]
+                     if t["id"] == task_id), None)
+        if (task is None or path not in task.get("files", [])
+            or planning.module_blockers(modules, module_id)):
+            raise StorageError("tarefa/arquivo não elegível; revise plano e dependências")
+        goal = task.get("objective", "")
+        if not isinstance(goal, str):
+            raise StorageError("objetivo da tarefa inválido")
+        records = _load_changes(storage, project_id)
+        storage.preflight_structured_write(project_id, NAME)
+        base = storage.project_path(project_id)
+        from pathlib import PurePosixPath
+        import os
+        candidate = base
+        for component in PurePosixPath(path).parts[:-1]:
+            candidate = candidate / component
+            if candidate.is_symlink() or (candidate.exists() and not candidate.is_dir()):
+                raise StorageError("pasta de código inválida ou link simbólico")
+            try:
+                candidate.mkdir(exist_ok=True)
+            except OSError as exc:
+                raise StorageError("não foi possível criar a pasta do arquivo") from exc
+        target = candidate / PurePosixPath(path).name
+        if target.exists() or target.is_symlink():
+            raise StorageError("arquivo já existe; use revisão de diff ou edição manual")
+        change_id = uuid.uuid4().hex
+        while any(r["id"] == change_id for r in records):
+            change_id = uuid.uuid4().hex
+        record = {"id": change_id, "project_id": project_id, "module_id": module_id,
+                  "task_id": task_id, "path": path, "model": "none",
+                  "runtime_id": "user-stub", "state": "file_created",
+                  "validation_status": "not_run", "base_sha256": _digest(b""),
+                  "new_sha256": _digest(STUB), "objective_sha256": _digest(goal.encode("utf-8")),
+                  "backup_path": "", "applied_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                  "verified_result": False}
+        records.append(record)
+        validate_entries(records, expected_project_id=project_id)
+        flags = (os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
+                 | getattr(os, "O_BINARY", 0))
+        try:
+            fd = os.open(target, flags, 0o600)
+            with os.fdopen(fd, "wb") as file:
+                file.write(STUB)
+                file.flush()
+                os.fsync(file.fileno())
+        except OSError as exc:
+            raise StorageError("criação incerta; inspecione arquivo antes de repetir") from exc
+        try:
+            storage.write_structured(project_id, NAME, records)
+        except OSError as exc:
+            raise StorageError("arquivo criado, mas registro incerto; inspecione pasta antes de repetir") from exc
+        return {**record, "warning": "Arquivo inicial criado sem backup anterior. Código/Task/jogo NÃO verificados."}

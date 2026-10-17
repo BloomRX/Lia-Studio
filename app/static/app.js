@@ -831,7 +831,8 @@ function projectExecute(pid, data) {
         <button id="approve-${esc(t.id)}" disabled onclick="execTask('${esc(pid)}','${m.id}','${t.id}')">Aprovar e simular</button>
       </div>
       ${(t.files || []).filter(f => typeof f === "string" && f.endsWith(".py")).map(f =>
-        `<div class="row"><button type="button" class="ghost small" data-syntax-module="${esc(m.id)}" data-syntax-task="${esc(t.id)}" data-syntax-path="${esc(f)}">Verificar sintaxe: ${esc(f)}</button>
+        `<div class="row"><button type="button" class="ghost small" data-create-module="${esc(m.id)}" data-create-task="${esc(t.id)}" data-create-path="${esc(f)}">Criar arquivo inicial (se ausente): ${esc(f)}</button>
+         <button type="button" class="ghost small" data-syntax-module="${esc(m.id)}" data-syntax-task="${esc(t.id)}" data-syntax-path="${esc(f)}">Verificar sintaxe: ${esc(f)}</button>
          <button type="button" class="ghost small" data-draft-module="${esc(m.id)}" data-draft-task="${esc(t.id)}" data-draft-path="${esc(f)}">Propor edição: ${esc(f)}</button></div>`).join("")}
       <pre id="draft-${esc(t.id)}" class="card" style="white-space:pre-wrap;display:none;overflow:auto"></pre>
       <button id="apply-${esc(t.id)}" type="button" class="ghost small" disabled>Revisar e aplicar proposta</button>
@@ -848,7 +849,7 @@ function projectExecute(pid, data) {
   ).join("")}</ul>` : `<p class="muted">Nenhuma análise sintática local registrada.</p>`;
   const changes = (data.recent_code_changes || []).slice().reverse();
   const changesHtml = changes.length ? `<ul class="clean">${changes.map(c =>
-    `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} · backup: ${esc(c.backup_path)} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
+    `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} · ${c.backup_path ? `backup: ${esc(c.backup_path)}` : "criação inicial (sem arquivo anterior para backup)"} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
   return `<h1>Execução e validação local</h1>
     <div class="banner warn"><b>Simulador:</b> “Aprovar e simular” não escreve código. <b>Edição assistida:</b> modelo Ollama opcional propõe UM arquivo Python para revisão; somente confirmação aplica a mudança e salva backup. Isso NÃO executa o jogo ou aprova a Task. “Verificar sintaxe” inicia apenas um parser local.</div>
     <div class="card"><h3>Modelo para rascunho de código (opcional)</h3><button type="button" id="draft-probe" class="ghost">Buscar modelos Ollama</button>
@@ -860,6 +861,16 @@ function projectExecute(pid, data) {
     <div class="card"><h2>Sessions simuladas (somente leitura)</h2>${sessionsHtml}</div>`;
 }
 async function wireExecute(pid) {
+  document.querySelectorAll("[data-create-task]").forEach(button => button.addEventListener("click", async () => {
+    if (!confirm(`Criar arquivo Python inicial ${button.dataset.createPath} nesta Task? Não substitui arquivo existente, não executa código e não valida o jogo.`)) return;
+    button.disabled = true;
+    try {
+      const result = await api("POST", `/api/projects/${pid}/tasks/${button.dataset.createModule}/${button.dataset.createTask}/create-python`,
+        {path:button.dataset.createPath,confirm:true});
+      toast(result.warning);
+      await renderProject(pid, "execute");
+    } catch (e) { toast("Criação não confirmada: " + e.message); button.disabled = false; }
+  }));
   document.querySelectorAll("[data-cancel-validation]").forEach(button => button.addEventListener("click", async () => {
     if (!confirm("Solicitar parada do parser Python desta Session? O estado terminal só será confirmado após o processo encerrar.")) return;
     button.disabled = true;

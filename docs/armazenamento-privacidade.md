@@ -14,7 +14,8 @@
     produtor na Alpha, sem log livre nem evidência verificada), além de
     `validation_sessions.json` (opcional; processo de sintaxe Python real,
     separado de Session simulada e sem saída bruta) e `code_changes.json`
-    (opcional; hashes, IDs e caminhos de backup de edições assistidas aprovadas).
+    (opcional; hashes, IDs, criação inicial sem backup anterior e caminhos de
+    backup de edições assistidas aprovadas).
 - O registro de decisões usa `decisions.json` como fonte estruturada; a aba Decisões
   reescreve a projeção `DECISIONS.md` após revisão. Se o Markdown foi editado
   manualmente, substituí-lo exige confirmação explícita. A revisão SHA-256 do
@@ -115,8 +116,10 @@
   não é automaticamente retomado ou aprovado. A integridade do arquivo atual é
   recalculada apenas para exibição; não é prova de build/jogo.
 - `code_changes.json` não guarda prompt/fonte gerada; somente IDs, modelo,
-  arquivo relativo, hashes e backup. O backup `*.lia-backup-<id>` é uma cópia
-  local do arquivo anterior à edição, e pode conter segredos de projeto: revisar
+  arquivo relativo, hashes e caminho de backup quando há original. Criar um
+  arquivo inicial não gera backup: registra hash e estado `file_created`.
+  O backup `*.lia-backup-<id>` das edições é uma cópia local do arquivo anterior,
+  e pode conter segredos de projeto: revisar
   antes de exportar/compartilhar. Uma falha entre backup/arquivo/índice pode
   exigir inspeção manual; não há rollback automático nem transação entre
   arquivos. Rascunho não aplicado existe só na memória do processo por tempo
