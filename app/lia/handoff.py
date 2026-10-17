@@ -9,7 +9,8 @@ import hashlib
 import json
 from typing import Any, Dict, List, Tuple
 
-from . import conflicts, evidence, planning, qa, sessions
+from . import (code_drafts, conflicts, draft_jobs, evidence, planning, qa,
+               sessions, validation_sessions)
 from .storage import Storage, StorageError
 
 NAME = "HANDOFF.md"
@@ -60,6 +61,12 @@ def _context(storage: Storage, project_id: str, module_id: str, task_id: str) ->
     linked_evidence = [r for r in records if r.get("target_ref") in refs]
     history = sessions.list_sessions(storage, project_id)
     linked_sessions = [s for s in history if s["module_id"] == module_id and s["task_id"] == task_id]
+    jobs = draft_jobs.list_jobs(storage, project_id)
+    changes = code_drafts.list_changes(storage, project_id)
+    validations = validation_sessions.list_sessions(storage, project_id)
+    linked_jobs = [j for j in jobs if j["module_id"] == module_id and j["task_id"] == task_id]
+    linked_changes = [c for c in changes if c["module_id"] == module_id and c["task_id"] == task_id]
+    linked_validations = [v for v in validations if v["module_id"] == module_id and v["task_id"] == task_id]
     summary = {k: entry.get(k) for k in ("id", "name", "stage", "phase", "archived", "next_step")}
     return {
         "project": summary, "module": mod, "task": task,
@@ -68,6 +75,15 @@ def _context(storage: Storage, project_id: str, module_id: str, task_id: str) ->
         "qa": related, "qa_total": len(checks),
         "evidence": linked_evidence, "evidence_total": len(records),
         "sessions": linked_sessions[-5:], "session_total": len(linked_sessions),
+        "draft_jobs": linked_jobs[-5:], "draft_job_total": len(linked_jobs),
+        "code_changes": linked_changes[-5:], "code_change_total": len(linked_changes),
+        "syntax_sessions": linked_validations[-5:], "syntax_total": len(linked_validations),
+        "jobs_fingerprint": hashlib.sha256(json.dumps(jobs, sort_keys=True,
+                             ensure_ascii=False).encode("utf-8")).hexdigest(),
+        "changes_fingerprint": hashlib.sha256(json.dumps(changes, sort_keys=True,
+                                ensure_ascii=False).encode("utf-8")).hexdigest(),
+        "syntax_fingerprint": hashlib.sha256(json.dumps(validations, sort_keys=True,
+                               ensure_ascii=False).encode("utf-8")).hexdigest(),
         # Detectar mudanças mesmo nos predecessores e em QA não vinculado por ID.
         "modules_fingerprint": hashlib.sha256(json.dumps(modules, sort_keys=True,
                                  ensure_ascii=False).encode("utf-8")).hexdigest(),
@@ -140,10 +156,27 @@ def _render(c: Dict[str, Any], digest: str) -> str:
               f"evidência {_text(s['evidence_status'])}; fim {_text(s['finished_at'])}."
               for s in c["sessions"]] or ["- Nenhuma Session vinculada por ID."]
     lines += [f"- Total de Sessions desta tarefa: {c['session_total']}. Session simulada não comprova execução, teste ou evidência verificada.",
-              "- Tentativas e falhas: consultar JOURNAL.md, sessions.json, qa.json e evidence.json; o Studio não executou os comandos citados.",
+              "", "## Operações locais limitadas (não são execução da Task nem aceite do jogo)",
+              "- Jobs de inferência da Task (até 5; sem prompt/resposta/diff; estado pode mudar):"]
+    lines += [f"- Job `{_text(j['id'])}`: {_text(j['path'])}; estado {_text(j['display_state'])}; "
+              f"resultado {_text(j['result_code'])}."
+              for j in c["draft_jobs"]] or ["- Nenhum Job vinculado por ID."]
+    lines += [f"- Total de Jobs desta Task: {c['draft_job_total']}.",
+              "- Arquivos Python criados/editados (até 5; hashes não provam funcionalidade):"]
+    lines += [f"- Mudança `{_text(x['id'])}`: {_text(x['path'])}; estado {_text(x['state'])}; "
+              f"integridade {_text(x['source_integrity'])}; SHA-256 {_text(x['new_sha256'][:12])}..."
+              for x in c["code_changes"]] or ["- Nenhuma mudança vinculada por ID."]
+    lines += [f"- Total de mudanças desta Task: {c['code_change_total']}.",
+              "- Sessions do parser de sintaxe Python (até 5; não são teste do jogo):"]
+    lines += [f"- Sintaxe `{_text(v['id'])}`: {_text(v['path'])}; estado {_text(v['display_state'])}; "
+              f"resultado {_text(v['validation_status'])}; integridade {_text(v['source_integrity'])}."
+              for v in c["syntax_sessions"]] or ["- Nenhuma verificação sintática vinculada por ID."]
+    lines += [f"- Total de análises sintáticas desta Task: {c['syntax_total']}.",
+              "- Tentativas e falhas: consultar JOURNAL.md, attempt_events.json, draft_jobs.json, code_changes.json e validation_sessions.json. Os comandos descritos em texto não foram executados pelo Studio sem um registro efetivo.",
               "", "## Próximo passo", "", f"- {_text(p['next_step'])}",
               "- Revisar decisões, caminhos e permissões com o Dev antes de retomar.",
               "", "## Arquivos-fonte", "", "- MODULE_INDEX.md, modules.json, decisions.json, qa.json, evidence.json, sessions.json;",
+              "- draft_jobs.json, code_changes.json, validation_sessions.json (metadados apenas); política/grants locais não exportados;",
               "- PROJECT_BRIEF.md, GDD.md, SCOPE.md, DECISIONS.md, JOURNAL.md.",
               "- Snapshot pode ficar desatualizado. Atualize-o após mudanças; não depende desta conversa.", ""]
     return "\n".join(lines)

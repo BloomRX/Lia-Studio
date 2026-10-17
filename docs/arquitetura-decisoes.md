@@ -758,3 +758,16 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   delegação nem Runtime multi-Tool; não há autenticação contra processo hostil
   local, sandbox de SO ou transação entre JSONs. Disponibilidade real do Ollama,
   custo do modelo e comportamento Windows devem ser validados no ambiente alvo.
+
+## Decisão 37 — handoff inclui operações limitadas sem promovê-las a conclusão (2026-10-17)
+
+- O snapshot humano `HANDOFF.md` passa a listar **metadados** de Jobs Ollama,
+  criações/edições `.py` e Sessions do parser vinculadas por IDs de Task/módulo,
+  com estados, integridade e hashes resumidos; nunca prompt, diff, fonte,
+  conteúdo de Skill nem output bruto. Contagens e fingerprints dos históricos
+  inteiros invalidam prévia antiga se mudarem antes de salvar ou após salvar.
+- Sessões legadas simuladas continuam separadas. Job pronto/cancelado, arquivo
+  editado e `syntax_ok` não significam Task executada, jogo jogável, build,
+  aprovação, prova de causalidade ou gate aberto. Corruptelas/symlinks em JSON
+  falham fechados e recovery permanece ação separada. `runtime_policy.json`
+  local e grants não são copiados para HANDOFF/export do projeto.

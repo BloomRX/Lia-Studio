@@ -49,8 +49,10 @@ supervisionáveis, sem substituir a direção criativa do Dev.
 - Decisões que bloqueiam integrações futuras: `docs/DECISOES-PENDENTES-INTEGRACOES.md`.
 - Interface navegável (SPA) servida localmente, com preview no navegador.
 - Handoff explícito por tarefa: prévia, revisão e confirmação geram `HANDOFF.md`
-  no projeto. A retomada sinaliza quando o snapshot mudou; não envia dados nem
-  executa código, e não substitui a revisão humana antes de compartilhar.
+  no projeto. A retomada sinaliza quando o snapshot mudou, inclusive após Job,
+  edição ou verificação sintática; só metadados desses registros são incluídos,
+  sem grants locais, prompt, fonte ou diff. Handoff não envia dados nem executa
+  código, e não substitui a revisão humana antes de compartilhar.
 - Biblioteca de quatro Skills locais consultáveis, separada dos projetos; aplicação por agente ainda não conectada.
 
 ## Alpha UI.1 — aceita pelo Dev em 2026-10-05

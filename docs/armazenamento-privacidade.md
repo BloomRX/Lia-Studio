@@ -112,8 +112,10 @@
   Inspecione-o junto com os demais dados antes de compartilhar/exportar.
 - `HANDOFF.md` é uma projeção local, não uma cópia dos arquivos de projeto nem das
   evidências brutas de QA. A prévia não grava nada; a confirmação salva o Markdown.
-  O hash do snapshot indica alteração nas fontes estruturadas e nos documentos
-  citados, não garante ausência de segredos. Texto de decisões, objetivos e caminhos
+  O hash do snapshot indica alteração nas fontes estruturadas, inclusive Jobs,
+  edições e parser, e nos documentos citados; nunca inclui fonte/prompt/diff de
+  inferência, nem concede ou exporta os grants locais. Não garante ausência de
+  segredos. Texto de decisões, objetivos e caminhos
   pode conter dados sensíveis: revise antes de compartilhar. Não há upload automático.
 - `validation_sessions.json` registra apenas ID, Task, arquivo relativo, hash e
   tamanho dos bytes entregues ao parser, início/fim e código fixo de resultado.

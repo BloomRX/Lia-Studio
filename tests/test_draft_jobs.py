@@ -11,7 +11,8 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.lia import code_drafts, draft_jobs, planning, runtime_policy, storage
+from app.lia import (code_drafts, draft_jobs, handoff, planning, runtime_policy,
+                     storage, validation_sessions)
 from app.lia import ollama_chat, ollama_discovery
 
 
@@ -69,6 +70,35 @@ class TestDraftJobs(unittest.TestCase):
                          "applied_unverified")
         task = planning.get_modules(self.store, self.pid)[0]["tasks"][0]
         self.assertEqual((task["execution_status"], task["validation_status"]), ("not_run", "not_run"))
+
+    def test_handoff_tracks_real_limited_operations_without_claiming_gameplay(self):
+        initial = handoff.preview(self.store, self.pid, self.mid, self.tid)
+        handoff.save(self.store, self.pid, self.mid, self.tid, initial["digest"], confirm=True)
+        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer":self.changed}):
+            jid = self.start()["id"]
+            ready = self.wait_terminal(jid)
+        self.assertTrue(handoff.get_saved(self.store, self.pid)["stale"])
+        with self.assertRaises(storage.StorageError):
+            handoff.save(self.store, self.pid, self.mid, self.tid, initial["digest"],
+                         confirm=True, replace=True)
+        draft_jobs.acknowledge(self.store, self.pid, jid, ready["diff_sha256"], True)
+        code_drafts.apply(self.store, self.pid, jid, True)
+        cap = "python.syntax.parse"
+        revision = runtime_policy.snapshot(self.store, self.pid)["revision"]
+        runtime_policy.change_task(self.store, self.pid, self.mid, self.tid,
+                                   cap, "allow", revision, True)
+        validation_sessions.run_syntax_check(self.store, self.pid, self.mid, self.tid, "main.py", True)
+        snapshot = handoff.preview(self.store, self.pid, self.mid, self.tid)
+        self.assertIn(jid, snapshot["content"])
+        self.assertIn("Operações locais limitadas", snapshot["content"])
+        self.assertIn("Sintaxe `", snapshot["content"])
+        self.assertIn("Mudança `", snapshot["content"])
+        self.assertIn("não são execução da Task", snapshot["content"])
+        self.assertNotIn(self.changed, snapshot["content"])
+        self.assertNotIn(ready["diff"], snapshot["content"])
+        handoff.save(self.store, self.pid, self.mid, self.tid, snapshot["digest"],
+                     confirm=True, replace=True)
+        self.assertFalse(handoff.get_saved(self.store, self.pid)["stale"])
 
     def test_cancel_closes_worker_result_and_blocks_duplicate_cost(self):
         waiting = threading.Event()
