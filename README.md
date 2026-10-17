@@ -103,6 +103,7 @@ supervisionáveis, sem substituir a direção criativa do Dev.
 - Validação sintática local em processo Python separado da interface, limitada
   a arquivo `.py` vinculado à Task; timeout, cancelamento do parser ativo
   (visível em outra aba durante a requisição síncrona) e histórico próprio.
+  Liga registros por coincidência de Task/arquivo/hash, sem atribuir causalidade.
   Testa sintaxe, não gameplay, build ou critério de aceite. Não abre gate do MVP.
 - Roteiro de fatia vertical por Task vinculado ao QA manual, sem validação de
   jogo ou playtest pelo Studio. Grants explícitos por Task/projeto, com negação

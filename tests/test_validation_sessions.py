@@ -49,6 +49,7 @@ class TestLocalSyntaxValidation(unittest.TestCase):
         self.assertEqual(len(result["sha256"]), 64)
         restarted = storage.Storage(Path(self.tmp.name))
         self.assertEqual(validation_sessions.list_sessions(restarted, self.pid)[0]["source_integrity"], "intact")
+        self.assertIsNone(validation_sessions.list_sessions(restarted, self.pid)[0]["matching_change_id"])
         self.file.write_text("def loop():\n    return 43\n", encoding="utf-8")
         self.assertEqual(validation_sessions.list_sessions(restarted, self.pid)[0]["source_integrity"], "changed")
         self.assertEqual(validation_sessions.list_sessions(restarted, self.pid)[0]["id"], result["id"])
@@ -176,6 +177,12 @@ class TestLocalSyntaxValidation(unittest.TestCase):
                 http.shutdown()
                 http.server_close()
                 service.join(timeout=2)
+
+    def test_corrupt_change_history_blocks_hash_correlation_without_gate(self):
+        self.run_check()
+        self.store.write_structured(self.pid, "code_changes.json", [{"invalid": "entry"}])
+        with self.assertRaises(storage.StorageError):
+            validation_sessions.list_sessions(self.store, self.pid)
 
     def test_corrupt_history_reports_recoverable_backup_without_promoting_result(self):
         self.run_check()

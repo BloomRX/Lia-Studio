@@ -101,6 +101,9 @@ def _load(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
 def list_sessions(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
     # A sessão running após reload é incerta, nunca aprovada nem retomada.
     records = _load(storage, project_id)
+    from . import code_drafts  # importar na leitura evita ciclo de módulos
+    changes = storage.read_structured(project_id, code_drafts.NAME)
+    code_drafts.validate_entries(changes, expected_project_id=project_id)
     result = []
     for r in records:
         try:
@@ -116,7 +119,11 @@ def list_sessions(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
             display = "running" if active else "interrupted_or_running"
         else:
             display = r["state"]
-        result.append({**r, "source_integrity": integrity, "display_state": display})
+        match = next((c for c in reversed(changes)
+                      if c["module_id"] == r["module_id"] and c["task_id"] == r["task_id"]
+                      and c["path"] == r["path"] and c["new_sha256"] == r["sha256"]), None)
+        result.append({**r, "source_integrity": integrity, "display_state": display,
+                       "matching_change_id": match["id"] if match else None})
     return result
 
 

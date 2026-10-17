@@ -857,7 +857,7 @@ function projectExecute(pid, data) {
   ).join("")}</ul>` : `<p class="muted">Nenhuma Session registrada nesta versão. Simulações anteriores não são reconstruídas automaticamente.</p>`;
   const validations = (data.recent_validations || []).slice().reverse();
   const validationHtml = validations.length ? `<ul class="clean">${validations.map(s =>
-    `<li><code>${esc(s.id)}</code> · tarefa ${esc(s.task_id)} · ${esc(s.path)} · ${esc(s.display_state)} · ${esc(s.validation_status)} (somente sintaxe Python) · arquivo atual: ${esc(s.source_integrity)} · jogo NÃO VERIFICADO ${s.display_state === "running" ? `<button type="button" class="ghost small" data-cancel-validation="${esc(s.id)}">Solicitar cancelamento</button>` : ""}</li>`
+    `<li><code>${esc(s.id)}</code> · tarefa ${esc(s.task_id)} · ${esc(s.path)} · ${esc(s.display_state)} · ${esc(s.validation_status)} (somente sintaxe Python) · arquivo atual: ${esc(s.source_integrity)} ${s.matching_change_id ? `· hash coincide com alteração <code>${esc(s.matching_change_id)}</code> (sem prova de causalidade)` : ""} · jogo NÃO VERIFICADO ${s.display_state === "running" ? `<button type="button" class="ghost small" data-cancel-validation="${esc(s.id)}">Solicitar cancelamento</button>` : ""}</li>`
   ).join("")}</ul>` : `<p class="muted">Nenhuma análise sintática local registrada.</p>`;
   const changes = (data.recent_code_changes || []).slice().reverse();
   const changesHtml = changes.length ? `<ul class="clean">${changes.map(c =>

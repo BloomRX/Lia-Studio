@@ -711,3 +711,13 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   com serviço falso verificam formato/timeout/falha fechada, não engine real.
   Prioridade de adapter Unreal permanece decisão de produto futura; este
   diagnóstico limitado não seleciona Godot nem altera perfil de engine.
+
+## Decisão 34 — vínculo derivado entre edição e parser, sem atribuir causalidade (2026-10-17)
+
+- A leitura de `validation_sessions.json` pode apontar o ID mais recente em
+  `code_changes.json` da **mesma** Task, módulo, caminho e SHA-256 dos bytes
+  analisados. É uma coincidência de identidade de bytes, não prova de que o
+  parser rodou *após* a edição, de que aquela operação a causou ou de que o
+  jogo funciona. Nenhum JSON antigo muda; nenhuma Task, QA ou gate recebe
+  aprovação. Arquivos/históricos corrompidos falham fechados; texto do código
+  não é duplicado no vínculo derivado.

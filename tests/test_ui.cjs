@@ -76,7 +76,7 @@ assert.equal(reloads, 1);
   const syntaxHtml = context.projectExecute('project-1', {modules: [{id:'module-1', name:'M',
     tasks:[{id:'task', name:'T', files:['game/loop.py', '<img src=x onerror=alert(1)>.py']}]}],
     recent_validations:[{id:'v1', task_id:'task', path:'game/loop.py',
-      display_state:'completed', validation_status:'passed'}],
+      display_state:'completed', validation_status:'passed',matching_change_id:'change-1'}],
     runtime_policy:{revision:'r1',project:{allow:[],deny:[]},tasks:{},
       capabilities:{'project.python.write':'Escrever arquivo Python'}}});
   assert.match(syntaxHtml, /data-syntax-path="game\/loop.py"/);
@@ -86,6 +86,8 @@ assert.equal(reloads, 1);
   assert.match(syntaxHtml, /data-project-policy-cap="project.python.write"/);
   assert.match(syntaxHtml, /id="apply-task"[^>]*disabled/);
   assert.match(syntaxHtml, /somente sintaxe Python/);
+  assert.match(syntaxHtml, /hash coincide com alteração/);
+  assert.match(syntaxHtml, /sem prova de causalidade/);
   assert.match(syntaxHtml, /jogo NÃO VERIFICADO/);
   assert.doesNotMatch(syntaxHtml, /<img src=x onerror/);
   const runningHtml = context.projectExecute('project-1', {modules:[],

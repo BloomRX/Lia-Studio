@@ -118,7 +118,9 @@
   Não guarda fonte, saída bruta ou credenciais. Um parser concluído não valida
   gameplay, e um registro `running` após reinício pode ser processo interrompido:
   não é automaticamente retomado ou aprovado. A integridade do arquivo atual é
-  recalculada apenas para exibição; não é prova de build/jogo.
+  recalculada apenas para exibição; não é prova de build/jogo. Um ID de edição
+  pode ser exibido quando hashes de bytes/Task/arquivo coincidem, sem reescrever
+  históricos nem atribuir causalidade ou aceite.
 - `code_changes.json` não guarda prompt/fonte gerada; somente IDs, modelo,
   arquivo relativo, hashes e caminho de backup quando há original. Criar um
   arquivo inicial não gera backup: registra hash e estado `file_created`.

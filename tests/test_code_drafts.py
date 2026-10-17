@@ -63,6 +63,18 @@ class TestCodeDrafts(unittest.TestCase):
         self.assertEqual(edited["runtime_id"], "ollama-draft")
         self.assertEqual((self.store.project_path(self.pid) / edited["backup_path"]).read_bytes(), code_drafts.STUB)
         self.assertEqual(len(code_drafts.list_changes(self.store, self.pid)), 2)
+        rev = runtime_policy.snapshot(self.store, self.pid)["revision"]
+        runtime_policy.change_task(self.store, self.pid, self.mod["id"], self.task["id"],
+                                   "python.syntax.parse", "allow", rev, True)
+        checked = validation_sessions.run_syntax_check(self.store, self.pid, self.mod["id"],
+                                                       self.task["id"], "game/loop.py", True)
+        correlated = validation_sessions.list_sessions(self.store, self.pid)[0]
+        self.assertEqual(correlated["id"], checked["id"])
+        self.assertEqual(correlated["matching_change_id"], edited["id"])
+        self.assertFalse(correlated["verified_result"])
+        self.path.write_text(self.original, encoding="utf-8")
+        self.assertEqual(validation_sessions.list_sessions(self.store, self.pid)[0]["source_integrity"], "changed")
+        self.assertEqual(validation_sessions.list_sessions(self.store, self.pid)[0]["matching_change_id"], edited["id"])
 
     def test_create_rejects_path_symlink_and_bad_history_before_write(self):
         self.path.unlink()
