@@ -1,0 +1,8 @@
+{
+  "project": "Meu Projeto",
+  "repo_description": "Meu Projeto — projeto pessoal",
+  "base_branch": "main",
+  "ignore_dirs": ["modelos", "pesos"],
+  "ignore_pairs": [["tests", "artifacts"]],
+  "full_tests": [["npm", "test"]]
+}
