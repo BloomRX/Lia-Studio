@@ -1,12 +1,13 @@
 # Decisões pendentes antes das integrações — Lia Studio
 
-> Estado: **perguntas em aberto** para execução real, não autorização para iniciar agentes, modelo ou operações externas. Revisão: 2026-10-03.
+> Estado: **perguntas em aberto** para Agent Runtime geral, não autorização para
+> iniciar agentes, engines, Computer Use ou operações externas. Revisão: 2026-10-17.
 >
-> A Alpha offline/simulada e a evolução visual UI.1 foram aceitas pelo Dev. O
-> marco desktop Windows foi escolhido em 2026-10-05 e tem shell protótipo
-> reversível (Decisão 22), ainda sem `.exe` validado. O diagnóstico Ollama local
-> somente leitura (Decisão 20) não executa modelos; as decisões abaixo continuam
-> bloqueando apenas as integrações indicadas.
+> A Alpha offline/simulada e a evolução visual UI.1 foram aceitas pelo Dev.
+> O shell desktop Windows é reversível (Decisão 22), ainda sem `.exe` validado.
+> Além do diagnóstico somente leitura (20), decisões 27–37 implementam chat/
+> rascunho Ollama opt-in com permissões aplicadas, Jobs canceláveis e edição
+> revisada, **sem** Agent Runtime geral ou validação do jogo.
 
 ## Contratos já estabelecidos
 
@@ -79,12 +80,17 @@ Decisões tomadas:
 
 | Etapa | Decisão ainda necessária | Estado seguro atual |
 |---|---|---|
-| Runtime/Profile/Provider/Model | Resolução de capacidades, detecção/versão de CLI, consentimento, credenciais de escopo mínimo, política de custo e fallback autorizado | Nenhum runtime real conectado; `simulator` não recebe segredo, Tool ou permissão efetiva. |
-| Engine adapter (prioridade Unreal) | Contrato executável `detect/inspect/open/build/test/collect_logs`, isolamento de comandos e prova de versão instalada; separar do Unreal MCP | Perfil `unreal` é apenas metadado `not_verified`. |
-| Histórico e evidência de execução real | Transições/cancelamento, persistência de eventos após falha, retenção, redaction, vínculo verificável a artefatos; plano para falha entre arquivos/processos | `sessions.json` registra apenas metadados de simulações aprovadas; `completed` não valida tarefa. |
+| Runtime/Profile/Provider/Model | Resolução de capacidades gerais, credenciais de escopo mínimo, política de custo e fallback autorizado | Chat/rascunho Ollama opt-in e parser locais são operações restritas isoladas; **nenhum Agent Runtime de Task** conectado, `simulator` não recebe segredo, Tool ou permissão efetiva. |
+| Engine adapter (prioridade Unreal) | Contrato executável `detect/inspect/open/build/test/collect_logs`, isolamento de comandos e prova de versão instalada; separar do Unreal MCP | Perfil `unreal` é apenas metadado `not_verified`; consulta opt-in da versão Godot não abre ou constrói projeto. |
+| Histórico e evidência de execução real | Persistência transacional entre processo/arquivo/índice, isolamento, vínculo a artefato/teste real e retenção | `sessions.json` continua exclusivamente simulado; Jobs/parser/edições têm registros **separados** com falhas, cancelamento e incerteza após reinício; nenhum atesta gameplay ou gate. |
 
 ## Regra para destravar
 
 Registrar cada escolha em `docs/arquitetura-decisoes.md` **antes** de criar integração difícil de reverter. Incluir alternativas consideradas, responsável pela aprovação, ameaça/custo, consequência para dados existentes, critério de aceite e teste de falha. Se não houver resposta, manter a **execução real desligada**; é permitido evoluir descoberta local somente leitura e outras funções reversíveis sem credenciais/execução.
 
-**Não realizado:** execução pessoal do roteiro pelo Dev (ele confirmou o aceite), 11 casos de symlink no Windows, `.exe` Windows, inferência por provider, execução de Agent/MCP/engine/Computer Use e bridge Lia Project. O Copilot concluiu reteste de navegador Windows para a Alpha; o diagnóstico Ollama novo ainda requer verificação de uso no Windows.
+**Não realizado neste sandbox:** 11 casos de symlink no Windows, `.exe` Windows,
+Ollama/modelo instalado, Godot/Unreal/Unity instalados, execução de Agent/MCP/
+engine/Computer Use, build/gameplay real e bridge Lia Project. O Copilot concluiu
+o reteste de navegador Windows para a Alpha e o Dev confirmou o aceite; isso
+não verifica as novas integrações no Windows. Testes locais usam provedores e
+binários falsos; o teste de uso atual pelo Dev fica para a entrega final.

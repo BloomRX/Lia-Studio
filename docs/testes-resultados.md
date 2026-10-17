@@ -273,3 +273,16 @@ foi comprovado, **não** sua aptidão para distribuição. O incremento posterio
 habilita zoom (`zoomable=True`), recarga com confirmação e pré-checagem
 somente leitura de WebView2; a suíte Linux passa com 109+6 testes, mas essas
 novidades ainda exigem reteste de janela/pacote Windows.
+
+## Incremento integrado no Linux — 2026-10-17 (não é novo aceite Windows)
+
+`python verify_alpha.py` passou com **201 testes Python**, regressão UI/JS e
+compilação. Os 8 testes de Jobs incluem servidor HTTP e Ollama falsos, socket
+lento interrompido, revisão do diff separada da aplicação, recuperação incerta,
+symlink bloqueado e handoff atualizado sem promover gate. Mais 21 testes
+`tools/test_project_cli.py` e 23 testes `tools/test_creation.py` passaram.
+`git diff --check` passou. Nem Ollama real nem Godot/Unreal/Unity estão
+instalados neste ambiente; **nenhum gameplay/build/Windows atual foi testado**.
+O reteste Windows anterior e o aceite anterior da Alpha permanecem válidos
+para seus respectivos marcos históricos, não para as funções novas. Veja
+[entrega integrada e roteiro final](ENTREGA-INTEGRADA-2026-10-17.md).
