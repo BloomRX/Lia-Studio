@@ -9,7 +9,12 @@
   - JSON estruturado: `decisions.json`, `modules.json`, `qa.json`, `assets.json`,
     `release.json`, `engine_profile.json`, `evidence.json` (metadados de arquivos
     locais, IDs e SHA-256; não contém o conteúdo dos arquivos referenciados) e
-    `sessions.json` (somente metadados de simulações aprovadas, sem logs ou prompts).
+    `sessions.json` (somente metadados de simulações aprovadas, sem logs ou prompts)
+    e `attempt_events.json` (opcional, eventos declarativos de tentativas; sem
+    produtor na Alpha, sem log livre nem evidência verificada), além de
+    `validation_sessions.json` (opcional; processo de sintaxe Python real,
+    separado de Session simulada e sem saída bruta) e `code_changes.json`
+    (opcional; hashes, IDs e caminhos de backup de edições assistidas aprovadas).
 - O registro de decisões usa `decisions.json` como fonte estruturada; a aba Decisões
   reescreve a projeção `DECISIONS.md` após revisão. Se o Markdown foi editado
   manualmente, substituí-lo exige confirmação explícita. A revisão SHA-256 do
@@ -92,14 +97,38 @@
   Session; simulações anteriores não geram registros retroativos. A leitura pela
   API é local e deve ser protegida como os demais dados do projeto; não há
   retenção/limpeza automática nem transação com módulos/journal.
+- `attempt_events.json`, quando criado por código interno, guarda apenas IDs,
+  estados/códigos, sequência e horários de tentativas **não verificadas**. Não
+  alimenta `sessions.json`, QA ou gates; não existe rota que o produza na Alpha.
+  É incluído na exportação da pasta. Append-only é somente lógico: o JSON é
+  regravado e seu `.bak` pode perder o evento mais recente numa recuperação.
+  Inspecione-o junto com os demais dados antes de compartilhar/exportar.
 - `HANDOFF.md` é uma projeção local, não uma cópia dos arquivos de projeto nem das
   evidências brutas de QA. A prévia não grava nada; a confirmação salva o Markdown.
   O hash do snapshot indica alteração nas fontes estruturadas e nos documentos
   citados, não garante ausência de segredos. Texto de decisões, objetivos e caminhos
   pode conter dados sensíveis: revise antes de compartilhar. Não há upload automático.
-- Provedores de IA ficam offline; se um dia conectados, o modo nuvem informará que o
-  conteúdo da tarefa pode ser enviado ao provedor, e exigirá chave do próprio Dev.
-- Nenhuma chave/token é armazenada em texto puro e nenhuma chamada paga é feita.
+- `validation_sessions.json` registra apenas ID, Task, arquivo relativo, hash e
+  tamanho dos bytes entregues ao parser, início/fim e código fixo de resultado.
+  Não guarda fonte, saída bruta ou credenciais. Um parser concluído não valida
+  gameplay, e um registro `running` após reinício pode ser processo interrompido:
+  não é automaticamente retomado ou aprovado. A integridade do arquivo atual é
+  recalculada apenas para exibição; não é prova de build/jogo.
+- `code_changes.json` não guarda prompt/fonte gerada; somente IDs, modelo,
+  arquivo relativo, hashes e backup. O backup `*.lia-backup-<id>` é uma cópia
+  local do arquivo anterior à edição, e pode conter segredos de projeto: revisar
+  antes de exportar/compartilhar. Uma falha entre backup/arquivo/índice pode
+  exigir inspeção manual; não há rollback automático nem transação entre
+  arquivos. Rascunho não aplicado existe só na memória do processo por tempo
+  limitado; perder a sessão exige pedir outra prévia. Aplicar o diff não muda
+  o gate nem comprova jogo funcional.
+- Nenhuma inferência ocorre por padrão. No chat opcional, o Dev seleciona um
+  modelo anunciado por Ollama, digita a mensagem e confirma **cada** envio ao
+  loopback. Dependendo do modelo/configuração do Ollama, a mensagem pode sair
+  do computador e ter custo: não use sem entender o modelo selecionado. O
+  Studio não salva prompt/resposta; um modelo pode ter seus próprios logs. O
+  chat não lê documentos do projeto nem executa Task. Providers cloud do
+  catálogo seguem não conectados; nenhuma chave é persistida no Studio.
 
 ## Limpeza
 - Exclusão de projeto é destrutiva e exige confirmação explícita (`confirm=true`).

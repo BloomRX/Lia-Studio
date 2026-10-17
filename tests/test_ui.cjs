@@ -69,10 +69,20 @@ assert.equal(reloads, 1);
     modules: [], recent_sessions: [{id: 'session-1', task_id: 'task', runtime_id: 'simulator',
       finished_at: '2026-09-30'}],
   });
-  assert.match(historyHtml, /Sessions recentes/);
+  assert.match(historyHtml, /Sessions simuladas/);
   assert.match(historyHtml, /SIMULADO/);
   assert.match(historyHtml, /nenhuma evidência verificada/);
   assert.doesNotMatch(historyHtml, /validação aprovada/);
+  const syntaxHtml = context.projectExecute('project-1', {modules: [{id:'module-1', name:'M',
+    tasks:[{id:'task', name:'T', files:['game/loop.py', '<img src=x onerror=alert(1)>.py']}]}],
+    recent_validations:[{id:'v1', task_id:'task', path:'game/loop.py',
+      display_state:'completed', validation_status:'passed'}]});
+  assert.match(syntaxHtml, /data-syntax-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /data-draft-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /id="apply-task"[^>]*disabled/);
+  assert.match(syntaxHtml, /somente sintaxe Python/);
+  assert.match(syntaxHtml, /jogo NÃO VERIFICADO/);
+  assert.doesNotMatch(syntaxHtml, /<img src=x onerror/);
   const planHtml = context.projectPlan('project-1', {
     modules: [{ id: 'base', name: 'Base', tasks: [] },
               { id: 'module-1', name: 'M', depends_on: ['base'], tasks: [] }],
@@ -85,6 +95,109 @@ assert.equal(reloads, 1);
     modules: [{ id: 'base', name: 'Base', tasks: [{ id: 'task', name: 'T' }] }], qa: [],
   });
   assert.match(qaHtml, /value="task:task"/);
+  const sliceReport = {tasks: [{task_id: 'task', task_name: '<img src=x onerror=alert(1)>',
+    module_name: 'Módulo', task_verify: 'iniciar', checks: [{id: 'loop', label: 'Loop principal',
+      criterion: 'ação → feedback → retorno', status: 'dev_declared_approved', qa_id: 'q1',
+      reports_count: 1, evidence: [{id: 'ev1', integrity: 'changed'}]}]}]};
+  const sliceHtml = context.projectQa('project-1', {modules: [], qa: [], slice_review: sliceReport});
+  assert.match(sliceHtml, /Fatia vertical/);
+  assert.match(sliceHtml, /Aprovado pelo Dev \(relato\)/);
+  assert.match(sliceHtml, /NÃO VERIFICADOS/);
+  assert.match(sliceHtml, /data-slice-task="task"/);
+  assert.doesNotMatch(sliceHtml, /<img src=x onerror/);
+  const fields = Object.fromEntries(['q-target', 'q-target-ref', 'q-crit', 'q-res'].map(id =>
+    [id, {value: '', focus() {}}]));
+  let onSliceClick;
+  const oldGetElementById = context.document.getElementById;
+  context.document.getElementById = id => fields[id] || oldGetElementById(id);
+  context.document.querySelectorAll = () => [{dataset: {sliceTask: 'task', sliceCheck: 'loop'},
+    addEventListener: (_, callback) => { onSliceClick = callback; }}];
+  const countBeforePrefill = requests.length;
+  await context.wireQa('project-1', sliceReport);
+  onSliceClick();
+  assert.equal(fields['q-target'].value, 'slice:loop');
+  assert.equal(fields['q-target-ref'].value, 'task:task');
+  assert.equal(fields['q-crit'].value, 'ação → feedback → retorno');
+  assert.equal(fields['q-res'].value, 'planejado');
+  assert.equal(requests.length, countBeforePrefill); // preparar não grava QA
+  context.document.getElementById = oldGetElementById;
+  delete context.document.querySelectorAll;
+  const handlers = {};
+  const chatElements = Object.fromEntries(['lia-chat-probe','lia-chat-send'].map(id =>
+    [id, {disabled:false, addEventListener: (_, fn) => {handlers[id] = fn;}}]));
+  chatElements['lia-chat-model'] = {value:'', options:[], replaceChildren() {this.options=[];},
+    add(item) {this.options.push(item);}};
+  chatElements['lia-chat-prompt'] = {value:'Uma pergunta'};
+  chatElements['lia-chat-status'] = {textContent:''};
+  chatElements['lia-chat-answer'] = {textContent:'', innerHTML:''};
+  context.Option = function(text,value) {return {text,value};};
+  context.document.getElementById = id => chatElements[id] || oldGetElementById(id);
+  const priorFetch = context.fetch;
+  const chatRequests = [];
+  context.fetch = async (url, opts) => {
+    chatRequests.push({url,opts});
+    return {ok:true, json:async () => url.endsWith('/probe')
+      ? {models:['local'], message:'Encontrado'}
+      : {answer:'<img src=x onerror=alert(1)>', warning:'Resposta textual'}};
+  };
+  context.wireChat();
+  assert.equal(chatRequests.length, 0);
+  await handlers['lia-chat-probe']();
+  assert.equal(chatElements['lia-chat-model'].options[1].value, 'local');
+  chatElements['lia-chat-model'].value = 'local';
+  context.confirm = () => false;
+  await handlers['lia-chat-send']();
+  assert.equal(chatRequests.length, 1);
+  context.confirm = () => true;
+  await handlers['lia-chat-send']();
+  assert.deepEqual(JSON.parse(chatRequests[1].opts.body),
+    {model:'local', prompt:'Uma pergunta', confirm:true});
+  assert.equal(chatElements['lia-chat-answer'].textContent, '<img src=x onerror=alert(1)>');
+  assert.equal(chatElements['lia-chat-answer'].innerHTML, ''); // sem interpretar HTML remoto
+  context.fetch = priorFetch;
+  context.document.getElementById = oldGetElementById;
+  const draftHandlers = {};
+  const draftModel = {value:'', options:[], replaceChildren() {this.options=[];},
+    add(o) {this.options.push(o);}};
+  const draftPre = {style:{}, textContent:''};
+  const draftApply = {disabled:true, dataset:{}, addEventListener:(_,fn)=>draftHandlers.apply=fn};
+  const draftProbe = {disabled:false, addEventListener:(_,fn)=>draftHandlers.probe=fn};
+  const draftButton = {disabled:false, dataset:{draftTask:'task', draftModule:'module-1', draftPath:'game/loop.py'},
+    addEventListener:(_,fn)=>draftHandlers.generate=fn};
+  const draftDom = {'draft-probe':draftProbe,'draft-model':draftModel,
+    'draft-status':{textContent:''},'draft-task':draftPre,'apply-task':draftApply};
+  context.document.getElementById = id => draftDom[id] || oldGetElementById(id);
+  context.document.querySelectorAll = selector => selector === '[data-draft-task]' ? [draftButton]
+    : selector === "[id^='apply-']" ? [draftApply] : [];
+  const draftRequests = [];
+  context.fetch = async (url,opts) => {
+    draftRequests.push({url,opts});
+    return {ok:true,json:async()=>url.endsWith('/probe') ? {models:['local'],message:'ok'}
+      : url.endsWith('/draft') ? {proposal_id:'preview123', diff:'-old\n+new'}
+      : {backup_path:'game/loop.py.lia-backup-preview123'}};
+  };
+  await context.wireExecute('project-1');
+  await draftHandlers.probe();
+  draftModel.value='local';
+  context.confirm=()=>false;
+  await draftHandlers.generate();
+  assert.equal(draftRequests.length,1); // só probe
+  context.confirm=()=>true;
+  await draftHandlers.generate();
+  assert.equal(draftRequests[1].url, '/api/projects/project-1/tasks/module-1/task/draft');
+  assert.deepEqual(JSON.parse(draftRequests[1].opts.body),
+    {path:'game/loop.py',model:'local',confirm_send:true});
+  assert.equal(draftPre.textContent,'-old\n+new');
+  assert.equal(draftApply.dataset.proposalId,'preview123');
+  const renderOriginal=context.renderProject;
+  context.renderProject=async()=>{};
+  await draftHandlers.apply();
+  assert.deepEqual(JSON.parse(draftRequests[2].opts.body),
+    {proposal_id:'preview123',confirm:true});
+  context.renderProject=renderOriginal;
+  context.fetch=priorFetch;
+  context.document.getElementById=oldGetElementById;
+  delete context.document.querySelectorAll;
   const relHtml = context.projectRelease('project-1', {release: {state: 'preparando', published: false, checklist: []}});
   assert.match(relHtml, /pronto_para_build/);
   assert.doesNotMatch(relHtml, /<option[^>]*>publicada<\/option>/);

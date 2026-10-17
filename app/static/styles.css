@@ -255,6 +255,9 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
 .workspace-canvas { padding:clamp(18px,2.5vw,34px); overflow-x:auto; }
 .workspace-canvas > h1 { font-size:clamp(22px,2.4vw,31px); letter-spacing:-.03em; }
 .workspace-canvas > .card { margin: 13px 0; }
+.workspace-canvas details.card summary { cursor:pointer; }
+.workspace-canvas .table-scroll { overflow-x:auto; }
+.workspace-canvas .table-scroll table { min-width:620px; }
 .canvas-breadcrumb { color:var(--muted); font-size:12px; margin-bottom:20px; }
 .canvas-breadcrumb a { text-decoration:none; }
 .lia-panel { background:linear-gradient(155deg,#2c1d2c 0,#1b1821 68%); border-color:#6a3b59; }
@@ -268,6 +271,11 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
 .lia-separator { height:1px; background:#513b4e; margin:20px 0; }
 .chat-disabled { padding:14px; border:1px dashed #674a62; border-radius:11px; margin-top:23px;
   color:#c5abc0; font-size:11px; }
+.lia-chat { border:1px solid #674a62; border-radius:11px; padding:12px; margin-top:20px; font-size:12px; }
+.lia-chat label { display:block; margin:10px 0 4px; }
+.lia-chat textarea { min-height:85px; }
+.lia-chat button { max-width:100%; white-space:normal; margin-top:6px; }
+.chat-answer { white-space:pre-wrap; overflow-wrap:anywhere; max-height:250px; overflow:auto; font:inherit; }
 .project-shell[data-left-collapsed="true"] .workbench { grid-template-columns:52px minmax(0,1fr) 286px; }
 .project-shell[data-right-collapsed="true"] .workbench { grid-template-columns:224px minmax(0,1fr) 52px; }
 .project-shell[data-left-collapsed="true"][data-right-collapsed="true"] .workbench { grid-template-columns:52px minmax(0,1fr) 52px; }

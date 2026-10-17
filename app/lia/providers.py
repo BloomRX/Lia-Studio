@@ -1,9 +1,11 @@
 """Abstração de provedores de IA — local e nuvem configuráveis.
 
-IMPORTANTE: nada é conectado por padrão. Toda integração real está ausente nesta
-entrega; os adaptadores são entregues claramente marcados como "não conectado" e o
-modo demonstrativo NÃO alega inferência real. Nenhuma chave/token é armazenada em
-texto puro e nenhuma chamada paga é feita. Informações voláteis (preço/quota) trazem
+IMPORTANTE: nada é conectado por padrão. O chat Ollama pode fazer inferência
+somente por pedido explícito; não executa Task. Execução de tarefas por IA e
+provedores em nuvem permanecem não conectados e o modo demonstrativo NÃO alega
+inferência real. Nenhuma chave/token é armazenada no Studio; um modelo Ollama
+selecionado pode ter custos sob a configuração do próprio Dev, sempre com
+confirmação explícita por mensagem. Informações voláteis (preço/quota) trazem
 fontes indicativas e não alegam verificação atual ou gratuidade permanente.
 """
 from __future__ import annotations
@@ -27,7 +29,7 @@ def provider_catalog() -> List[Dict[str, Any]]:
             "simulated": True,
             "requires": "Ollama instalado no PC (Windows 10+); modelo baixado pelo Dev.",
             "cost": "Modelo local usa seu hardware; modelos cloud podem ter custo. Nenhum download automático.",
-            "data_egress": "Diagnóstico consulta apenas loopback; inferência não conectada. Modelos cloud poderão enviar dados quando habilitados futuramente.",
+            "data_egress": "Chat opcional envia só mensagem digitada a Ollama loopback após confirmação; modelo anunciado pode operar via nuvem/cobrança conforme configuração. Execução de Task não conectada.",
             "source": "ollama.com/download/windows",
             "note": "Guia/configuração apenas. Nenhuma instalação ou download automático é feito aqui.",
         },
@@ -88,7 +90,7 @@ def set_settings(storage: Storage, settings: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def describe_runtime(storage: Storage) -> Dict[str, Any]:
-    """Descreve o estado de execução de IA: sempre offline/simulado nesta entrega."""
+    """Descreve Task por IA: simulação; chat opt-in é um fluxo separado."""
     s = get_settings(storage)
     return {
         "mode": s["mode"],
@@ -96,9 +98,9 @@ def describe_runtime(storage: Storage) -> Dict[str, Any]:
         "connected": False,
         "simulated": True,
         "message": (
-            "Nenhuma inferência real está ativa. A Lia Studio roda offline; provedores "
-            "são configuráveis mas permanecem 'não conectado'. Execuções de tarefa nesta "
-            "entrega são SIMULADAS e claramente rotuladas."
+            "Nenhum Agent Runtime de tarefa está conectado; tarefas simuladas continuam SIMULADAS. "
+            "O chat Ollama é uma inferência real opcional por mensagem, somente após escolher "
+            "modelo e confirmar. Pode usar nuvem conforme o modelo; não executa Tasks."
         ),
         "catalog": provider_catalog(),
     }

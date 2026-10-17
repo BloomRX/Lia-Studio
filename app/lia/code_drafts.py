@@ -1,0 +1,200 @@
+"""Edição assistida de UM arquivo Python existente, com diff e aceite explícito.
+
+Modelo é fonte de texto não confiável. Nenhum código gerado é executado, e uma
+mudança em disco NÃO comprova que a Task ou o jogo foram validados.
+"""
+from __future__ import annotations
+
+import ast
+import difflib
+import hashlib
+import re
+import threading
+import time
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from . import ollama_chat, planning, validation_sessions
+from .storage import Storage, StorageError
+
+NAME = "code_changes.json"
+MAX_SOURCE = 1200  # contexto enviado ao modelo; não subir arquivos grandes
+MAX_CODE = 8000
+TTL = 15 * 60
+FIELDS = {"id", "project_id", "module_id", "task_id", "path", "model",
+          "runtime_id", "state", "validation_status", "base_sha256", "new_sha256",
+          "objective_sha256", "backup_path", "applied_at", "verified_result"}
+_HASH = re.compile(r"[0-9a-f]{64}\Z")
+_ID = re.compile(r"[0-9a-f]{32}\Z")
+_lock = threading.RLock()
+_pending: Dict[str, Dict[str, Any]] = {}
+
+
+def _digest(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def validate_entries(entries: Any, expected_project_id: Optional[str] = None) -> None:
+    if type(entries) is not list:
+        raise StorageError("registro de alterações inválido")
+    seen = set()
+    for r in entries:
+        if (type(r) is not dict or set(r) != FIELDS or type(r["id"]) is not str
+            or not _ID.fullmatch(r["id"]) or r["id"] in seen
+            or type(r["project_id"]) is not str or not re.fullmatch(r"[0-9a-f]{12}", r["project_id"])
+            or any(type(r[k]) is not str or not re.fullmatch(r"[0-9a-f]{8}", r[k])
+                   for k in ("module_id", "task_id"))
+            or not validation_sessions._safe_path(r["path"])
+            or r["runtime_id"] != "ollama-draft" or r["state"] != "file_changed"
+            or r["validation_status"] != "not_run"
+            or type(r["model"]) is not str or not 1 <= len(r["model"]) <= 200
+            or any(type(r[k]) is not str or not _HASH.fullmatch(r[k])
+                   for k in ("base_sha256", "new_sha256", "objective_sha256"))
+            or r["backup_path"] != r["path"] + ".lia-backup-" + r["id"]
+            or r["verified_result"] is not False):
+            raise StorageError("alteração de código inválida")
+        seen.add(r["id"])
+        if expected_project_id is not None and r["project_id"] != expected_project_id:
+            raise StorageError("alteração de outro projeto no histórico")
+        try:
+            at = datetime.fromisoformat(r["applied_at"])
+            if at.tzinfo is None or at.utcoffset() is None:
+                raise ValueError()
+        except (ValueError, TypeError, OverflowError) as exc:
+            raise StorageError("data inválida em alteração de código") from exc
+
+
+def _load_changes(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
+    records = storage.read_structured(project_id, NAME)
+    validate_entries(records, expected_project_id=project_id)
+    return records
+
+
+def list_changes(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
+    result = []
+    for record in _load_changes(storage, project_id):
+        try:
+            current = validation_sessions._source(storage, project_id, record["path"])
+            integrity = "intact" if _digest(current) == record["new_sha256"] else "changed"
+        except StorageError:
+            integrity = "unavailable"
+        result.append({**record, "source_integrity": integrity})
+    return result
+
+
+def _snapshot(storage: Storage, project_id: str, module_id: str,
+              task_id: str, path: str) -> tuple[bytes, dict]:
+    project = storage.get_entry(project_id)
+    if not project or project.get("archived"):
+        raise StorageError("projeto indisponível ou arquivado")
+    modules = planning.get_modules(storage, project_id)
+    planning.validate_dependencies(modules)
+    task = next((t for m in modules if m["id"] == module_id for t in m["tasks"]
+                 if t["id"] == task_id), None)
+    if (task is None or path not in task.get("files", [])
+        or planning.module_blockers(modules, module_id)):
+        raise StorageError("tarefa/arquivo não elegível; revise plano e dependências")
+    data = validation_sessions._source(storage, project_id, path)
+    if len(data) > MAX_SOURCE:
+        raise StorageError("arquivo grande demais para rascunho assistido; use edição manual")
+    try:
+        data.decode("utf-8")
+    except UnicodeError as exc:
+        raise StorageError("rascunho exige arquivo UTF-8") from exc
+    return data, task
+
+
+def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
+            path: str, model: str, confirm_send: bool) -> Dict[str, Any]:
+    if confirm_send is not True:
+        raise StorageError("confirme o envio de objetivo e arquivo ao modelo escolhido")
+    with storage.stage_lock:
+        original, task = _snapshot(storage, project_id, module_id, task_id, path)
+        goal = task.get("objective", "")
+        if not isinstance(goal, str) or not goal.strip() or len(goal) > 250:
+            raise StorageError("descreva um objetivo curto na Task antes de pedir rascunho")
+        original_hash = _digest(original)
+        prompt = ("Escreva o arquivo Python COMPLETO para este objetivo. Responda somente código Python, "
+                  "sem Markdown. O código será revisado, não executado.\nObjetivo: " + goal +
+                  "\nArquivo atual:\n" + original.decode("utf-8"))
+    answer = ollama_chat.chat(prompt, model, True)["answer"]
+    if len(answer.encode("utf-8")) > MAX_CODE:
+        raise StorageError("proposta excede o limite de tamanho")
+    if answer.encode("utf-8") == original:
+        raise StorageError("modelo não sugeriu alteração; nenhum arquivo foi escrito")
+    try:
+        ast.parse(answer)
+    except (SyntaxError, ValueError, TypeError, UnicodeError) as exc:
+        raise StorageError("modelo não devolveu arquivo Python sintaticamente válido; nada foi escrito") from exc
+    with storage.stage_lock:
+        current, task_now = _snapshot(storage, project_id, module_id, task_id, path)
+        if _digest(current) != original_hash or task_now != task:
+            raise StorageError("tarefa ou arquivo mudou durante a proposta; solicite nova prévia")
+    token = uuid.uuid4().hex
+    with _lock:
+        for key in list(_pending):
+            if _pending[key]["expires"] < time.monotonic():
+                del _pending[key]
+        if len(_pending) >= 20:
+            raise StorageError("muitas propostas pendentes; aguarde expirar")
+        _pending[token] = {"project_id": project_id, "module_id": module_id,
+                           "task_id": task_id, "path": path, "model": model,
+                           "base": original_hash, "task": task, "code": answer,
+                           "objective_sha256": _digest(goal.encode("utf-8")),
+                           "expires": time.monotonic() + TTL}
+    diff = "".join(difflib.unified_diff(original.decode("utf-8").splitlines(True),
+                                        answer.splitlines(True), fromfile="atual", tofile="proposto"))
+    return {"proposal_id": token, "path": path, "diff": diff,
+            "base_sha256": original_hash, "new_sha256": _digest(answer.encode("utf-8")),
+            "warning": "Prévia sem escrita; texto do modelo não foi executado nem validado como jogo."}
+
+
+def apply(storage: Storage, project_id: str, proposal_id: str, confirmed: bool) -> Dict[str, Any]:
+    if confirmed is not True or type(proposal_id) is not str or not _ID.fullmatch(proposal_id):
+        raise StorageError("proposta e confirmação obrigatórias")
+    with _lock:
+        proposal = _pending.get(proposal_id)
+        if not proposal or proposal["project_id"] != project_id or time.monotonic() > proposal["expires"]:
+            raise StorageError("proposta ausente/expirada; gere outra prévia")
+        _pending.pop(proposal_id)  # consumir: nunca retry cego
+    with storage.stage_lock:
+        before, task = _snapshot(storage, project_id, proposal["module_id"],
+                                 proposal["task_id"], proposal["path"])
+        if _digest(before) != proposal["base"] or task != proposal["task"]:
+            raise StorageError("arquivo ou Task alterados; gere outra prévia")
+        code = proposal["code"]
+        try:
+            ast.parse(code)
+        except (SyntaxError, ValueError, TypeError, UnicodeError) as exc:
+            raise StorageError("proposta sintaticamente inválida") from exc
+        records = _load_changes(storage, project_id)
+        storage.preflight_structured_write(project_id, NAME)
+        target = storage.project_path(project_id) / proposal["path"]
+        backup_rel = proposal["path"] + ".lia-backup-" + proposal_id
+        backup = storage.project_path(project_id) / backup_rel
+        if backup.exists() or backup.is_symlink():
+            raise StorageError("backup já existe; revise o destino")
+        # Se a escrita do índice falhar depois da substituição, manter backup e
+        # arquivo gerado para inspeção manual; nunca restaurar automaticamente.
+        try:
+            storage._atomic_write(backup, before.decode("utf-8"))
+            storage._atomic_write(target, code)
+        except (OSError, UnicodeError) as exc:
+            raise StorageError("escrita parcial possível; inspecione arquivo e backup antes de repetir") from exc
+        record = {"id": proposal_id, "project_id": project_id,
+                  "module_id": proposal["module_id"], "task_id": proposal["task_id"],
+                  "path": proposal["path"], "model": proposal["model"],
+                  "runtime_id": "ollama-draft", "state": "file_changed",
+                  "validation_status": "not_run", "base_sha256": proposal["base"], "new_sha256": _digest(code.encode("utf-8")),
+                  "objective_sha256": proposal["objective_sha256"],
+                  "backup_path": backup_rel,
+                  "applied_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                  "verified_result": False}
+        records.append(record)
+        validate_entries(records, expected_project_id=project_id)
+        try:
+            storage.write_structured(project_id, NAME, records)
+        except OSError as exc:
+            raise StorageError("arquivo editado, mas índice de alterações incerto; inspecione backup antes de repetir") from exc
+        return {**record, "warning": "Arquivo alterado e backup salvo; Task/jogo/QA NÃO verificados."}

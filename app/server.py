@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import bootstrap, conflicts, decisions as decisions_service, engines, evidence, execution, handoff, ollama_discovery, planning, providers, qa, release, sessions, skills, stages, templates_loader
+from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -109,6 +109,8 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
             "modules": modules,
             "module_blockers": planning.dependency_report(modules),
             "recent_sessions": sessions.list_sessions(storage, pid)[-5:],
+            "recent_validations": validation_sessions.list_sessions(storage, pid)[-5:],
+            "recent_code_changes": code_drafts.list_changes(storage, pid)[-5:],
             "qa": qa.get_verifications(storage, pid),
             "release": release.get_release(storage, pid),
             "resume": planning.build_resume(storage, pid),
@@ -173,6 +175,24 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
                                             preview_digest=body.get("preview_digest"))
     if method == "GET" and sub == ["sessions"]:
         return {"sessions": sessions.list_sessions(storage, pid)}
+    if method == "GET" and sub == ["code-changes"]:
+        return {"changes": code_drafts.list_changes(storage, pid)}
+    if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "draft":
+        if set(body) != {"path", "model", "confirm_send"}:
+            raise StorageError("envie arquivo, modelo e confirmação do envio")
+        return code_drafts.preview(storage, pid, sub[1], sub[2], body["path"],
+                                   body["model"], body["confirm_send"])
+    if method == "POST" and sub == ["code-changes", "apply"]:
+        if set(body) != {"proposal_id", "confirm"}:
+            raise StorageError("envie proposta e confirmação")
+        return code_drafts.apply(storage, pid, body["proposal_id"], body["confirm"]), 201
+    if method == "GET" and sub == ["validation-sessions"]:
+        return {"sessions": validation_sessions.list_sessions(storage, pid)}
+    if method == "POST" and sub == ["validation-sessions"]:
+        if set(body) != {"module_id", "task_id", "path", "confirm"}:
+            raise StorageError("envie módulo, tarefa, arquivo e confirmação")
+        return validation_sessions.run_syntax_check(storage, pid, body["module_id"],
+                         body["task_id"], body["path"], body["confirm"]), 201
 
     if method == "GET" and sub == ["conflicts"]:
         return {"conflicts": conflicts.detect_conflicts(storage.read_structured(pid, "decisions.json"))}
@@ -188,6 +208,9 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         return {"evidence": evidence.list_records(storage, pid)}
     if method == "POST" and sub == ["evidence"]:
         return evidence.register(storage, pid, body), 201
+
+    if method == "GET" and sub == ["vertical-slice"]:
+        return vertical_slice.review(storage, pid)
 
     if method == "GET" and sub == ["qa"]:
         return {"qa": qa.get_verifications(storage, pid)}
@@ -305,15 +328,19 @@ class Handler(BaseHTTPRequestHandler):
                 if set(body) != {"confirm"}:
                     raise StorageError("envie somente a confirmação do diagnóstico local")
                 return ollama_discovery.probe_local_ollama(body["confirm"]), 200
+            if parts == ["api", "providers", "local-ollama", "chat"] and method == "POST":
+                if set(body) != {"prompt", "model", "confirm"}:
+                    raise StorageError("envie somente mensagem, modelo e confirmação")
+                return ollama_chat.chat(body["prompt"], body["model"], body["confirm"]), 200
             if parts == ["api", "example"] and method == "POST":
                 return create_example_project(), 201
             return None
         except StorageError as e:
             return {"error": str(e)}, 400
-        except (ValueError, KeyError) as e:
-            return {"error": str(e)}, 400
-        except Exception as e:  # noqa: BLE001
-            return {"error": f"erro interno: {e}"}, 500
+        except (ValueError, KeyError):
+            return {"error": "requisição inválida; confira os campos e tipos"}, 400
+        except Exception:  # noqa: BLE001 — não devolver exceção com possível segredo
+            return {"error": "falha interna; revise integridade e logs locais sem repetir a ação às cegas"}, 500
 
     def _route(self):
         # No modo local, recusar Host externo evita acesso por DNS rebinding.

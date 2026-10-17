@@ -322,7 +322,11 @@ async function renderProject(pid, section, visualStage) {
   else if (section === "plan") content = await projectPlan(pid, data);
   else if (section === "handoff") content = await projectHandoff(pid, data);
   else if (section === "execute") content = await projectExecute(pid, data);
-  else if (section === "qa") content = await projectQa(pid, data);
+  else if (section === "qa") {
+    try { data.slice_review = await api("GET", `/api/projects/${pid}/vertical-slice`); }
+    catch (e) { data.slice_error = e.message; }
+    content = projectQa(pid, data);
+  }
   else if (section === "evidence") content = await projectEvidence(pid, data);
   else if (section === "release") content = await projectRelease(pid, data);
   else if (section === "config") content = await projectConfig(pid, data);
@@ -334,16 +338,24 @@ async function renderProject(pid, section, visualStage) {
       <p class="lia-message">${gate.blockers.length ? `Há ${gate.blockers.length} pendência(s) no gate. Você pode revisar os critérios na Visão geral.` : "Nenhum bloqueio no gate atual. A decisão de avançar ainda é sua."}</p>
       <a class="quick-link" href="#/project/${esc(pid)}/overview/${selectedStage}">Ver bloqueios e decisões →</a>
       <div class="agent-status"><span class="nav-group-title">AGENT / STATUS</span>
-        <p>Runtime: não conectado · Skills: opcionais · Tools/MCP: indisponíveis · permissões efetivas: nenhuma.</p>
+        <p>Agent Runtime: não conectado · Parser de sintaxe Python: local e limitado · Skills: opcionais · Tools/MCP: indisponíveis para execução do jogo.</p>
         <p>Single Agent, Smart Delegation e Multi-Agent manual são modos futuros, não ações ativas.</p>
         <a class="quick-link" href="#/project/${esc(pid)}/config/${selectedStage}">Ver perfil e provedores →</a></div>
       <div class="lia-separator"></div><span class="nav-group-title">SESSIONS E RESULTADOS</span>
       <p>${recent.length ? `${recent.length} Session(s) recente(s). A simulação não valida o resultado.` : "Ainda não há Sessions neste projeto."}</p>
       <a class="quick-link" href="#/project/${esc(pid)}/execute/${selectedStage}">Acompanhar execução →</a>
       <div class="lia-separator"></div><span class="nav-group-title">FEEDBACK / PLAYTEST</span>
-      <p>Registre verificações e feedback manual em QA. Não há Agent ou Chat conectado nesta versão.</p>
+      <p>Registre verificações e feedback manual em QA. Não há Agent nem Chat conectado nesta versão.</p>
       <a class="quick-link" href="#/project/${esc(pid)}/qa/${selectedStage}">Abrir QA / Playtest →</a>
-      <div class="chat-disabled" aria-label="Chat ainda indisponível">Chat com Lia / Agent · ainda não conectado</div>
+      <div class="lia-chat" aria-label="Chat opcional com Ollama"><strong>Conversa opcional com Ollama</strong>
+        <p class="muted">Apenas sua mensagem é enviada ao modelo escolhido. Um modelo anunciado pode usar nuvem; confirme antes de cada envio. Resposta não executa tarefas.</p>
+        <button type="button" class="ghost small" id="lia-chat-probe">Buscar modelos disponíveis</button>
+        <label for="lia-chat-model">Modelo</label><select id="lia-chat-model"><option value="">Consulte a lista primeiro</option></select>
+        <label for="lia-chat-prompt">Mensagem</label><textarea id="lia-chat-prompt" maxlength="2000" placeholder="Faça uma pergunta, sem colar segredos."></textarea>
+        <button type="button" id="lia-chat-send">Enviar após confirmação</button>
+        <p id="lia-chat-status" class="muted" role="status" aria-live="polite"></p>
+        <pre id="lia-chat-answer" class="chat-answer" aria-live="polite"></pre>
+      </div>
     </div></aside>`;
   view.innerHTML = `<div class="project-shell" data-left-collapsed="${PANEL_PREFS.left}" data-right-collapsed="${PANEL_PREFS.right}">
     <div class="project-heading"><div><a href="#/home" class="back-link">← Launcher</a><span class="eyebrow">PROJECT WORKSPACE</span><h1>${esc(entry.name)}</h1><p>${esc(entry.next_step || "Trabalhe na sua fase atual.")}</p></div>
@@ -357,10 +369,46 @@ async function renderProject(pid, section, visualStage) {
   if (section === "plan") wirePlan(pid, data.modules);
   if (section === "handoff") wireHandoff(pid, data.modules, data.resume?.handoff);
   if (section === "execute") wireExecute(pid, data.modules);
-  if (section === "qa") wireQa(pid);
+  if (section === "qa") wireQa(pid, data.slice_review);
   if (section === "evidence") wireEvidence(pid);
   if (section === "release") wireRelease(pid, data.release);
   if (section === "config") wireConfig(pid, data);
+  wireChat();
+}
+
+function wireChat() {
+  const probe = document.getElementById("lia-chat-probe");
+  if (!probe) return;
+  const select = document.getElementById("lia-chat-model");
+  const prompt = document.getElementById("lia-chat-prompt");
+  const send = document.getElementById("lia-chat-send");
+  const status = document.getElementById("lia-chat-status");
+  const answer = document.getElementById("lia-chat-answer");
+  probe.addEventListener("click", async () => {
+    probe.disabled = true;
+    select.replaceChildren();
+    select.add(new Option("Consulte a lista primeiro", ""));
+    try {
+      const result = await api("POST", "/api/providers/local-ollama/probe", {confirm: true});
+      (result.models || []).forEach(model => select.add(new Option(model, model)));
+      status.textContent = result.message;
+    } catch (e) { status.textContent = "Não foi possível consultar Ollama: " + e.message; }
+    finally { probe.disabled = false; }
+  });
+  send.addEventListener("click", async () => {
+    if (!select.value || !prompt.value.trim()) return toast("Selecione um modelo e escreva uma mensagem.");
+    if (!confirm("Enviar apenas esta mensagem ao modelo escolhido? Modelos Ollama podem usar nuvem e ter custo conforme sua configuração. Nenhuma Task será executada.")) return;
+    send.disabled = true;
+    answer.textContent = "";
+    status.textContent = "Aguardando resposta do modelo selecionado…";
+    try {
+      const result = await api("POST", "/api/providers/local-ollama/chat",
+                               {model: select.value, prompt: prompt.value, confirm: true});
+      answer.textContent = result.answer; // resposta não confiável; nunca HTML
+      status.textContent = result.warning;
+    } catch (e) { status.textContent = "Resposta indisponível: " + e.message; }
+    finally { send.disabled = false; }
+  });
 }
 
 /* A fase selecionada é navegação de leitura; o estágio salvo só muda no gate. */
@@ -782,6 +830,11 @@ function projectExecute(pid, data) {
         <button onclick="previewTask('${esc(pid)}','${m.id}','${t.id}')">Ver proposta</button>
         <button id="approve-${esc(t.id)}" disabled onclick="execTask('${esc(pid)}','${m.id}','${t.id}')">Aprovar e simular</button>
       </div>
+      ${(t.files || []).filter(f => typeof f === "string" && f.endsWith(".py")).map(f =>
+        `<div class="row"><button type="button" class="ghost small" data-syntax-module="${esc(m.id)}" data-syntax-task="${esc(t.id)}" data-syntax-path="${esc(f)}">Verificar sintaxe: ${esc(f)}</button>
+         <button type="button" class="ghost small" data-draft-module="${esc(m.id)}" data-draft-task="${esc(t.id)}" data-draft-path="${esc(f)}">Propor edição: ${esc(f)}</button></div>`).join("")}
+      <pre id="draft-${esc(t.id)}" class="card" style="white-space:pre-wrap;display:none;overflow:auto"></pre>
+      <button id="apply-${esc(t.id)}" type="button" class="ghost small" disabled>Revisar e aplicar proposta</button>
       <pre id="exec-${t.id}" class="card" style="white-space:pre-wrap;margin-top:8px;display:none"></pre>
     </div>`).join("") : `<div class="empty">Nenhuma tarefa para executar. Crie tarefas no Plano.</div>`;
   const history = (data.recent_sessions || []).slice().reverse();
@@ -789,12 +842,79 @@ function projectExecute(pid, data) {
     `<li><code>${esc(s.id)}</code> · tarefa ${esc(s.task_id)} · ${esc(s.finished_at)} ·
     ${esc(s.runtime_id)}: <b>SIMULADO</b> · validação não realizada · nenhuma evidência verificada.</li>`
   ).join("")}</ul>` : `<p class="muted">Nenhuma Session registrada nesta versão. Simulações anteriores não são reconstruídas automaticamente.</p>`;
-  return `<h1>Execução assistida (simulada)</h1>
-    <div class="banner warn"><b>Simulado:</b> não há agente de código nem engine conectados. A execução mostra a proposta e um resultado SIMULADO, claramente rotulado. Nenhum código é escrito e nenhum serviço é chamado.</div>
+  const validations = (data.recent_validations || []).slice().reverse();
+  const validationHtml = validations.length ? `<ul class="clean">${validations.map(s =>
+    `<li><code>${esc(s.id)}</code> · tarefa ${esc(s.task_id)} · ${esc(s.path)} · ${esc(s.display_state)} · ${esc(s.validation_status)} (somente sintaxe Python) · arquivo atual: ${esc(s.source_integrity)} · jogo NÃO VERIFICADO</li>`
+  ).join("")}</ul>` : `<p class="muted">Nenhuma análise sintática local registrada.</p>`;
+  const changes = (data.recent_code_changes || []).slice().reverse();
+  const changesHtml = changes.length ? `<ul class="clean">${changes.map(c =>
+    `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} · backup: ${esc(c.backup_path)} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
+  return `<h1>Execução e validação local</h1>
+    <div class="banner warn"><b>Simulador:</b> “Aprovar e simular” não escreve código. <b>Edição assistida:</b> modelo Ollama opcional propõe UM arquivo Python para revisão; somente confirmação aplica a mudança e salva backup. Isso NÃO executa o jogo ou aprova a Task. “Verificar sintaxe” inicia apenas um parser local.</div>
+    <div class="card"><h3>Modelo para rascunho de código (opcional)</h3><button type="button" id="draft-probe" class="ghost">Buscar modelos Ollama</button>
+      <select id="draft-model"><option value="">Consulte modelos primeiro</option></select>
+      <p id="draft-status" class="muted" role="status">Objetivo e fonte do arquivo escolhido podem sair do PC conforme o modelo Ollama. Você confirma antes de cada pedido.</p></div>
     ${html}
-    <div class="card"><h2>Sessions recentes (somente leitura)</h2>${sessionsHtml}</div>`;
+    <div class="card"><h2>Sessions de edição assistida (arquivos não validados)</h2>${changesHtml}</div>
+    <div class="card"><h2>Validações reais e limitadas (somente sintaxe)</h2>${validationHtml}</div>
+    <div class="card"><h2>Sessions simuladas (somente leitura)</h2>${sessionsHtml}</div>`;
 }
-async function wireExecute(pid) {}
+async function wireExecute(pid) {
+  document.querySelectorAll("[data-syntax-task]").forEach(button => button.addEventListener("click", async () => {
+    if (!confirm("Validar apenas sintaxe Python deste arquivo local? Um processo Python será iniciado; código do jogo NÃO será executado e a Task não será aprovada.")) return;
+    button.disabled = true;
+    try {
+      const r = await api("POST", `/api/projects/${pid}/validation-sessions`, {
+        module_id: button.dataset.syntaxModule, task_id: button.dataset.syntaxTask,
+        path: button.dataset.syntaxPath, confirm: true,
+      });
+      toast(`Sintaxe: ${r.validation_status}. Não é teste de jogo.`);
+      await renderProject(pid, "execute");
+    } catch (e) { toast("Validação indisponível: " + e.message); button.disabled = false; }
+  }));
+  const probe = document.getElementById("draft-probe");
+  if (!probe) return;
+  probe.addEventListener("click", async () => {
+    probe.disabled = true;
+    const model = document.getElementById("draft-model");
+    model.replaceChildren(); model.add(new Option("Consulte modelos primeiro", ""));
+    try {
+      const result = await api("POST", "/api/providers/local-ollama/probe", {confirm: true});
+      (result.models || []).forEach(name => model.add(new Option(name, name)));
+      document.getElementById("draft-status").textContent = result.message;
+    } catch (e) { document.getElementById("draft-status").textContent = "Ollama indisponível: " + e.message; }
+    finally { probe.disabled = false; }
+  });
+  document.querySelectorAll("[data-draft-task]").forEach(button => button.addEventListener("click", async () => {
+    const model = document.getElementById("draft-model").value;
+    if (!model) return toast("Selecione um modelo Ollama após consultar a lista.");
+    if (!confirm("Enviar objetivo da Task e conteúdo deste arquivo ao modelo? Ele pode operar na nuvem/cobrar conforme configuração. Nenhuma mudança será aplicada sem revisar o diff.")) return;
+    const tid = button.dataset.draftTask;
+    const pre = document.getElementById(`draft-${tid}`);
+    const apply = document.getElementById(`apply-${tid}`);
+    apply.disabled = true; delete apply.dataset.proposalId;
+    button.disabled = true;
+    try {
+      const r = await api("POST", `/api/projects/${pid}/tasks/${button.dataset.draftModule}/${tid}/draft`,
+                          {path: button.dataset.draftPath, model, confirm_send: true});
+      pre.style.display = "block"; pre.textContent = r.diff || "Sem diferenças: reveja a proposta.";
+      apply.dataset.proposalId = r.proposal_id;
+      apply.disabled = !r.diff;
+      toast("Leia o diff antes de aplicar. Nenhum arquivo foi alterado ainda.");
+    } catch (e) { toast("Rascunho indisponível: " + e.message); }
+    finally { button.disabled = false; }
+  }));
+  document.querySelectorAll("[id^='apply-']").forEach(button => button.addEventListener("click", async () => {
+    if (!button.dataset.proposalId || !confirm("Aplicar este diff no arquivo Python? O original será preservado em backup; a Task/jogo NÃO serão aprovados.")) return;
+    const proposal_id = button.dataset.proposalId;
+    button.disabled = true; delete button.dataset.proposalId;
+    try {
+      const result = await api("POST", `/api/projects/${pid}/code-changes/apply`, {proposal_id, confirm:true});
+      toast("Arquivo alterado; backup: " + result.backup_path + ". Jogo não verificado.");
+      await renderProject(pid, "execute");
+    } catch (e) { toast("Aplicação incerta/bloqueada: " + e.message + " Inspecione arquivo e backup antes de repetir."); }
+  }));
+}
 const previewedTasks = new Map();
 function previewKey(pid, mid, tid) { return `${pid}:${mid}:${tid}`; }
 async function previewTask(pid, mid, tid) {
@@ -829,7 +949,28 @@ async function execTask(pid, mid, tid) {
   } catch (e) { toast("Erro: " + e.message + " Revise a proposta e tente novamente."); }
 }
 
-/* ----- qa ----- */
+/* ----- qa / fatia vertical ----- */
+function renderSliceReview(pid, report, error) {
+  if (error) return `<div class="banner danger">Roteiro da fatia vertical indisponível: ${esc(error)}. Revise os dados em Integridade; QA manual continua acessível.</div>`;
+  if (!report) return "";
+  const labels = {
+    not_planned: "A planejar", planned: "Planejado", reported_executed: "Execução relatada",
+    dev_declared_approved: "Aprovado pelo Dev (relato)", reported_failed: "Falha relatada",
+    incomplete_record: "Registro incompleto",
+  };
+  const tasks = report.tasks || [];
+  const cards = tasks.map(task => `<details class="card"><summary><strong>${esc(task.module_name)} → ${esc(task.task_name)}</strong> · ${esc(task.task_id)}</summary>
+    <p class="muted">Verificação planejada da tarefa: ${esc(task.task_verify || "não descrita")}. Confira GDD.md e SCOPE.md: rascunho não é decisão aprovada.</p>
+    <div class="table-scroll"><table><tr><th>Verificação sugerida</th><th>QA manual mais recente</th><th>Arquivo vinculado</th><th>Ação</th></tr>${
+      (task.checks || []).map(check => `<tr><td><strong>${esc(check.label)}</strong><br><small>${esc(check.criterion)}</small></td>
+        <td>${pill(labels[check.status] || "Não verificado")}<br><small>${check.qa_id ? `QA ${esc(check.qa_id)} · ${esc(check.reports_count)} relato(s)` : "Sem QA por ID"}</small></td>
+        <td>${(check.evidence || []).length ? check.evidence.map(item => `<small>${esc(item.id)}: ${esc(item.integrity)} (hash ≠ teste)</small>`).join("<br>") : "<small>Sem arquivo vinculado</small>"}</td>
+        <td><button type="button" class="ghost small" data-slice-task="${esc(task.task_id)}" data-slice-check="${esc(check.id)}">Preparar QA</button></td></tr>`).join("")}</table></div>
+    <p class="muted">Playtest e resultado do jogo: NÃO VERIFICADOS pelo Studio, mesmo se QA for aprovado manualmente.</p>
+  </details>`).join("");
+  return `<h2>Fatia vertical · roteiro por tarefa</h2><div class="banner info">Planeje e relate: início → loop → recompensa → retomada. Critérios opcionais podem ser marcados como não aplicáveis no texto de QA após revisão. Nenhum checkbox ou relato desbloqueia o gate.</div>
+    ${cards || `<div class="empty">Crie uma tarefa no Plano antes de preparar a fatia vertical. <a href="#/project/${esc(pid)}/plan">Abrir Plano</a>.</div>`}`;
+}
 function projectQa(pid, data) {
   const qa = data.qa || [];
   const targets = (data.modules||[]).flatMap(m => [
@@ -841,6 +982,7 @@ function projectQa(pid, data) {
     `<div class="empty">Nenhuma verificação registrada.</div>`;
   return `<h1>QA / Playtest</h1>
     <div class="banner info">Registre resultados reais feitos pelo Dev: executado, aprovado e falhou exigem critério, ferramenta e evidência. O Studio não executa nem confere o teste; não marque como aprovado sem revisar o resultado.</div>
+    ${renderSliceReview(pid, data.slice_review, data.slice_error)}
     ${rows}
     <p><a href="#/project/${esc(pid)}/evidence">Ver arquivos de evidência locais</a> (hash de bytes não equivale a teste aprovado).</p>
     <div class="card"><h3>Nova verificação</h3>
@@ -857,7 +999,18 @@ function projectQa(pid, data) {
       <div class="row" style="margin-top:10px"><button onclick="addQa('${esc(pid)}')">Registrar</button></div>
     </div>`;
 }
-async function wireQa(pid) {
+async function wireQa(pid, review) {
+  document.querySelectorAll("[data-slice-task]").forEach(button => button.addEventListener("click", () => {
+    const task = (review?.tasks || []).find(t => t.task_id === button.dataset.sliceTask);
+    const check = (task?.checks || []).find(c => c.id === button.dataset.sliceCheck);
+    if (!task || !check) return toast("Critério indisponível; recarregue a seção.");
+    document.getElementById("q-target").value = `slice:${check.id}`;
+    document.getElementById("q-target-ref").value = `task:${task.task_id}`;
+    document.getElementById("q-crit").value = check.criterion;
+    document.getElementById("q-res").value = "planejado";
+    document.getElementById("q-target").focus();
+    toast("Formulário preparado; revise e registre manualmente. Nenhum teste foi executado.");
+  }));
   window.addQa = async function (pid) {
     const result = document.getElementById("q-res").value;
     if (result === "aprovado_dev" && !confirm("Você revisou a evidência e aprova este resultado de QA? O Studio não executou o teste.")) return;

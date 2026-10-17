@@ -21,6 +21,10 @@ from . import skills
 from . import handoff
 from . import evidence
 from . import sessions
+from . import attempt_history
+from . import vertical_slice
+from . import validation_sessions
+from . import code_drafts
 
 __all__ = [
     "storage",
@@ -38,4 +42,8 @@ __all__ = [
     "handoff",
     "evidence",
     "sessions",
+    "attempt_history",
+    "vertical_slice",
+    "validation_sessions",
+    "code_drafts",
 ]

@@ -409,3 +409,240 @@ Roteiro atualizado: `docs/DESKTOP-WINDOWS-RETESTE-2.md`.
 
 Referências: [API pywebview — `zoomable` padrão](https://pywebview.flowrl.com/api/)
 e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution).
+
+## Decisão 23 — P0.1: avaliação mínima de permissões efetivas (2026-10-11)
+
+- **Escopo e autoridade:** o Dev aprovou apenas uma política calculável e um
+  avaliador puro, sem integrar a execução da Alpha, criar Registry, Runtime ou
+  persistir políticas. `planning.create_task` guarda `permissions` como textos
+  **solicitados**, não concedidos; `handoff._render` já os identifica assim.
+  `sessions.py` só registra simulações com permissões efetivas vazias. Projeto e
+  Profile possuem políticas conceituais nos contratos de IA, mas não há esquema
+  persistido nem Profile conectado. `AI-MULTI-AGENT-CONTRACT.md` define políticas
+  conceituais para Task/Subtask; não há Subtask implementada.
+- **Regra:** para uma capacidade identificada por um catálogo confiável, exige-se
+  solicitação explícita da Task e concessão explícita de cada política **aplicável**:
+  Projeto e Task; também Profile se selecionado; também Subtask se houver
+  delegação. Uma Subtask precisa solicitar a mesma capacidade e tê-la concedida
+  em sua própria política; não herda concessão do pai. Negação explícita em
+  **qualquer** política aplicável prevalece, inclusive sobre concessão na mesma
+  política e em outras camadas. Uma Subtask não amplia o escopo solicitado pela
+  Task. Perfil ausente na execução direta significa camada não aplicável; para
+  uma Subtask, o contrato exige Profile. Política de Projeto/Task ausente,
+  política de Subtask ausente quando há Subtask, solicitação ausente ou concessão
+  ausente em camada aplicável bloqueiam. Capacidade fora do conjunto conhecido
+  (ou entrada malformada) bloqueia, sem interpretação por similaridade, wildcard
+  ou promoção de texto de tarefa a identidade de capacidade.
+- **Conciliação dos contratos:** `AI-CONTEXT-AND-PERMISSIONS.md` enumera
+  Projeto → Profile → requisito da Task; `AI-MULTI-AGENT-CONTRACT.md` enumera
+  Projeto → Task → Subtask. São recortes compatíveis: Profile restringe quando
+  selecionado, e Subtask restringe quando delegada. A matriz inicial que chama
+  leitura do projeto de “permitida” descreve um *default de produto* futuro,
+  **não** uma concessão implícita neste avaliador. Qualquer default precisaria
+  ser explicitamente materializado numa política confiável antes de calcular
+  acesso. Ações com approval/cost gates precisam passar nesses gates **além**
+  deste cálculo; `allowed` sozinho não os satisfaz.
+- **Representação P0.1:** políticas `allow`/`deny` e conjunto de capacidades
+  conhecidas são apenas entradas em memória do avaliador; não são campos novos
+  em `modules.json`, `sessions.json`, API ou configurações. O conjunto conhecido
+  precisa vir futuramente de fonte confiável (P0.2), nunca da Task, de Skills,
+  do conteúdo do projeto ou do Agent. Diagnósticos usam frases fixas e nome
+  fixo da camada, sem ecoar textos de entrada ou segredos.
+- **Alternativas:** tratar `task.permissions` como autorização tornaria um pedido
+  uma concessão; aplicar automaticamente “leitura permitida” ampliaria acesso na
+  ausência de política; exigir Profile também na execução direta confundiria a
+  simulação sem Profile com autorização real. Todas foram rejeitadas para P0.1.
+- **Consequências e teste:** nenhuma migração ou mudança no fluxo Alpha; uma
+  política não fornecida bloqueia operações futuras em vez de permitir acesso.
+  Testar negações em todas as camadas, solicitações sem concessão, camada ausente,
+  conflito allow/deny, Subtask sem herança e capacidade desconhecida. Isto **não**
+  é enforcement, sandbox, isolamento do SO ou aprovação para executar algo.
+  Persistência/edição de políticas, identidade confiável de capacidades,
+  aprovação por ação, credenciais e integração a Runtime seguem sem decisão de
+  implementação e exigem autorização específica antes de P0.2/execução real.
+
+## Decisão 24 — P0.2: Registry de Tools e preflight estritamente declarativos (2026-10-12)
+
+- **Escopo:** Registry **em memória**, vazio por padrão, de descritores de Tools
+  (`id` único, `origin`, capacidades conhecidas e marcadores conservadores de
+  aprovação/custo). Uma Tool é uma operação oferecida por um runtime/integração,
+  não uma Skill, Agent ou MCP conectado. A origem e as capacidades devem vir de
+  código/configuração confiável ainda a definir, **não** de Task, Skill, prompt,
+  arquivo do projeto ou resposta externa não validada. Não há serialização,
+  endpoint, descoberta automática, conexão, instalação ou execução neste lote.
+- **Preflight:** exige `tool_id` e capacidade específicos; recusa desconhecidos,
+  ambiguidades/duplicatas e catálogo malformado. Um estado recebido do chamador
+  distingue `configured` de `connected`; não os confunde nem tenta conectar.
+  `connected` informado é apenas um snapshot declarativo, **não** prova de
+  conectividade, versão, segurança, sandbox ou disponibilidade futura. O
+  avaliador P0.1 ainda exige solicitação e concessões explícitas; negações
+  prevalecem. Se houver marcador de aprovação ou custo potencial, retornar
+  *aguardando decisão*, nunca executável, até existir gate/cost policy próprios.
+  Mesmo sem esses marcadores, o resultado é só *elegível na análise estática*,
+  não uma autorização para iniciar processos. O preflight não substitui checagem
+  no momento da ação, consentimento humano, validação de recursos ou isolamento.
+- **Alternativas:** publicar Tools como disponíveis na UI apenas por constarem
+  do catálogo criaria falsa expectativa; inferir Tools de `Task.permissions` ou
+  autoeleger outra Tool como fallback contornaria o escopo revisto; alterar já
+  `sessions.json`/`modules.json` criaria esquema sem autorização e prejudicaria
+  a Alpha. Estas alternativas ficam excluídas deste incremento.
+- **Risco, reversão e aceite:** falhar fechado quando a Tool, capacidade, origem,
+  estado ou política faltarem/forem inválidos, com motivo fixo sem ecoar possíveis
+  segredos; manter simulador, sessões, API e storage inalterados. Testar catálogo
+  vazio, duplicata, capability mismatch, indisponibilidade, negação por política,
+  approval/cost pendentes e preflight de exemplo sem I/O. Apagar o módulo (se
+  não consumido) reverte a P0.2 sem migração; integração real, aprovação por
+  ação, verificação de conectividade e compatibilidade Windows permanecem
+  decisões separadas.
+
+## Decisão 25 — P0.3: eventos de tentativa locais sem Runtime (2026-10-12)
+
+- **Problema e escopo:** `sessions.json` possui registros terminais de simulações,
+  validados estritamente por `sessions.validate_entries`; inserir aí tentativas
+  mutáveis, logs de worker ou estados reais quebraria a Alpha. Criar um arquivo
+  **separado e opcional** `attempt_events.json` (envelope JSON v2), vazio quando
+  ausente, com eventos estruturados de tentativa vinculados aos IDs gerados hoje
+  pelo planejamento Alpha (projeto/módulo/tarefa); não é schema de IDs futuros.
+  O serviço é interno: nenhuma rota HTTP, UI, worker, runtime, tool, provider ou
+  simulação atual começa a produzir estes eventos. Testes usam tentativas falsas.
+- **Eventos permitidos:** cada tentativa começa em `planned`, com ID, sequência e
+  timestamp com timezone; transições declarativas para `awaiting_approval`,
+  `running`, `process_finished` (fase `validating`), `validation_finished`
+  (`completed` apenas da tentativa), `failed`, `timed_out`, `cancel_requested`,
+  `cancelled` ou `blocked` conforme grafo estrito. Cancelamento solicitado fica
+  pendente até confirmação de cancelamento, falha ou timeout; timeout termina
+  como falha explícita.
+  `process_finished` e `validation_finished` são **declarações em metadados**,
+  não comprovantes de execução, validação ou evidência: o resultado permanece
+  `not_verified` e jamais altera Task, gate, QA, `evidence.json` ou Session.
+- **Dados e recuperação:** gravar somente códigos enumerados, IDs, sequência e
+  tempo, nunca prompt, saída livre, credencial, caminho ou segredo. Validar todo o
+  histórico na leitura, antes de qualquer append; rejeitar transição inválida,
+  IDs misturados, sequência repetida, evento desconhecido e dados de outro
+  projeto. Escrita atômica e `.bak`/recuperação confirmada reaproveitam Storage.
+  Append-only é **lógico na API**: JSON é regravado atomicamente; não é arquivo
+  imutável nem log durável contra crash/disco cheio. Recovery pode voltar à
+  versão anterior e **perder o último evento**. Uma falha de escrita não deve
+  promover etapas posteriores; reconciliação entre arquivos/processos permanece
+  manual. Não há retenção ou redaction de payload porque payload livre é recusado.
+- **Alternativas:** modificar o schema de `sessions.json` agora conflitaria com
+  simulações existentes; append de linhas sem recuperação/validação arriscaria
+  histórico parcial; criar uma árvore falsa de Sessions atribuiria execução não
+  realizada. Um sidecar conservador mantém a Alpha legível e é reversível sem
+  migrar registros antigos. Não é decisão de schema para execução real futura.
+- **Aceite e limites:** testes de transições, cancelamento pendente, timeout,
+  falha, restart, corrupção, symlink, backup/recovery e compatibilidade Alpha.
+  Ainda faltam ligação a Session real, evidências verificadas, processo cancelável,
+  timeout de SO, lock interprocessos e plano de durabilidade/retention antes de
+  integrar Runtime. O Dev autorizou avançar com a próxima etapa, não autorizou
+  execução externa, gasto ou publicação.
+
+## Decisão 26 — P0.4: roteiro revisável de fatia vertical, sem promover gates (2026-10-12)
+
+- **Escolha:** oferecer em QA um roteiro compacto para uma Task identificada por
+  `task:<id>`: início, loop (ação → feedback → retorno), progressão/recompensa,
+  interações críticas, retomada, escopo negativo, UX/arte quando pertinente e
+  playtest humano. O backend apenas projeta `modules.json`, registros QA por ID e
+  integridade de evidências locais. O Dev escolhe se os critérios se aplicam e
+  escreve o resultado no QA manual existente. Pré-preencher um formulário não
+  escreve nada. Não gerar novas Tasks, documentos ou Skills automaticamente.
+- **Vínculo sem schema novo:** novos relatos QA podem usar o marcador estável
+  `target: "slice:<critério>"` **junto** de `target_ref: "task:<id>"` e critério
+  legível; isso é um rótulo de relatório, não uma credencial nem um atestado.
+  Alvos antigos sem esse par continuam legíveis e não são reinterpretados por
+  semelhança textual. O relatório consulta a última entrada na ordem de criação
+  para o marcador (editar uma entrada antiga não a reordena), mostra IDs e
+  integridade dos arquivos ligados ao QA; falhas antigas permanecem no QA
+  original. Não deduz aprovação da existência de arquivo, comando digitado ou texto `aprovado_dev` isolado sem
+  critério/ferramenta/evidência. Toda classificação de QA continua **declaração
+  humana**, mesmo com `aprovado_dev` e hash intacto; validação automatizada e
+  playtest realmente executado são `not_verified` no Studio.
+- **Alternativas:** analisar Markdown do GDD como se texto rascunho fosse
+  contrato aprovado, duplicar QA num novo JSON ou alterar `stages.evaluate`
+  para contar checkboxes seriam fontes de conflito e poderiam liberar MVP sem
+  jogo funcional. Em vez disso, manter fontes existentes e os gates atuais,
+  inclusive `EXECUTION_NOT_VERIFIED` e `VALIDATION_MISSING` após a simulação.
+- **Aceite/riscos:** GET somente leitura e UI explicativa, sem Runtime, engine,
+  despesa ou provider. Testar projeto sem tarefas, QA ausente/malformado, múltiplas
+  tarefas, relato manual, evidência alterada, API e regressão de gate. O fluxo
+  ainda depende de planejamento e playtest humano com jogo real no futuro;
+  etiquetas não comprovam funcionalidade, e texto livre deve ser revisado antes
+  de exportar/compartilhar. Este incremento é reversível sem migração.
+
+## Decisão 27 — primeira validação local real sem executar código do jogo (2026-10-17)
+
+- **Escolha reversível:** para uma Task com arquivo `.py` existente explicitamente
+  listado em `Task.files`, permitir ação confirmada de verificação de sintaxe.
+  O Studio lê no máximo 512 KiB sob o projeto, recusa links simbólicos/travessia,
+  entrega os **bytes** ao Python da própria instalação via stdin (`-I -S -B`),
+  faz apenas `ast.parse` e registra resultado e SHA-256 dos bytes lidos. Não
+  importa, testa, executa nem edita o código; não instala Python adicional.
+  Isto é uma **validação de sintaxe real**, não Agent Runtime de programação,
+  build da engine, sandbox, aceite da Task ou jogabilidade verificada.
+- **Histórico:** `validation_sessions.json` opcional e separado tanto das Sessions
+  simuladas `sessions.json` quanto das tentativas declarativas
+  `attempt_events.json`. Grava `running` antes do processo e estado terminal
+  depois, com backup e validação na leitura. Se o processo/Studio cair entre
+  escritas, `running` é exibido como interrompido/estado incerto após reload;
+  não é promovido nem executado automaticamente outra vez. Não prometer
+  transação entre JSONs ou segurança contra dois processos independentes.
+- **Segurança/gates:** não interpretar Task.permissions ou Skill como grant, não
+  aceitar comando/caminho arbitrário, não capturar saída/código potencialmente
+  secreto no histórico. Processo de parser tem timeout; nenhuma permissão para
+  shell, escrita de jogo, rede, push, instalação ou provider é concedida. Gate
+  de execução real da Task permanece bloqueado: parser sintático não comprova
+  tarefa implementada, teste jogável, revisão humana ou artefato de build.
+- **Alternativas recusadas:** `subprocess(shell=True)`, executar testes/comandos
+  livres de um projeto sem sandbox, acoplar DevKit.bat e colar estado real em
+  `sessions.json` quebrariam isolamento/compatibilidade. Uma primeira operação
+  estreita permite testar I/O de processo, timeout e persistência sem fingir
+  que o trabalho de Agent, engine e cancelamento seguro já existe.
+
+## Decisão 28 — chat Ollama opt-in, separado de execução de Task (2026-10-17)
+
+- O painel da Lia pode conversar com um modelo anunciado por Ollama em
+  `127.0.0.1:11434` **somente** após o Dev consultar a lista, selecionar o
+  modelo, digitar a mensagem e confirmar o envio. Sem downloads, conta, chave,
+  Skills automáticas, acesso ao GDD ou a arquivos do projeto. O endereço é fixo,
+  sem proxy ou redirect, respostas limitadas e erros sem texto bruto do serviço.
+  Histórico do chat fica apenas na tela; nenhuma memória pessoal é acessada.
+- Ollama pode anunciar modelos com execução remota: a lista não comprova que o
+  modelo é local, gratuito ou privado. A confirmação avisa que a mensagem pode
+  sair do computador conforme o modelo instalado/configurado. Nenhum fallback
+  ou cobrança é solicitado pelo Studio. Sem serviço/modelo disponível, o chat
+  fica indisponível sem comprometer o uso offline do resto do aplicativo.
+- A resposta é conteúdo não confiável exibido como texto, não uma instrução
+  autorizada, Session, Worker Result, edição de arquivo ou prova de QA. Para
+  execução de tarefas futura haverá outro contrato de autorização e evidência.
+
+## Decisão 29 — primeira edição assistida real, limitada a arquivo Python revisado (2026-10-17)
+
+- Após seleção explícita de modelo Ollama, arquivo `.py` existente em
+  `Task.files` e confirmação de envio do objetivo/fonte, o Studio pode solicitar
+  um **rascunho de arquivo completo**. Preview calcula diff local, sem escrita.
+  Proposta fica apenas em memória, com prazo curto e ID opaco; não é permissão.
+  Aprovação explícita reavalia Task, blockers e hash dos bytes de base, valida
+  sintaxe da proposta e grava backup único antes da substituição atômica.
+- `code_changes.json` é histórico de Sessions limitadas de edição (runtime
+  `ollama-draft`, estado `file_changed`, validação `not_run`): guarda ID da
+  Task, modelo, arquivo, hashes dos bytes/do objetivo e backup; não
+  salva prompt, fonte ou resposta do modelo. O arquivo foi realmente editado,
+  mas Task permanece não executada/validada/aceita até runner e revisão reais;
+  nenhum gate é aberto. Queda entre arquivo e registro pode deixar mudança
+  aplicada sem índice: backup preservado, exigir inspeção manual, nunca retry
+  cego. Lock apenas intraprocesso, não é sandbox nem transação de SO.
+- Não executar código gerado, shell, engine, build, Git ou rede adicional; a
+  resposta do modelo é dado não confiável. Limites de tamanho/escopo e contexto
+  mínimo reduzem risco, mas segredo preexistente no arquivo pode ser enviado a
+  um modelo Ollama configurado para nuvem: UI deve avisar antes de cada pedido.
+  Rascunhos longos/malformados são recusados sem escrita. Sem Ollama disponível,
+  o editor normal e toda a Alpha continuam disponíveis offline.
+
+## Decisão 30 — catálogo de Skills progressivo (2026-10-17)
+
+- A listagem de Skills distribuídas/do Dev deve ler apenas metadados e uma
+  pequena janela inicial de cada arquivo; conteúdo completo e hash só são
+  carregados quando o Dev abre uma Skill específica. Preservar IDs e UI
+  existentes, sem tornar Skills obrigatórias nem enviar conteúdo ao modelo.
+  Pastas/symlinks/tamanhos inválidos continuam falhando fechado. Isso é
+  recuperação local de metadados, não busca semântica ou aplicação de Skill.

@@ -42,6 +42,22 @@ def _entry(skill_id: str, path: Path, origin: str) -> Dict[str, str]:
             "origin": origin, "revision": _revision(text)}
 
 
+def _metadata(skill_id: str, path: Path, origin: str) -> Dict[str, str]:
+    """Catálogo leve: não lê o corpo integral até get_skill explícito."""
+    if path.is_symlink() or not path.is_file():
+        raise StorageError("Skill indisponível ou link simbólico; revise os arquivos")
+    try:
+        if path.stat().st_size > MAX_CONTENT_BYTES:
+            raise StorageError("Skill excede 64 KB; revise o arquivo")
+        with path.open("rb") as file:
+            prefix = file.read(8192).decode("utf-8", errors="ignore")
+    except OSError as exc:
+        raise StorageError("Skill ilegível; revise o arquivo") from exc
+    title = next((line[2:].strip() for line in prefix.splitlines()
+                  if line.startswith("# ") and line[2:].strip()), skill_id)
+    return {"id": skill_id, "title": title, "origin": origin}
+
+
 def _user_root(storage: Storage) -> Path:
     path = storage.projects_dir / "_skills"
     if path.is_symlink() or (path.exists() and not path.is_dir()):
@@ -63,16 +79,14 @@ def list_skills(storage: Optional[Storage] = None) -> List[Dict[str, str]]:
     if SKILLS_DIR.is_dir():
         for folder in sorted(SKILLS_DIR.iterdir()):
             if not folder.is_symlink() and folder.is_dir() and SKILL_ID.fullmatch(folder.name) and (folder / "SKILL.md").is_file():
-                skill = _entry(folder.name, folder / "SKILL.md", "builtin")
-                items.append({key: skill[key] for key in ("id", "title", "origin")})
+                items.append(_metadata(folder.name, folder / "SKILL.md", "builtin"))
     if storage is not None:
         root = _user_root(storage)
         if root.is_dir():
             for folder in sorted(root.iterdir()):
                 if not USER_ID.fullmatch(folder.name):
                     continue
-                skill = _entry(folder.name, _user_path(storage, folder.name), "user")
-                items.append({key: skill[key] for key in ("id", "title", "origin")})
+                items.append(_metadata(folder.name, _user_path(storage, folder.name), "user"))
     return sorted(items, key=lambda item: (item["title"].casefold(), item["id"]))
 
 

@@ -75,8 +75,9 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   permanecem **não executados**; aceite não os transforma em aprovação.
 
 ## O que é apenas simulado / não implementado
-- Inferência real de IA (Ollama/Gemini/OpenRouter): somente catálogo/modo e
-  diagnóstico de disponibilidade Ollama sob demanda; nenhum modelo executado.
+- Execução de **Tasks por Agent** e conexão direta Gemini/OpenRouter: indisponíveis.
+  Chat Ollama pode fazer inferência real opcional por mensagem, e rascunho de
+  arquivo Python pode ser gerado após confirmação; nada disso executa o jogo.
 - Integração real com engines (Unreal/Godot/Unity/MonoGame): perfis selecionáveis,
   mas adapters não implementados/verificados.
 - **Marco desktop Windows:** shell opcional `desktop.py` para janela WebView2
@@ -86,6 +87,22 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   **não** aptidão para distribuição. A revisão seguinte habilita zoom nativo,
   recarga explícita e pré-checagem de WebView2; pede [reteste direcionado](docs/DESKTOP-WINDOWS-RETESTE-2.md).
   A Alpha via `python run.py` continua sem dependências de terceiros.
+
+## Incrementos integrados em desenvolvimento (não aceitos no Windows)
+- Conversa textual opcional com modelo escolhido do Ollama em loopback, após
+  confirmação por mensagem. Modelo anunciado pode usar nuvem/custo segundo a
+  configuração do usuário; o Studio não instala modelo, não guarda prompt e
+  não lê documentos automaticamente. Sem Ollama, o aplicativo continua offline.
+- Na aba Execução, uma Task com arquivo Python existente pode pedir rascunho
+  via Ollama, revisar diff e **aplicar** após segunda confirmação. O Studio
+  cria backup e registra hashes/IDs, mas não executa o código nem declara a
+  Task aprovada. Arquivos alterados por outros processos bloqueiam aplicação.
+- Validação sintática local em processo Python separado da interface, limitada
+  a arquivo `.py` vinculado à Task; timeout e histórico próprio. Testa sintaxe,
+  não gameplay, build ou critério de aceite. Não abre gate do MVP.
+- Roteiro de fatia vertical por Task vinculado ao QA manual, sem validação de
+  jogo ou playtest pelo Studio. Permissões e Tool Registry continuam sem
+  enforcement de processos arbitrários; não são sandbox do sistema operacional.
 
 ## Requisitos
 - Python 3.9+ (apenas biblioteca padrão — **sem `pip install`**).
