@@ -15,7 +15,9 @@
     `validation_sessions.json` (opcional; processo de sintaxe Python real,
     separado de Session simulada e sem saída bruta) e `code_changes.json`
     (opcional; hashes, IDs, criação inicial sem backup anterior e caminhos de
-    backup de edições assistidas aprovadas). Na **raiz local** da instalação,
+    backup de edições assistidas aprovadas) e `draft_jobs.json` (opcional;
+    somente metadados de inferência, nunca prompt, fonte, resposta ou diff).
+    Na **raiz local** da instalação,
     fora da pasta exportável do projeto, `runtime_policy.json` opcional guarda
     capacidades fixas, grants/negações por projeto e Task vinculados ao local;
     ausente significa negar operações reais restritas. Não contém segredos, mas
@@ -121,6 +123,13 @@
   recalculada apenas para exibição; não é prova de build/jogo. Um ID de edição
   pode ser exibido quando hashes de bytes/Task/arquivo coincidem, sem reescrever
   históricos nem atribuir causalidade ou aceite.
+- `draft_jobs.json` registra ID, Task, caminho relativo, modelo, hashes do
+  contexto, Skill opcional, estado e códigos fixos de resultado. A proposta/diff
+  e a conexão de inferência existem só em memória nesta instância, com prazo;
+  reinício/interrupção não recuperam proposta nem disparam retry. `running` após
+  reinício é incerto; `ready` sem proposta em memória não pode ser aplicado.
+  Cancelamento é pedido ao socket local, não promessa de interromper cobrança ou
+  inferência remota. O histórico/backup de JSON pode perder o último evento.
 - `code_changes.json` não guarda prompt/fonte gerada; somente IDs, modelo,
   arquivo relativo, hashes, Skill escolhida/revisão (quando houver) e caminho
   de backup quando há original. Criar um

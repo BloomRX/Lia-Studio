@@ -845,9 +845,11 @@ function projectExecute(pid, data) {
       ${(t.files || []).filter(f => typeof f === "string" && f.endsWith(".py")).map(f =>
         `<div class="row"><button type="button" class="ghost small" data-create-module="${esc(m.id)}" data-create-task="${esc(t.id)}" data-create-path="${esc(f)}">Criar arquivo inicial (se ausente): ${esc(f)}</button>
          <button type="button" class="ghost small" data-syntax-module="${esc(m.id)}" data-syntax-task="${esc(t.id)}" data-syntax-path="${esc(f)}">Verificar sintaxe: ${esc(f)}</button>
-         <button type="button" class="ghost small" data-draft-module="${esc(m.id)}" data-draft-task="${esc(t.id)}" data-draft-path="${esc(f)}">Propor edição: ${esc(f)}</button></div>`).join("")}
+         <button type="button" class="ghost small" data-draft-module="${esc(m.id)}" data-draft-task="${esc(t.id)}" data-draft-path="${esc(f)}">Iniciar Job de rascunho: ${esc(f)}</button></div>`).join("")}
       <pre id="draft-${esc(t.id)}" class="card" style="white-space:pre-wrap;display:none;overflow:auto"></pre>
-      <button id="apply-${esc(t.id)}" type="button" class="ghost small" disabled>Revisar e aplicar proposta</button>
+      <button id="cancel-draft-${esc(t.id)}" type="button" class="ghost small" data-cancel-draft-job="" hidden>Solicitar cancelamento do Job</button>
+      <button id="review-draft-${esc(t.id)}" type="button" class="ghost small" disabled>Confirmar que revisei o diff</button>
+      <button id="apply-${esc(t.id)}" type="button" class="ghost small" disabled>Aplicar proposta revisada</button>
       <pre id="exec-${t.id}" class="card" style="white-space:pre-wrap;margin-top:8px;display:none"></pre>
     </div>`).join("") : `<div class="empty">Nenhuma tarefa para executar. Crie tarefas no Plano.</div>`;
   const history = (data.recent_sessions || []).slice().reverse();
@@ -859,6 +861,9 @@ function projectExecute(pid, data) {
   const validationHtml = validations.length ? `<ul class="clean">${validations.map(s =>
     `<li><code>${esc(s.id)}</code> · tarefa ${esc(s.task_id)} · ${esc(s.path)} · ${esc(s.display_state)} · ${esc(s.validation_status)} (somente sintaxe Python) · arquivo atual: ${esc(s.source_integrity)} ${s.matching_change_id ? `· hash coincide com alteração <code>${esc(s.matching_change_id)}</code> (sem prova de causalidade)` : ""} · jogo NÃO VERIFICADO ${s.display_state === "running" ? `<button type="button" class="ghost small" data-cancel-validation="${esc(s.id)}">Solicitar cancelamento</button>` : ""}</li>`
   ).join("")}</ul>` : `<p class="muted">Nenhuma análise sintática local registrada.</p>`;
+  const jobs = (data.recent_draft_jobs || []).slice().reverse();
+  const jobsHtml = jobs.length ? `<ul class="clean">${jobs.map(j =>
+    `<li><code>${esc(j.id)}</code> · Task ${esc(j.task_id)} · ${esc(j.path)} · ${esc(j.display_state)} · jogo NÃO VERIFICADO ${j.display_state === "ready" ? `<button type="button" class="ghost small" data-open-draft-job="${esc(j.id)}" data-open-draft-task="${esc(j.task_id)}">Abrir diff</button>` : ""} ${j.display_state === "running" ? `<button type="button" class="ghost small" data-cancel-draft-job="${esc(j.id)}">Solicitar cancelamento</button>` : ""}</li>`).join("")}</ul>` : `<p class="muted">Nenhum Job de inferência registrado.</p>`;
   const changes = (data.recent_code_changes || []).slice().reverse();
   const changesHtml = changes.length ? `<ul class="clean">${changes.map(c =>
     `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} ${c.skill_id ? `· Skill escolhida: ${esc(c.skill_id)}` : ""} · ${c.backup_path ? `backup: ${esc(c.backup_path)}` : "criação inicial (sem arquivo anterior para backup)"} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
@@ -875,10 +880,38 @@ function projectExecute(pid, data) {
       <p class="muted">Skill opcional: conteúdo de até 2400 caracteres será lido somente ao pedir rascunho e enviado ao modelo após confirmação. Instruções de Skill não concedem acesso a Tools.</p>
       <p id="draft-status" class="muted" role="status">Objetivo e fonte do arquivo escolhido podem sair do PC conforme o modelo Ollama. Você confirma antes de cada pedido.</p></div>
     ${html}
+    <div class="card"><h2>Jobs de modelo (inferência cancelável, sem executar código)</h2>${jobsHtml}</div>
     <div class="card"><h2>Sessions de edição assistida (arquivos não validados)</h2>${changesHtml}</div>
     <div class="card"><h2>Validações reais e limitadas (somente sintaxe)</h2>${validationHtml}</div>
     <div class="card"><h2>Sessions simuladas (somente leitura)</h2>${sessionsHtml}</div>`;
 }
+async function loadDraftJob(pid, jobId, tid, poll = false, tries = 0) {
+  const r = await api("GET", `/api/projects/${pid}/draft-jobs/${jobId}`);
+  const pre = document.getElementById(`draft-${tid || r.task_id}`);
+  if (!pre) return r; // usuário saiu da aba; estado continua consultável no histórico
+  const review = document.getElementById(`review-draft-${tid || r.task_id}`);
+  const apply = document.getElementById(`apply-${tid || r.task_id}`);
+  const cancel = document.getElementById(`cancel-draft-${tid || r.task_id}`);
+  pre.style.display = "block";
+  if (r.display_state === "ready" && r.diff && r.diff_sha256) {
+    pre.textContent = r.diff;
+    review.dataset.jobId = r.id; review.dataset.diffSha256 = r.diff_sha256;
+    review.disabled = !!r.reviewed;
+    if (r.reviewed) { apply.dataset.proposalId = r.id; apply.disabled = false; }
+    cancel.hidden = true;
+  } else if (r.display_state === "running" || r.display_state === "cancel_requested") {
+    pre.textContent = `Job ${r.display_state}; aguarde, ou peça cancelamento. Nada foi escrito.`;
+    cancel.dataset.cancelDraftJob = r.id;
+    cancel.hidden = r.display_state !== "running";
+    if (poll && tries < 100) setTimeout(() => loadDraftJob(pid, r.id, tid, true, tries + 1)
+      .catch(e => toast("Consulta do Job indisponível: " + e.message)), 700);
+  } else {
+    pre.textContent = `Job ${r.display_state} (${r.result_code}). Sem diff aplicável; Task/jogo não verificados.`;
+    review.disabled = true; apply.disabled = true; cancel.hidden = true;
+  }
+  return r;
+}
+
 async function wireExecute(pid) {
   document.querySelectorAll("[data-policy-task]").forEach(button => button.addEventListener("click", async () => {
     const {policyTask,policyModule,policyCap,policyAction,policyRevision} = button.dataset;
@@ -958,6 +991,33 @@ async function wireExecute(pid) {
     } catch (e) { toast("Skills indisponíveis: " + e.message); }
     finally { skillProbe.disabled = false; }
   });
+  document.querySelectorAll("[data-open-draft-job]").forEach(button => button.addEventListener("click", async () => {
+    try { await loadDraftJob(pid, button.dataset.openDraftJob, button.dataset.openDraftTask, true); }
+    catch (e) { toast("Job indisponível: " + e.message); }
+  }));
+  document.querySelectorAll("[data-cancel-draft-job]").forEach(button => button.addEventListener("click", async () => {
+    const id = button.dataset.cancelDraftJob;
+    if (!id || !confirm("Solicitar cancelamento do Job? A conexão local será interrompida quando possível; o modelo remoto pode continuar processando/cobrar. Aguarde estado terminal.")) return;
+    button.disabled = true;
+    try {
+      const r = await api("POST", `/api/projects/${pid}/draft-jobs/${id}/cancel`, {confirm:true});
+      toast(r.warning);
+      button.hidden = true;
+    } catch (e) { toast("Cancelamento incerto: " + e.message); button.disabled = false; }
+  }));
+  document.querySelectorAll("[id^='review-draft-']").forEach(button => button.addEventListener("click", async () => {
+    const id = button.dataset.jobId;
+    if (!id || !button.dataset.diffSha256 || !confirm("Li o diff integralmente. Registrar a revisão? Aplicar o arquivo exigirá outra confirmação e não aprovará o jogo.")) return;
+    button.disabled = true;
+    try {
+      const r = await api("POST", `/api/projects/${pid}/draft-jobs/${id}/review`,
+        {diff_sha256:button.dataset.diffSha256,confirm:true});
+      const apply = document.getElementById(`apply-${button.id.slice("review-draft-".length)}`);
+      apply.dataset.proposalId = r.proposal_id;
+      apply.disabled = false;
+      toast(r.warning);
+    } catch (e) { toast("Revisão não confirmada: " + e.message); button.disabled = false; }
+  }));
   document.querySelectorAll("[data-draft-task]").forEach(button => button.addEventListener("click", async () => {
     const model = document.getElementById("draft-model").value;
     if (!model) return toast("Selecione um modelo Ollama após consultar a lista.");
@@ -966,17 +1026,20 @@ async function wireExecute(pid) {
     const tid = button.dataset.draftTask;
     const pre = document.getElementById(`draft-${tid}`);
     const apply = document.getElementById(`apply-${tid}`);
+    const review = document.getElementById(`review-draft-${tid}`);
+    const cancel = document.getElementById(`cancel-draft-${tid}`);
     apply.disabled = true; delete apply.dataset.proposalId;
+    review.disabled = true; delete review.dataset.jobId; delete review.dataset.diffSha256;
     button.disabled = true;
     try {
-      const r = await api("POST", `/api/projects/${pid}/tasks/${button.dataset.draftModule}/${tid}/draft`,
+      const r = await api("POST", `/api/projects/${pid}/tasks/${button.dataset.draftModule}/${tid}/draft-jobs`,
                           {path: button.dataset.draftPath, model, confirm_send: true,
                            ...(selectedSkill ? {skill_id:selectedSkill} : {})});
-      pre.style.display = "block"; pre.textContent = r.diff || "Sem diferenças: reveja a proposta.";
-      apply.dataset.proposalId = r.proposal_id;
-      apply.disabled = !r.diff;
-      toast("Leia o diff antes de aplicar. Nenhum arquivo foi alterado ainda.");
-    } catch (e) { toast("Rascunho indisponível: " + e.message); }
+      pre.style.display = "block"; pre.textContent = "Job iniciado; aguardando resposta do modelo. Nenhum arquivo foi alterado.";
+      cancel.dataset.cancelDraftJob = r.id;
+      cancel.disabled = false; cancel.hidden = false;
+      await loadDraftJob(pid, r.id, tid, true);
+    } catch (e) { toast("Job indisponível: " + e.message); }
     finally { button.disabled = false; }
   }));
   document.querySelectorAll("[id^='apply-']").forEach(button => button.addEventListener("click", async () => {

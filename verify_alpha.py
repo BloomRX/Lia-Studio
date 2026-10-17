@@ -33,6 +33,7 @@ def main() -> int:
     validation_ok = check("Validação sintática Python local (não gameplay)", [sys.executable, "tests/test_validation_sessions.py"])
     chat_ok = check("Chat Ollama opt-in com serviço falso", [sys.executable, "tests/test_ollama_chat.py"])
     drafts_ok = check("Edição de código com diff, aceite e backup", [sys.executable, "tests/test_code_drafts.py"])
+    draft_jobs_ok = check("Jobs canceláveis de inferência com HTTP falso", [sys.executable, "tests/test_draft_jobs.py"])
     integration_ok = check("Fluxo HTTP integrado sem promover gates", [sys.executable, "tests/test_integrated_flow.py"])
     skills_ok = check("Skills: metadados progressivos", [sys.executable, "tests/test_skills_progressive.py"])
     desktop_ok = check("Shell desktop sem GUI (loopback e encerramento)", [sys.executable, "tests/test_desktop.py"])
@@ -45,7 +46,7 @@ def main() -> int:
         print("\nNode.js indisponível: regressão da UI e sintaxe JS NÃO EXECUTADAS.")
         js_ok = syntax_ok = None
     if (not python_ok or not permissions_ok or not registry_ok or not runtime_policy_ok or not engine_probe_ok or not attempts_ok
-        or not slice_ok or not validation_ok or not chat_ok or not drafts_ok or not integration_ok or not skills_ok
+        or not slice_ok or not validation_ok or not chat_ok or not drafts_ok or not draft_jobs_ok or not integration_ok or not skills_ok
         or not desktop_ok or not compile_ok or js_ok is False or syntax_ok is False):
         print("\nFALHA: revise os erros acima; não considere a Alpha pronta para teste de uso.")
         return 1

@@ -18,6 +18,8 @@ class FakeOllama(BaseHTTPRequestHandler):
     requests = []
     chat_status = 200
     chat_body = None
+    hold_event = None
+    started_event = None
 
     def log_message(self, *args):
         pass
@@ -29,8 +31,14 @@ class FakeOllama(BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         self.requests.append(("POST", self.path, body))
-        self.reply(self.chat_status, self.chat_body if self.chat_body is not None else
-                   {"message": {"content": "Resposta <não confiável>"}})
+        if self.hold_event is not None:
+            self.started_event.set()
+            self.hold_event.wait(3)
+        try:
+            self.reply(self.chat_status, self.chat_body if self.chat_body is not None else
+                       {"message": {"content": "Resposta <não confiável>"}})
+        except OSError:
+            pass  # cliente pode ter encerrado a conexão ao cancelar
 
     def reply(self, status, body):
         data = json.dumps(body).encode()
@@ -46,6 +54,8 @@ class TestOllamaChat(unittest.TestCase):
         FakeOllama.requests = []
         FakeOllama.chat_status = 200
         FakeOllama.chat_body = None
+        FakeOllama.hold_event = None
+        FakeOllama.started_event = None
         self.http = ThreadingHTTPServer(("127.0.0.1", 0), FakeOllama)
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()
@@ -56,11 +66,33 @@ class TestOllamaChat(unittest.TestCase):
         self.chat_patch.start()
 
     def tearDown(self):
+        if FakeOllama.hold_event is not None:
+            FakeOllama.hold_event.set()
         self.chat_patch.stop()
         self.tags_patch.stop()
         self.http.shutdown()
         self.http.server_close()
         self.thread.join(timeout=5)
+
+    def test_cancel_active_http_socket_discards_late_model_result(self):
+        FakeOllama.hold_event = threading.Event()
+        FakeOllama.started_event = threading.Event()
+        handle = ollama_chat.CancelHandle()
+        outcome = []
+        def call_model():
+            try:
+                ollama_chat.chat("oi", "test-local", True, cancel=handle)
+                outcome.append("unexpected_success")
+            except ollama_chat.ChatCancelled:
+                outcome.append("cancelled")
+        worker = threading.Thread(target=call_model, daemon=True)
+        worker.start()
+        self.assertTrue(FakeOllama.started_event.wait(2))
+        handle.cancel()
+        worker.join(timeout=2)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(outcome, ["cancelled"])
+        FakeOllama.hold_event.set()
 
     def test_prompt_limits_keep_chat_small_and_allow_bounded_task_context(self):
         with self.assertRaises(StorageError):

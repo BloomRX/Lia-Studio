@@ -78,10 +78,15 @@ assert.equal(reloads, 1);
     recent_validations:[{id:'v1', task_id:'task', path:'game/loop.py',
       display_state:'completed', validation_status:'passed',matching_change_id:'change-1'}],
     runtime_policy:{revision:'r1',project:{allow:[],deny:[]},tasks:{},
-      capabilities:{'project.python.write':'Escrever arquivo Python'}}});
+      capabilities:{'project.python.write':'Escrever arquivo Python'}},
+    recent_draft_jobs:[{id:'job-one',task_id:'task',path:'game/loop.py',display_state:'running'},
+      {id:'job-two',task_id:'task',path:'game/loop.py',display_state:'ready'}]});
   assert.match(syntaxHtml, /data-syntax-path="game\/loop.py"/);
   assert.match(syntaxHtml, /data-draft-path="game\/loop.py"/);
   assert.match(syntaxHtml, /data-create-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /data-open-draft-job="job-two"/);
+  assert.match(syntaxHtml, /data-cancel-draft-job="job-one"/);
+  assert.match(syntaxHtml, /id="review-draft-task"[^>]*disabled/);
   assert.match(syntaxHtml, /data-policy-cap="project.python.write"/);
   assert.match(syntaxHtml, /data-project-policy-cap="project.python.write"/);
   assert.match(syntaxHtml, /id="apply-task"[^>]*disabled/);
@@ -173,6 +178,8 @@ assert.equal(reloads, 1);
     add(o) {this.options.push(o);}};
   const draftPre = {style:{}, textContent:''};
   const draftApply = {disabled:true, dataset:{}, addEventListener:(_,fn)=>draftHandlers.apply=fn};
+  const draftReview = {id:'review-draft-task', disabled:true,dataset:{},addEventListener:(_,fn)=>draftHandlers.review=fn};
+  const draftCancel = {hidden:true, disabled:false,dataset:{cancelDraftJob:''},addEventListener:(_,fn)=>draftHandlers.cancel=fn};
   const draftProbe = {disabled:false, addEventListener:(_,fn)=>draftHandlers.probe=fn};
   const draftButton = {disabled:false, dataset:{draftTask:'task', draftModule:'module-1', draftPath:'game/loop.py'},
     addEventListener:(_,fn)=>draftHandlers.generate=fn};
@@ -187,19 +194,25 @@ assert.equal(reloads, 1);
   const draftSkillProbe = {disabled:false,addEventListener:(_,fn)=>draftHandlers.skillProbe=fn};
   const draftDom = {'draft-probe':draftProbe,'draft-model':draftModel,
     'draft-skill-probe':draftSkillProbe,'draft-skill':draftSkill,
-    'draft-status':{textContent:''},'draft-task':draftPre,'apply-task':draftApply};
+    'draft-status':{textContent:''},'draft-task':draftPre,'apply-task':draftApply,
+    'review-draft-task':draftReview,'cancel-draft-task':draftCancel};
   context.document.getElementById = id => draftDom[id] || oldGetElementById(id);
   context.document.querySelectorAll = selector => selector === '[data-draft-task]' ? [draftButton]
     : selector === '[data-create-task]' ? [createButton]
     : selector === '[data-policy-task]' ? [policyButton]
     : selector === '[data-project-policy-cap]' ? [denyButton]
+    : selector === '[data-cancel-draft-job]' ? [draftCancel]
+    : selector === "[id^='review-draft-']" ? [draftReview]
     : selector === "[id^='apply-']" ? [draftApply] : [];
   const draftRequests = [];
   context.fetch = async (url,opts) => {
     draftRequests.push({url,opts});
     return {ok:true,json:async()=>url.endsWith('/probe') ? {models:['local'],message:'ok'}
       : url === '/api/skills' ? {skills:[{id:'lia-user-abcdef123456',title:'Skill curta',origin:'user'}]}
-      : url.endsWith('/draft') ? {proposal_id:'preview123', diff:'-old\n+new'}
+      : url.endsWith('/draft-jobs') ? {id:'preview123',display_state:'running'}
+      : url.endsWith('/draft-jobs/preview123') ? {id:'preview123',task_id:'task',
+          state:'ready',display_state:'ready',diff:'-old\n+new',diff_sha256:'a'.repeat(64),reviewed:false}
+      : url.endsWith('/review') ? {id:'preview123',proposal_id:'preview123',warning:'revisão confirmada'}
       : {backup_path:'game/loop.py.lia-backup-preview123'}};
   };
   await context.wireExecute('project-1');
@@ -210,35 +223,51 @@ assert.equal(reloads, 1);
   assert.equal(draftRequests.length,1); // só probe
   context.confirm=()=>true;
   await draftHandlers.generate();
-  assert.equal(draftRequests[1].url, '/api/projects/project-1/tasks/module-1/task/draft');
+  assert.equal(draftRequests[1].url, '/api/projects/project-1/tasks/module-1/task/draft-jobs');
   assert.deepEqual(JSON.parse(draftRequests[1].opts.body),
     {path:'game/loop.py',model:'local',confirm_send:true});
+  assert.equal(draftRequests[2].url,'/api/projects/project-1/draft-jobs/preview123');
   assert.equal(draftPre.textContent,'-old\n+new');
-  assert.equal(draftApply.dataset.proposalId,'preview123');
+  assert.equal(draftReview.dataset.diffSha256,'a'.repeat(64));
+  assert.equal(draftApply.disabled,true); // ID do Job antes de revisar não autoriza escrita
   const renderOriginal=context.renderProject;
   context.renderProject=async()=>{};
+  await draftHandlers.review();
+  assert.equal(draftRequests[3].url,'/api/projects/project-1/draft-jobs/preview123/review');
+  assert.deepEqual(JSON.parse(draftRequests[3].opts.body),
+    {diff_sha256:'a'.repeat(64),confirm:true});
+  assert.equal(draftApply.dataset.proposalId,'preview123');
   await draftHandlers.apply();
-  assert.deepEqual(JSON.parse(draftRequests[2].opts.body),
+  assert.deepEqual(JSON.parse(draftRequests[4].opts.body),
     {proposal_id:'preview123',confirm:true});
   await draftHandlers.create();
-  assert.equal(draftRequests[3].url, '/api/projects/project-1/tasks/module-1/task/create-python');
-  assert.deepEqual(JSON.parse(draftRequests[3].opts.body),
+  assert.equal(draftRequests[5].url, '/api/projects/project-1/tasks/module-1/task/create-python');
+  assert.deepEqual(JSON.parse(draftRequests[5].opts.body),
     {path:'game/loop.py',confirm:true});
   await draftHandlers.policy();
-  assert.equal(draftRequests[4].url,'/api/projects/project-1/tasks/module-1/task/runtime-policy');
-  assert.deepEqual(JSON.parse(draftRequests[4].opts.body),
+  assert.equal(draftRequests[6].url,'/api/projects/project-1/tasks/module-1/task/runtime-policy');
+  assert.deepEqual(JSON.parse(draftRequests[6].opts.body),
     {capability:'project.python.write',action:'allow',revision:'rev',confirm:true});
   await draftHandlers.deny();
-  assert.equal(draftRequests[5].url,'/api/projects/project-1/runtime-policy/project-deny');
-  assert.deepEqual(JSON.parse(draftRequests[5].opts.body),
+  assert.equal(draftRequests[7].url,'/api/projects/project-1/runtime-policy/project-deny');
+  assert.deepEqual(JSON.parse(draftRequests[7].opts.body),
     {capability:'project.python.write',action:'deny',revision:'rev',confirm:true});
   await draftHandlers.skillProbe();
-  assert.equal(draftRequests[6].url,'/api/skills');
+  assert.equal(draftRequests[8].url,'/api/skills');
   assert.equal(draftSkill.options[1].value,'lia-user-abcdef123456');
   draftSkill.value='lia-user-abcdef123456';
   await draftHandlers.generate();
-  assert.equal(draftRequests[7].url,'/api/projects/project-1/tasks/module-1/task/draft');
-  assert.equal(JSON.parse(draftRequests[7].opts.body).skill_id,'lia-user-abcdef123456');
+  assert.equal(draftRequests[9].url,'/api/projects/project-1/tasks/module-1/task/draft-jobs');
+  assert.equal(JSON.parse(draftRequests[9].opts.body).skill_id,'lia-user-abcdef123456');
+  assert.equal(draftRequests[10].url,'/api/projects/project-1/draft-jobs/preview123');
+  draftCancel.dataset.cancelDraftJob='job-active';
+  context.confirm=()=>false;
+  await draftHandlers.cancel();
+  assert.equal(draftRequests.length,11);
+  context.confirm=()=>true;
+  await draftHandlers.cancel();
+  assert.equal(draftRequests[11].url,'/api/projects/project-1/draft-jobs/job-active/cancel');
+  assert.deepEqual(JSON.parse(draftRequests[11].opts.body),{confirm:true});
   context.renderProject=renderOriginal;
   context.fetch=priorFetch;
   context.document.getElementById=oldGetElementById;

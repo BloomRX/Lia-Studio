@@ -27,6 +27,7 @@ from . import validation_sessions
 from . import code_drafts
 from . import runtime_policy
 from . import engine_probe
+from . import draft_jobs
 
 __all__ = [
     "storage",
@@ -50,4 +51,5 @@ __all__ = [
     "code_drafts",
     "runtime_policy",
     "engine_probe",
+    "draft_jobs",
 ]

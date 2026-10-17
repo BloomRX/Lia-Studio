@@ -738,3 +738,23 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   conteúdo). Registros v2 anteriores continuam válidos sem esses campos; chat
   avulso permanece sem contexto. Dados enviados podem sair do dispositivo ou
   envolver custo conforme modelo Ollama: avisar antes de cada requisição.
+
+## Decisão 36 — job cancelável de rascunho Ollama, sem Agent geral (2026-10-17)
+
+- Além da rota síncrona legada de rascunho, uma rota opt-in cria um Job da Task
+  com ID, modelo, arquivo e hashes de contexto, **sem** prompt, fonte, resposta,
+  segredo ou diff no JSON. Grava `running` antes do worker local; somente a
+  instância ativa mantém conexão de inferência/diff em memória, com TTL. GET
+  permite observar progresso, falha, proposta pronta e cancelamento; reinício
+  exibe `interrompido/incerto` ou `proposta indisponível` sem retomar ou aprovar.
+- Cancelamento explícito marca `cancel_requested` antes de tentar fechar a
+  conexão HTTP direta com Ollama (somente 127.0.0.1, sem proxy/redirect, timeout),
+  descarta resultado tardio e só registra `cancelled` quando o worker termina.
+  Timeout/erro são terminais e não promovem Task/QA/gates. Erro de persistência
+  mantém estado incerto: nunca relançar modelo automaticamente (pode gerar
+  custo). Revisão do diff e aceite de escrita continuam separados e sujeitos
+  aos mesmos grants/backup. O chat avulso permanece síncrono e separado.
+- O Job não executa shell, testes do jogo, engine ou código gerado. Não é
+  delegação nem Runtime multi-Tool; não há autenticação contra processo hostil
+  local, sandbox de SO ou transação entre JSONs. Disponibilidade real do Ollama,
+  custo do modelo e comportamento Windows devem ser validados no ambiente alvo.

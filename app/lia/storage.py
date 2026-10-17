@@ -44,6 +44,7 @@ STRUCTURED_FILES = [
     "attempt_events.json",  # histórico opcional de tentativas, sem alterar Sessions simuladas
     "validation_sessions.json",  # processos de análise sintática, separados da simulação
     "code_changes.json",  # alterações assistidas após diff e confirmação
+    "draft_jobs.json",  # metadados de inferência local cancelável, sem prompts
     "assets.json",
     "release.json",
     "engine_profile.json",
@@ -90,7 +91,7 @@ def _decode_json(text: str, name: str) -> Any:
         if type(raw.get("schema_version")) is not int or raw["schema_version"] != SCHEMA_VERSION or "data" not in raw:
             raise StorageError(f"versão ou formato incompatível em {name}")
         raw = raw["data"]
-    expected = list if name in {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "assets.json"} else dict
+    expected = list if name in {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json"} else dict
     if not isinstance(raw, expected):
         raise StorageError(f"estrutura inválida em {name} (esperado {expected.__name__})")
     return raw
@@ -300,7 +301,7 @@ class Storage:
         return sorted(p.name for p in proj_dir.glob("*.md") if p.is_file() and not p.is_symlink())
 
     # ---- dados estruturados ----
-    _LIST_FILES = {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "assets.json"}
+    _LIST_FILES = {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json"}
 
     def read_structured(self, project_id: str, name: str) -> Any:
         if name not in STRUCTURED_FILES:
@@ -411,6 +412,9 @@ class Storage:
         if path.name in ("code_changes.json", "code_changes.json.bak"):
             from . import code_drafts
             code_drafts.validate_entries(data, expected_project_id=project_id)
+        if path.name in ("draft_jobs.json", "draft_jobs.json.bak"):
+            from . import draft_jobs
+            draft_jobs.validate_entries(data, expected_project_id=project_id)
         if path.name in ("runtime_policy.json", "runtime_policy.json.bak"):
             from . import runtime_policy
             runtime_policy.validate_global(data)

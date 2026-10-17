@@ -97,9 +97,10 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   não lê documentos automaticamente. Sem Ollama, o aplicativo continua offline.
 - Na aba Execução, uma Task pode criar um arquivo `.py` inicial vinculado,
   sem sobrescrever um existente. Uma Task com arquivo Python existente pode pedir rascunho
-  via Ollama, opcionalmente incluir uma Skill pequena escolhida explicitamente,
-  revisar diff e **aplicar** após segunda confirmação. O Studio cria backup e
-  registra hashes/IDs, mas não executa o código nem declara a
+  via Ollama em Job cancelável, opcionalmente incluir uma Skill pequena escolhida
+  explicitamente, **abrir o diff**, confirmar sua revisão e então confirmar
+  separadamente a aplicação. O Studio cria backup e registra hashes/IDs, mas
+  não executa o código nem declara a
   Task aprovada. Arquivos alterados por outros processos bloqueiam aplicação.
 - Validação sintática local em processo Python separado da interface, limitada
   a arquivo `.py` vinculado à Task; timeout, cancelamento do parser ativo
@@ -138,8 +139,11 @@ projeto); a criação salva hash, sem backup de original inexistente. Use
 **Pedir rascunho**, instale/inicie Ollama por conta própria, consulte os modelos,
 selecione um e, se quiser, liste e selecione uma Skill curta (até 2400 caracteres)
 na aba Execução. Confirme o envio do objetivo da Task, arquivo e Skill escolhida
-ao serviço e revise o diff antes de confirmar a aplicação. Pode haver custo ou transferência
-para nuvem conforme o modelo/configuração do Ollama. Confirme o backup indicado
+ao serviço, aguarde o Job e confirme que revisou o diff antes de confirmar
+separadamente a aplicação. O cancelamento solicita interrupção da conexão local,
+mas o serviço/modelo remoto pode continuar trabalhando/cobrar. Após reiniciar o
+Studio, Jobs interrompidos/propostas em memória não são retomados. Pode haver
+custo ou transferência para nuvem conforme o modelo/configuração do Ollama. Confirme o backup indicado
 antes de qualquer revisão manual. Se o Ollama não estiver disponível, o
 projeto/Skills/QA continuam utilizáveis; nenhuma instalação é disparada.
 

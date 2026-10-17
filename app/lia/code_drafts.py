@@ -133,9 +133,14 @@ def _selected_skill(storage: Storage, skill_id: Optional[str]) -> Optional[Dict[
 
 def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
             path: str, model: str, confirm_send: bool,
-            skill_id: Optional[str] = None) -> Dict[str, Any]:
+            skill_id: Optional[str] = None, *, cancel: Optional[ollama_chat.CancelHandle] = None,
+            proposal_id: Optional[str] = None) -> Dict[str, Any]:
     if confirm_send is not True:
         raise StorageError("confirme o envio de objetivo e arquivo ao modelo escolhido")
+    if proposal_id is not None and (type(proposal_id) is not str or not _ID.fullmatch(proposal_id)):
+        raise StorageError("ID de proposta inválido")
+    if cancel is not None:
+        cancel.check()
     with storage.stage_lock:
         runtime_policy.require(storage, project_id, module_id, task_id, "project.python.read", confirm_send)
         runtime_policy.require(storage, project_id, module_id, task_id, "model.ollama.infer", confirm_send)
@@ -150,7 +155,10 @@ def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
         prompt = ("Escreva o arquivo Python COMPLETO para este objetivo. Responda somente código Python, "
                   "sem Markdown. O código será revisado, não executado.\nObjetivo: " + goal +
                   "\nArquivo atual:\n" + original.decode("utf-8") + context)
-    answer = ollama_chat.chat(prompt, model, True, max_prompt=6000)["answer"]
+    answer = ollama_chat.chat(prompt, model, True, max_prompt=6000,
+                              **({"cancel": cancel} if cancel is not None else {}))["answer"]
+    if cancel is not None:
+        cancel.check()
     if len(answer.encode("utf-8")) > MAX_CODE:
         raise StorageError("proposta excede o limite de tamanho")
     if answer.encode("utf-8") == original:
@@ -167,25 +175,57 @@ def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
             raise StorageError("tarefa ou arquivo mudou durante a proposta; solicite nova prévia")
         if chosen and _selected_skill(storage, skill_id)["revision"] != chosen["revision"]:
             raise StorageError("Skill mudou durante a proposta; solicite nova prévia")
-    token = uuid.uuid4().hex
+    if cancel is not None:
+        cancel.check()
+    token = proposal_id or uuid.uuid4().hex
     with _lock:
         for key in list(_pending):
             if _pending[key]["expires"] < time.monotonic():
                 del _pending[key]
-        if len(_pending) >= 20:
-            raise StorageError("muitas propostas pendentes; aguarde expirar")
+        if len(_pending) >= 20 or token in _pending:
+            raise StorageError("muitas propostas pendentes ou ID repetido; aguarde expirar")
+        if cancel is not None:
+            cancel.check()
         _pending[token] = {"project_id": project_id, "module_id": module_id,
                            "task_id": task_id, "path": path, "model": model,
                            "base": original_hash, "task": task, "code": answer,
                            "objective_sha256": _digest(goal.encode("utf-8")),
                            "skill_id": chosen["id"] if chosen else None,
                            "skill_revision": chosen["revision"] if chosen else None,
+                           "requires_review": proposal_id is not None,
+                           "reviewed": proposal_id is None,
                            "expires": time.monotonic() + TTL}
     diff = "".join(difflib.unified_diff(original.decode("utf-8").splitlines(True),
                                         answer.splitlines(True), fromfile="atual", tofile="proposto"))
+    if cancel is not None and cancel.event.is_set():
+        discard(project_id, token)
+        cancel.check()
     return {"proposal_id": token, "path": path, "diff": diff,
             "base_sha256": original_hash, "new_sha256": _digest(answer.encode("utf-8")),
             "warning": "Prévia sem escrita; texto do modelo não foi executado nem validado como jogo."}
+
+
+def has_pending(project_id: str, proposal_id: str) -> bool:
+    with _lock:
+        p = _pending.get(proposal_id)
+        return bool(p and p["project_id"] == project_id and time.monotonic() <= p["expires"])
+
+
+def discard(project_id: str, proposal_id: str) -> None:
+    with _lock:
+        p = _pending.get(proposal_id)
+        if p and p["project_id"] == project_id:
+            _pending.pop(proposal_id, None)
+
+
+def acknowledge_review(project_id: str, proposal_id: str) -> None:
+    with _lock:
+        p = _pending.get(proposal_id)
+        if not p or p["project_id"] != project_id or time.monotonic() > p["expires"]:
+            raise StorageError("rascunho indisponível; solicite nova prévia")
+        if not p["requires_review"]:
+            raise StorageError("rascunho não pertence a Job revisável")
+        p["reviewed"] = True
 
 
 def apply(storage: Storage, project_id: str, proposal_id: str, confirmed: bool) -> Dict[str, Any]:
@@ -195,6 +235,8 @@ def apply(storage: Storage, project_id: str, proposal_id: str, confirmed: bool) 
         proposal = _pending.get(proposal_id)
         if not proposal or proposal["project_id"] != project_id or time.monotonic() > proposal["expires"]:
             raise StorageError("proposta ausente/expirada; gere outra prévia")
+        if proposal["requires_review"] and not proposal["reviewed"]:
+            raise StorageError("leia o diff e confirme a revisão do Job antes de aplicar")
         _pending.pop(proposal_id)  # consumir: nunca retry cego
     with storage.stage_lock:
         runtime_policy.require(storage, project_id, proposal["module_id"], proposal["task_id"],

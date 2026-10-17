@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, engine_probe, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -111,6 +111,7 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
             "recent_sessions": sessions.list_sessions(storage, pid)[-5:],
             "recent_validations": validation_sessions.list_sessions(storage, pid)[-5:],
             "recent_code_changes": code_drafts.list_changes(storage, pid)[-5:],
+            "recent_draft_jobs": draft_jobs.list_jobs(storage, pid)[-5:],
             "runtime_policy": runtime_policy.snapshot(storage, pid),
             "qa": qa.get_verifications(storage, pid),
             "release": release.get_release(storage, pid),
@@ -178,6 +179,18 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         return {"sessions": sessions.list_sessions(storage, pid)}
     if method == "GET" and sub == ["code-changes"]:
         return {"changes": code_drafts.list_changes(storage, pid)}
+    if method == "GET" and sub == ["draft-jobs"]:
+        return {"jobs": draft_jobs.list_jobs(storage, pid)}
+    if method == "GET" and len(sub) == 2 and sub[0] == "draft-jobs":
+        return draft_jobs.get_job(storage, pid, sub[1])
+    if method == "POST" and len(sub) == 3 and sub[0] == "draft-jobs" and sub[2] == "cancel":
+        if set(body) != {"confirm"}:
+            raise StorageError("envie confirmação do cancelamento")
+        return draft_jobs.cancel(storage, pid, sub[1], body["confirm"])
+    if method == "POST" and len(sub) == 3 and sub[0] == "draft-jobs" and sub[2] == "review":
+        if set(body) != {"diff_sha256", "confirm"}:
+            raise StorageError("envie hash do diff e confirmação da revisão")
+        return draft_jobs.acknowledge(storage, pid, sub[1], body["diff_sha256"], body["confirm"])
     if method == "GET" and sub == ["runtime-policy"]:
         return runtime_policy.snapshot(storage, pid)
     if method == "POST" and sub == ["runtime-policy", "project-deny"]:
@@ -194,6 +207,12 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         if set(body) != {"path", "confirm"}:
             raise StorageError("envie arquivo e confirmação")
         return code_drafts.create_stub(storage, pid, sub[1], sub[2], body["path"], body["confirm"]), 201
+    if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "draft-jobs":
+        if set(body) not in ({"path", "model", "confirm_send"},
+                             {"path", "model", "confirm_send", "skill_id"}):
+            raise StorageError("envie arquivo, modelo, Skill opcional e confirmação")
+        return draft_jobs.start(storage, pid, sub[1], sub[2], body["path"], body["model"],
+                                body.get("skill_id"), body["confirm_send"]), 202
     if method == "POST" and len(sub) == 4 and sub[0] == "tasks" and sub[3] == "draft":
         if set(body) not in ({"path", "model", "confirm_send"},
                              {"path", "model", "confirm_send", "skill_id"}):
