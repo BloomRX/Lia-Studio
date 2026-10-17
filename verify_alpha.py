@@ -27,6 +27,7 @@ def main() -> int:
     permissions_ok = check("Política efetiva mínima (sem executor)", [sys.executable, "tests/test_permissions.py"])
     registry_ok = check("Tool Registry e preflight estático", [sys.executable, "tests/test_tool_registry.py"])
     runtime_policy_ok = check("Grants locais aplicados às operações restritas", [sys.executable, "tests/test_runtime_policy.py"])
+    engine_probe_ok = check("Diagnóstico Godot opt-in com binário falso", [sys.executable, "tests/test_engine_probe.py"])
     attempts_ok = check("Tentativas e eventos locais (sem Runtime)", [sys.executable, "tests/test_attempt_history.py"])
     slice_ok = check("Roteiro de fatia vertical (sem jogo/runner)", [sys.executable, "tests/test_vertical_slice.py"])
     validation_ok = check("Validação sintática Python local (não gameplay)", [sys.executable, "tests/test_validation_sessions.py"])
@@ -42,7 +43,7 @@ def main() -> int:
     else:
         print("\nNode.js indisponível: regressão da UI e sintaxe JS NÃO EXECUTADAS.")
         js_ok = syntax_ok = None
-    if (not python_ok or not permissions_ok or not registry_ok or not runtime_policy_ok or not attempts_ok
+    if (not python_ok or not permissions_ok or not registry_ok or not runtime_policy_ok or not engine_probe_ok or not attempts_ok
         or not slice_ok or not validation_ok or not chat_ok or not drafts_ok or not skills_ok
         or not desktop_ok or not compile_ok or js_ok is False or syntax_ok is False):
         print("\nFALHA: revise os erros acima; não considere a Alpha pronta para teste de uso.")

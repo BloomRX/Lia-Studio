@@ -694,3 +694,20 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   autentica outros processos locais. Não é ACL de SO nem sandbox; há risco de
   corrida de múltiplos processos, como nos demais arquivos do produto. UI
   preserva simulador/Alpha sem exigir grants para tarefas simuladas.
+
+## Decisão 33 — diagnóstico Godot somente leitura e opt-in (2026-10-17)
+
+- Escopo reversível de reconhecimento de ambiente, **não** adapter/build/test:
+  sob confirmação, procurar apenas `godot4`/`godot` (e `.exe` no Windows) na
+  PATH e mostrar o caminho encontrado; uma segunda confirmação executa apenas
+  esse binário, reidentificado pelo nome+caminho selecionado, com `--version`,
+  stdin fechado e timeout. Não abre projeto/editor, não aceita flags/caminho livre,
+  não altera arquivos, não registra prova de jogo nem habilita gate. Processo
+  malicioso na PATH ainda é risco do SO: usuário deve verificar o caminho e
+  escolher conscientemente. Nenhuma busca/execução automática ou fallback.
+- O Godot documenta oficialmente `--version` como exibição da versão na CLI:
+  https://github.com/godotengine/godot-docs/blob/master/tutorials/editor/command_line_tutorial.rst
+  (consultado em 2026-10-17). Nenhum binário Godot presente no sandbox; testes
+  com serviço falso verificam formato/timeout/falha fechada, não engine real.
+  Prioridade de adapter Unreal permanece decisão de produto futura; este
+  diagnóstico limitado não seleciona Godot nem altera perfil de engine.

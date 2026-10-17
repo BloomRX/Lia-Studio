@@ -79,7 +79,9 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   Chat Ollama pode fazer inferência real opcional por mensagem, e rascunho de
   arquivo Python pode ser gerado após confirmação; nada disso executa o jogo.
 - Integração real com engines (Unreal/Godot/Unity/MonoGame): perfis selecionáveis,
-  mas adapters não implementados/verificados.
+  mas adapters/builds não implementados/verificados. Diagnóstico Godot opt-in
+  procura `godot`/`godot4` na PATH e, com nova confirmação, consulta `--version`;
+  isto não abre, testa nem valida um projeto.
 - **Marco desktop Windows:** shell opcional `desktop.py` para janela WebView2
   e receita de build `desktop/build_windows.ps1`, com a mesma API/SPA e sem Agent
   real. O [primeiro reteste Windows](docs/DESKTOP-WINDOWS-MARCO-1-2026-10-07.md)

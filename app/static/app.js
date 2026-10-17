@@ -1173,10 +1173,16 @@ function projectConfig(pid, data) {
     `<option value="${esc(item.id)}" ${eng.id===item.id?"selected":""}>${esc(item.name)} — ${item.verified ? "perfil genérico" : "não verificado"}</option>`).join("");
   return `<h1>Configuração do projeto</h1>
     <div class="card"><h3>Perfil de engine</h3>
-      <p class="muted">Perfil não é adapter. Unreal, Godot, Unity e MonoGame não detectam instalação nem abrem o editor nesta alpha.</p>
+      <p class="muted">Perfil não é adapter. Nenhuma engine abre projeto, roda jogo ou faz build. Godot tem apenas diagnóstico opcional do binário/versionamento; Unreal/Unity/MonoGame ainda não são detectados.</p>
       <select id="eng-sel">${engOpts}</select>
       <div class="row" style="margin-top:10px"><button onclick="setEngine('${esc(pid)}')">Salvar perfil</button></div>
       <div class="tag">Atual: ${esc(eng.name||"—")} · verificado: ${eng.verified? "sim":"não"}</div>
+    </div>
+    <div class="card"><h3>Diagnóstico Godot opcional (nenhum projeto será aberto)</h3>
+      <button type="button" id="godot-scan" class="ghost">Procurar binário Godot na PATH</button>
+      <select id="godot-candidate"><option value="">Consulte e confira o caminho antes de executar</option></select>
+      <button type="button" id="godot-version" class="ghost" disabled>Consultar versão do binário selecionado</button>
+      <p id="godot-result" class="muted" role="status">Sem diagnóstico. PATH pode conter executáveis não confiáveis; não é teste de engine/projeto/build.</p>
     </div>
     <div class="card"><h3>Provedores de IA (offline / simulado)</h3>
       <div class="banner warn">${esc(prov.message||"Sem conexão.")}</div>
@@ -1185,6 +1191,40 @@ function projectConfig(pid, data) {
     </div>`;
 }
 async function wireConfig(pid, data) {
+  const scan = document.getElementById("godot-scan");
+  const version = document.getElementById("godot-version");
+  const select = document.getElementById("godot-candidate");
+  const result = document.getElementById("godot-result");
+  if (scan && version && select && result) {
+    scan.addEventListener("click", async () => {
+      if (!confirm("Procurar nomes fixos godot/godot4 na PATH? Esta etapa não executa binário nem abre projeto.")) return;
+      scan.disabled = true; version.disabled = true;
+      select.replaceChildren(new Option("Consulte e confira o caminho antes de executar", ""));
+      try {
+        const found = await api("POST", "/api/engines/godot/candidates", {confirm:true});
+        (found.candidates || []).forEach(item => {
+          const option = new Option(`${item.command} — ${item.path}`, item.command);
+          option.dataset.path = item.path;
+          select.add(option);
+        });
+        result.textContent = found.candidates.length ? "Selecione e confira o caminho antes de consultar --version. Não verifica jogo/build." : "Godot não localizado na PATH; nenhum download/instalação realizado.";
+        version.disabled = !found.candidates.length;
+      } catch (e) { result.textContent = "Diagnóstico indisponível: " + e.message; }
+      finally { scan.disabled = false; }
+    });
+    version.addEventListener("click", async () => {
+      const chosen = select.selectedOptions[0];
+      if (!chosen || !chosen.value || !chosen.dataset.path) return toast("Selecione binário localizado na PATH.");
+      if (!confirm(`Executar somente ${chosen.dataset.path} --version? Confira se confia nesse binário; não é sandbox nem valida o projeto.`)) return;
+      version.disabled = true;
+      try {
+        const checked = await api("POST", "/api/engines/godot/version",
+          {command:chosen.value,path:chosen.dataset.path,confirm:true});
+        result.textContent = `Godot ${checked.version} detectado. ${checked.warning}`;
+      } catch (e) { result.textContent = "Versão não comprovada: " + e.message; }
+      finally { version.disabled = false; }
+    });
+  }
   window.setEngine = async function (pid) {
     const id = document.getElementById("eng-sel").value;
     if (!id) return toast("Nenhum perfil disponível; revise o catálogo.");

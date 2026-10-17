@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, engine_probe, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -339,6 +339,14 @@ class Handler(BaseHTTPRequestHandler):
                 pid = parts[2]
                 sub = parts[3:]
                 return api_projects(self, pid, sub, method, self._body, query)
+            if parts == ["api", "engines", "godot", "candidates"] and method == "POST":
+                if set(body) != {"confirm"}:
+                    raise StorageError("envie confirmação da consulta à PATH")
+                return engine_probe.candidates(body["confirm"]), 200
+            if parts == ["api", "engines", "godot", "version"] and method == "POST":
+                if set(body) != {"command", "path", "confirm"}:
+                    raise StorageError("envie binário selecionado e confirmação")
+                return engine_probe.version(body["command"], body["path"], body["confirm"]), 200
             if parts == ["api", "providers"]:
                 return {"catalog": providers.provider_catalog()}, 200
             if parts == ["api", "providers", "settings"] and method == "GET":

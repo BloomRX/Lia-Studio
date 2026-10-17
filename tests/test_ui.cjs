@@ -140,7 +140,7 @@ assert.equal(reloads, 1);
   chatElements['lia-chat-prompt'] = {value:'Uma pergunta'};
   chatElements['lia-chat-status'] = {textContent:''};
   chatElements['lia-chat-answer'] = {textContent:'', innerHTML:''};
-  context.Option = function(text,value) {return {text,value};};
+  context.Option = function(text,value) {return {text,value,dataset:{}};};
   context.document.getElementById = id => chatElements[id] || oldGetElementById(id);
   const priorFetch = context.fetch;
   const chatRequests = [];
@@ -409,6 +409,37 @@ assert.equal(reloads, 1);
   await context.window.setEngine('project-1');
   assert.equal(requests.at(-1).url, '/api/projects/project-1/engines');
   assert.deepEqual(JSON.parse(requests.at(-1).options.body), {engine_id: 'unreal'});
+  assert.match(configHtml, /Diagnóstico Godot opcional/);
+  const godotHandlers = {};
+  const godotSelect = {options:[],replaceChildren(option) {this.options=[option];},
+    add(option) {this.options.push(option);}, get selectedOptions() {return [this.options[1]];}};
+  const godotScan = {disabled:false,addEventListener:(_,fn)=>godotHandlers.scan=fn};
+  const godotVersion = {disabled:true,addEventListener:(_,fn)=>godotHandlers.version=fn};
+  const godotResult = {textContent:'',innerHTML:''};
+  context.document.getElementById = id => ({view,toast,'eng-sel':{value:'unreal'},
+    'godot-scan':godotScan,'godot-version':godotVersion,
+    'godot-candidate':godotSelect,'godot-result':godotResult})[id];
+  const godotRequests=[];
+  context.fetch=async(url,options)=>{
+    godotRequests.push({url,options});
+    return {ok:true,json:async()=>url.endsWith('/candidates')
+      ? {candidates:[{command:'godot4',path:'/path/<img src=x onerror=alert(1)>'}]}
+      : {version:'4.4.1',warning:'jogo NÃO verificado'}};
+  };
+  context.wireConfig('project-1',{});
+  context.confirm=()=>false;
+  await godotHandlers.scan();
+  assert.equal(godotRequests.length,0);
+  context.confirm=()=>true;
+  await godotHandlers.scan();
+  assert.equal(godotRequests[0].url,'/api/engines/godot/candidates');
+  assert.equal(godotSelect.options[1].dataset.path,'/path/<img src=x onerror=alert(1)>');
+  assert.equal(godotVersion.disabled,false);
+  await godotHandlers.version();
+  assert.equal(godotRequests[1].url,'/api/engines/godot/version');
+  assert.deepEqual(JSON.parse(godotRequests[1].options.body),
+    {command:'godot4',path:'/path/<img src=x onerror=alert(1)>',confirm:true});
+  assert.match(godotResult.textContent,/jogo NÃO verificado/);
   const probeResult = {textContent: '', innerHTML: ''};
   const probeButton = {disabled: false};
   context.document.getElementById = id => ({view, toast,

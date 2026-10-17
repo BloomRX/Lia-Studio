@@ -26,6 +26,7 @@ from . import vertical_slice
 from . import validation_sessions
 from . import code_drafts
 from . import runtime_policy
+from . import engine_probe
 
 __all__ = [
     "storage",
@@ -48,4 +49,5 @@ __all__ = [
     "validation_sessions",
     "code_drafts",
     "runtime_policy",
+    "engine_probe",
 ]
