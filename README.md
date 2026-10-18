@@ -150,10 +150,18 @@ antes de qualquer revisão manual. Se o Ollama não estiver disponível, o
 projeto/Skills/QA continuam utilizáveis; nenhuma instalação é disparada.
 
 ## Testar a Alpha
+Para não sobrecarregar o VS Code/Copilot, **um comando por chamada**:
 ```bash
-python verify_alpha.py      # suíte Python + sintaxe; Node/UI quando disponível
-python run.py               # depois abra http://127.0.0.1:8080
+python verify_alpha.py --list-parts   # consulta; não executa testes
+python verify_alpha.py --part 1       # somente bloco 1; peça o próximo depois
 ```
+Continue com `--part 2` até `--part 10` em mensagens/terminais separados,
+aguardando o resultado antes de solicitar o próximo. Não rode em paralelo nem
+junto à suíte longa. `python verify_alpha.py` sem argumentos continua disponível
+para uma execução completa opcional (Python + UI/JS se Node existir).
+`python run.py` inicia o servidor para o teste de uso posterior. A cobertura
+e os comandos DevKit independentes estão no
+[roteiro fracionado](docs/ENTREGA-INTEGRADA-2026-10-17.md).
 `python tests/test_core.py` e `node tests/test_ui.cjs` podem ser executados
 individualmente (Node.js é opcional). Para repetir o percurso de uso, siga
 [`docs/ALPHA-ROTEIRO-DE-TESTE.md`](docs/ALPHA-ROTEIRO-DE-TESTE.md). O Dev

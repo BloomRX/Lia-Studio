@@ -286,3 +286,17 @@ instalados neste ambiente; **nenhum gameplay/build/Windows atual foi testado**.
 O reteste Windows anterior e o aceite anterior da Alpha permanecem válidos
 para seus respectivos marcos históricos, não para as funções novas. Veja
 [entrega integrada e roteiro final](ENTREGA-INTEGRADA-2026-10-17.md).
+
+### Verificação fracionada para VS Code — 2026-10-18
+
+`verify_alpha.py --part 1` até `--part 10` foram executados separadamente
+no Linux, todos passaram. Partes 1–6 distribuem os **109** testes de
+`test_core.py` (inclusive os 21 testes HTTP em três blocos de 7);
+partes 7–10 cobrem as demais suítes e UI/JS quando há Node.
+Três novos testes verificam que nenhum método/classe do Core nem arquivo de
+suíte foi esquecido ou duplicado na divisão e que `--part N` não inicia outras
+partes. A execução completa, preservada sem argumentos, também passou com
+**204 testes Python**, regressão UI/JS e compilação. DevKit (21 + 23) é
+independente, sem GitHub real. Roteiro e comandos individuais em
+[ENTREGA-INTEGRADA-2026-10-17.md](ENTREGA-INTEGRADA-2026-10-17.md).
+Esses resultados são automatizados no Linux, não teste de uso/Windows atual.

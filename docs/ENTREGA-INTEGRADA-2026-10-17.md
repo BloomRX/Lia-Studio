@@ -1,4 +1,4 @@
-# Entrega integrada — Lia Studio (17/10/2026)
+# Entrega integrada — Lia Studio (17/10/2026; roteiro fracionado em 18/10)
 
 **Estado:** implementação local integrada disponível na branch de trabalho. Não é
 uma afirmação de que exista Agent Runtime geral, jogo jogável, build de engine
@@ -29,8 +29,9 @@ continua registrado e não depende deste roteiro.
 
 ## Verificações executadas neste ambiente (Linux)
 
-- `python verify_alpha.py`: **201 testes Python**, regressão UI/JS e compilação:
-  passaram. Inclui servidor HTTP/modelo falsos, encerramento de socket, falhas,
+- `python verify_alpha.py`: **204 testes Python** (201 anteriores + 3 de cobertura
+  das partes), regressão UI/JS e compilação: passaram no Linux. Inclui servidor
+  HTTP/modelo falsos, encerramento de socket, falhas,
   timeout, reinício incerto, negação de acesso, diff, backup e handoff.
 - `python tools/test_project_cli.py -q`: **21** passaram.
 - `python tools/test_creation.py -q`: **23** passaram.
@@ -43,15 +44,47 @@ Computer Use, Agent/MCP geral, distribuição/publicação ou custo nulo do mode
 O protótipo Windows teve um reteste anterior para a Alpha; não transferir aquele
 resultado às mudanças atuais. O teste de uso do Dev fica para a entrega final.
 
-## Roteiro final para Copilot no VS Code
+## Verificação curta no VS Code (sem sobrecarregar uma chamada)
 
-Copie **um único bloco** abaixo no Copilot do VS Code. Ele deve registrar cada
-passo como PASSOU/FALHOU/NÃO EXECUTADO e anexar saídas concisas, sem revelar
-segredos. Não instalar software, modelos ou extensões; não alterar contas,
-main, branches nem apagar dados existentes.
+`python verify_alpha.py --list-parts` lista os blocos. Cada chamada `--part N`
+executa **só** aquela parte, em processo separado, usando projetos temporários;
+não executa as demais e não equivale a teste de uso. Executar **um comando de
+cada vez**; não usar `&&`, loop, chamada paralela nem colar a saída inteira de
+volta ao Copilot. Depois de cada comando, anotar apenas contagem, falhas/skips,
+sistema/Python/Node e próximo número. Se uma parte falhar, registrar a falha e
+não declará-la aprovada; pode investigar antes de continuar. Não usar a suíte
+completa como pré-requisito — `python verify_alpha.py` sem argumentos permanece
+disponível apenas para quem deseja a execução longa.
+
+| Parte | Comando individual | Cobertura | Testes Python esperados |
+|---|---|---|---:|
+| 1 | `python verify_alpha.py --part 1` | Armazenamento e preparação | 39 |
+| 2 | `python verify_alpha.py --part 2` | Plano, Sessions, handoff e evidências | 29 |
+| 3 | `python verify_alpha.py --part 3` | Etapas, QA, Skills e catálogos | 17 |
+| 4 | `python verify_alpha.py --part 4` | HTTP: origem e decisões | 7 |
+| 5 | `python verify_alpha.py --part 5` | HTTP: jornada, documentos e provedores | 7 |
+| 6 | `python verify_alpha.py --part 6` | HTTP: Sessions, recuperação e descoberta | 10 |
+| 7 | `python verify_alpha.py --part 7` | Políticas, registry e Godot falso | 30 |
+| 8 | `python verify_alpha.py --part 8` | Tentativas, fatia vertical e parser | 29 |
+| 9 | `python verify_alpha.py --part 9` | Ollama falso, diff e Jobs | 25 |
+| 10 | `python verify_alpha.py --part 10` | Integração, desktop falso e UI/JS | 11 + UI/JS/compilação |
+
+As partes cobrem **204 testes Python** no total (os 201 anteriores mais três
+testes que fiscalizam a cobertura da divisão). As duas suítes DevKit usam
+**comandos independentes**, `python tools/test_project_cli.py -q` (21) e
+`python tools/test_creation.py -q` (23); GitHub é simulado nesses testes.
+Node indisponível deixa UI/JS explicitamente **NÃO EXECUTADOS**, mesmo se a
+parte 10 retornar código zero. Skips de symlink no Windows exigem nota própria.
+
+### Prompt único para Copilot no VS Code
+
+Copie **somente este bloco**. Ele deve registrar cada passo como
+PASSOU/FALHOU/NÃO EXECUTADO e resumir saídas, sem segredos. Não instalar software,
+modelos ou extensões; não alterar contas, `main`, branches ou dados existentes.
 
 ```text
-Na branch arena/01a0f4ab-lia-gamedev, confira `git status --short --branch` e faça `git pull --ff-only origin arena/01a0f4ab-lia-gamedev` antes do reteste. Preserve arquivos/deleções locais existentes; se o pull não for seguro, pare e relate sem reset/clean. Rode `python verify_alpha.py`, `python tools/test_project_cli.py -q` e `python tools/test_creation.py -q`; relate Python/Node/Windows, contagens, skips e falhas. Para uso, em PowerShell no VS Code crie uma pasta temporária NOVA, sem dados prévios, com `$env:LIA_PROJECTS_DIR = Join-Path $env:TEMP ('LiaStudioUseTest-' + [guid]::NewGuid())`; guarde esse caminho para reabrir e não apague automaticamente. Inicie `python run.py` no mesmo terminal e abra http://127.0.0.1:8080 em navegador se houver. Se não houver navegador, registre a parte de UI/uso como NÃO EXECUTADA — não infira êxito dos testes automatizados. Na UI, crie projeto e Task com `main.py` relativo; conceda separadamente leitura/escrita/parser apenas nessa Task; crie arquivo inicial e valide somente sintaxe; confirme que simulação, QA e gates não viraram teste do jogo. Se já existir Ollama/modelo de confiança instalado, conceda inferência para essa Task, consulte modelos e peça Job: abra diff, confirme revisão, confirme aplicação, examine backup/arquivo e handoff desatualizado; tente cancelar outro Job ativo se houver tempo sem induzir custo inesperado. Não instale Ollama/modelos por este roteiro. Sem Ollama marque chat/inferência real NÃO EXECUTADOS. Se houver shell Windows existente, teste-o somente se não precisar de nova instalação/build; não declare `.exe` novo validado. Registre por passo o que de fato ocorreu, incluindo falhas, limites, riscos, eventual custo/rede do modelo e condições não testadas. Não faça merge, force-push, release ou publicação.
+Na branch arena/01a0f4ab-lia-gamedev, confira git status --short --branch e faça git pull --ff-only origin arena/01a0f4ab-lia-gamedev antes do reteste. Preserve alterações/deleções locais; se o pull não for seguro, pare sem reset/clean. Registre SO, Python e Node. Nesta chamada execute SOMENTE python verify_alpha.py --part 1, aguarde concluir, anote apenas resultado/contagem/skips e PARE. Não encadeie, não rode em paralelo e não rode a suíte completa junto. Quando eu solicitar "parte 2", execute SOMENTE python verify_alpha.py --part 2; continue assim, uma mensagem por parte, até a parte 10, usando a tabela deste documento. Depois, somente quando eu solicitar, execute separadamente python tools/test_project_cli.py -q e python tools/test_creation.py -q. Se Python for acessível apenas como py -3, substitua python por py -3 e registre isso. Se uma parte falhar, registre FALHOU, investigue antes de prosseguir e jamais declare a bateria inteira aprovada; partes ainda não executadas ficam NÃO EXECUTADAS. Sem Node, marque UI/JS NÃO EXECUTADOS mesmo se a parte 10 concluir.
+Somente quando eu solicitar a etapa de uso, após os testes automatizados, em PowerShell no VS Code, configure uma pasta TEMPORÁRIA NOVA sem dados prévios com $env:LIA_PROJECTS_DIR = Join-Path $env:TEMP ('LiaStudioUseTest-' + [guid]::NewGuid()); guarde o caminho e não apague automaticamente. Inicie python run.py no mesmo terminal e abra http://127.0.0.1:8080 em navegador se houver. Sem navegador, registre UI/uso como NÃO EXECUTADOS (Node não substitui navegador). Faça em pequenas etapas: (1) projeto e Task de teste com main.py, grants de leitura/escrita/parser apenas nessa Task, criação inicial e verificação de sintaxe; (2) só se Ollama/modelo de confiança já existirem, conceder inferência e testar Job, diff, confirmação da revisão, aplicação e backup, sem induzir custo inesperado; (3) conferir handoff desatualizado e que nenhum gate/QA/gameplay foi aprovado. Sem Ollama marque inferência real NÃO EXECUTADA, sem instalar nada. Shell Windows existente só se não exigir nova instalação/build; não declare .exe novo validado. Registre os limites, falhas e condições não testadas por etapa. Não faça merge, force-push, release ou publicação.
 ```
 
 ## Operação local sem Copilot
