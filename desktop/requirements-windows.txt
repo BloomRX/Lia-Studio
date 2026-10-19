@@ -1,3 +1,6 @@
-# Dependências opcionais para protótipo Windows; não instalar para a Alpha CLI.
-pywebview>=5,<7
-pyinstaller>=6,<7
+# Dependências diretas do ambiente de BUILD Windows, nunca instaladas no usuário final.
+# Versões observadas no reteste de 07/10/2026; não provam pacote atual nem VM limpa.
+pywebview==6.2.1
+pyinstaller==6.22.3
+# Dependências transitivas têm resolução própria: auditar/registrar lock e licenças
+# antes de distribuir instalador. WebView2 Runtime é pré-requisito separado.

@@ -158,3 +158,14 @@
 ## Limpeza
 - Exclusão de projeto é destrutiva e exige confirmação explícita (`confirm=true`).
   Não há lixeira automática — o Dev decide.
+
+## Transporte CLI experimental (18/10/2026)
+
+`app/lia/agent_cli.py` é apenas código de transporte exercitado por CLI falso
+nos testes; a API/UI não o chama, não há Session de Agent real nem acesso ao
+gateway. O stream JSONL é limitado e resumido apenas em memória durante o teste;
+não há log bruto persistido ou evidência criada. `session_id` do CLI é dado
+não confiável e não substitui o ID local da futura Session. Stream bruto pode
+conter fonte, prompts, caminhos e segredos: não afirmar que gravá-lo é gratuito
+ou seguro; decidir armazenamento protegido, limite/retenção/redaction e consentimento
+antes de ativar execução real. Flags Read/Grep/Glob não são sandbox do SO.

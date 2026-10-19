@@ -28,6 +28,7 @@ from . import code_drafts
 from . import runtime_policy
 from . import engine_probe
 from . import draft_jobs
+from . import agent_cli  # transporte experimental sem rota/Session de Agent real
 
 __all__ = [
     "storage",
@@ -52,4 +53,5 @@ __all__ = [
     "runtime_policy",
     "engine_probe",
     "draft_jobs",
+    "agent_cli",
 ]

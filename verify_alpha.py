@@ -57,12 +57,14 @@ CHECKS = {
     "attempts": ("Tentativas e eventos locais (sem Runtime)", [sys.executable, "tests/test_attempt_history.py"]),
     "slice": ("Roteiro de fatia vertical (sem jogo/runner)", [sys.executable, "tests/test_vertical_slice.py"]),
     "validation": ("Validação sintática Python local (não gameplay)", [sys.executable, "tests/test_validation_sessions.py"]),
+    "agent_cli": ("Transporte CLI experimental com processo falso", [sys.executable, "tests/test_agent_cli.py"]),
     "chat": ("Chat Ollama opt-in com serviço falso", [sys.executable, "tests/test_ollama_chat.py"]),
     "drafts": ("Edição de código com diff, aceite e backup", [sys.executable, "tests/test_code_drafts.py"]),
     "draft_jobs": ("Jobs canceláveis de inferência com HTTP falso", [sys.executable, "tests/test_draft_jobs.py"]),
     "integration": ("Fluxo HTTP integrado sem promover gates", [sys.executable, "tests/test_integrated_flow.py"]),
     "skills": ("Skills: metadados progressivos", [sys.executable, "tests/test_skills_progressive.py"]),
     "desktop": ("Shell desktop sem GUI (loopback e encerramento)", [sys.executable, "tests/test_desktop.py"]),
+    "dependency_layers": ("Dependências por camada e Skills sem cópia", [sys.executable, "tests/test_dependency_layers.py"]),
     "parts": ("Cobertura dos blocos curtos", [sys.executable, "tests/test_verify_parts.py"]),
     "compile": ("Compilação sintática", [sys.executable, "-m", "compileall", "-q", "app", "desktop.py"]),
     "ui": ("Regressão da UI", ["node", "tests/test_ui.cjs"]),
@@ -78,8 +80,8 @@ PARTS = (
     ("HTTP: Sessions, recuperação e descoberta local", ("core-6",)),
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation")),
-    ("Ollama falso, diff e Jobs canceláveis", ("chat", "drafts", "draft_jobs")),
-    ("Integração, desktop falso, compilação e UI", ("integration", "skills", "desktop", "parts", "compile", "ui", "js")),
+    ("CLI/Ollama falsos, diff e Jobs canceláveis", ("agent_cli", "chat", "drafts", "draft_jobs")),
+    ("Integração, desktop falso, compilação e UI", ("integration", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 
 

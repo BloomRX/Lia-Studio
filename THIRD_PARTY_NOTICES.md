@@ -1,8 +1,9 @@
 # Avisos de terceiros — Lia Studio
 
-**Estado inicial deste repositório:** nenhum código, skill ou asset de terceiros
-está incluído no momento. Esta seção existe para registrar referências externas
-e a política correta caso algo venha a ser incluído no futuro.
+**Estado do código-fonte:** nenhum código, Skill ou asset de terceiros foi
+copiado para o núcleo. O build desktop opcional usa dependências externas
+listadas abaixo; pacote final e licenças transitivas ainda exigem auditoria.
+Estas notas não certificam um instalador Windows distribuível.
 
 ## Referências externas (não incluídas neste repositório)
 
@@ -32,12 +33,29 @@ e a política correta caso algo venha a ser incluído no futuro.
 - Nenhuma chamada a modelos, APIs, MCP, Colab, ngrok ou serviço pago/externo faz
   parte desta Etapa 0. Nenhuma chave, token ou credencial está incluída.
 
-## Dependências de execução (runtime)
+## Dependências por camada
 
-A aplicação (`app/`) usa **apenas a biblioteca padrão do Python** (módulo
-`http.server` para o servidor e JS vanilla na interface). **Nenhuma dependência de
-terceiros é instalada ou exigida** para rodar a alpha. Isso minimiza instalação para
-o iniciante e mantém o app auditável.
+- **Core `app/lia/`:** apenas biblioteca padrão Python; importações estáticas dos
+  módulos atuais foram inspecionadas no Linux/Python 3.11, sem imports de
+  pacotes externos. `python run.py` continua um caminho de desenvolvimento sem `pip`.
+- **Build/shell Windows (opcional no desenvolvimento):**
+  `desktop/requirements-windows.txt` fixa **pywebview 6.2.1** (BSD-3-Clause;
+  finalidade: janela WebView2 para a SPA) e **PyInstaller 6.22.3** (GPL-2.0-or-later
+  com exceção especial para distribuição de programas empacotados; finalidade:
+  empacotar o executável). Licenças/versões verificadas por metadados dessas
+  versões no PyPI em 18/10/2026; conferir os textos completos no pacote antes
+  de distribuição. WebView2 Runtime é dependência separada da máquina Windows.
+- **Instalador para usuário final (objetivo, não comprovado):** entregar interpretador
+  e dependências prontos; não executar `pip`, não exigir Python instalado, nem
+  exibir erros de dependências. O teste em máquina limpa ainda não foi feito.
+- Dependências transitivas do build (por exemplo `pythonnet` no Windows,
+  `proxy_tools` e `bottle` do pywebview; `altgraph`, `packaging`, `pefile`,
+  `pyinstaller-hooks-contrib`, `pywin32-ctypes` e `setuptools` do PyInstaller)
+  **não estão travadas nem auditadas neste arquivo**. Travar versões, verificar
+  avisos/licenças e incluir notices efetivos é requisito ANTES de um release;
+  os pins diretos não bastam para build reproduzível.
+
+Nenhum pacote é instalado automaticamente pelo Lia Studio nesta entrega.
 
 ## Licença deste projeto
 

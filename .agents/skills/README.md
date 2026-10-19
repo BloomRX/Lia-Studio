@@ -4,9 +4,10 @@ Convenção canônica das skills: **`.agents/skills/<id-da-skill>/`**, em format
 compatível com Agent Skills (cada skill tem um `SKILL.md` com metadados simples e,
 quando necessário, pastas `templates/` e `references/`).
 
-- `.agents/skills/` é a fonte mantida. Se houver necessidade de uma cópia específica
-  para outra ferramenta (por exemplo `.claude/skills/`), ela deve ser gerada a partir
-  desta fonte e mantida em sincronia, sem divergir.
+- `.agents/skills/` é a única fonte mantida. Para Claude Code no Windows, o Dev
+  pode criar localmente uma *junction* `.claude/skills/` apontando para este
+  diretório; `.claude/` é ignorado pelo Git. Não gerar ou versionar outra cópia.
+  Descoberta das Skills nessa ferramenta depende de teste no Windows pelo Dev.
 - Cada skill tem **uma** responsabilidade clara e aponta para as outras quando precisa.
 
 ## Skills disponíveis

@@ -1,6 +1,6 @@
 ---
 name: lia-task-handoff
-description: Transfere uma tarefa para outra sessão/agente com contexto, permissões, evidências e pendências explícitas, sem repassar segredos.
+description: Use antes de trocar de sessão/agente, delegar uma Task ou interromper trabalho para entregar handoff com IDs, contexto, limites, evidências e pendências. NÃO use para inventar resultado verificado, compartilhar segredos ou substituir o planejamento do projeto.
 ---
 
 # Handoff de tarefa — Lia Studio

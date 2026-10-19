@@ -9,9 +9,9 @@ supervisionáveis, sem substituir a direção criativa do Dev.
 > isso **não certifica o produto para produção** nem significa que o Dev executou
 > pessoalmente o roteiro. O núcleo (preparação, planejamento, QA, release,
 > armazenamento) é **real e local**.
-> A execução assistida e os provedores de IA são **simulados** e claramente
-> rotulados: não há agente de código nem engine conectados, e nenhuma chamada
-> paga ou externa é feita.
+> **A Alpha aceita** tem Task simulada; os incrementos posteriores incluem
+> Ollama opt-in para chat/rascunho, que pode usar nuvem/cobrança conforme a
+> configuração do Dev. Não há Agent Runtime geral nem engine executora conectados.
 
 ## O que está implementado na Alpha aceita
 - Gerenciamento de projetos (criar, renomear, arquivar, reabrir, excluir com confirmação).
@@ -109,15 +109,32 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   (visível em outra aba durante a requisição síncrona) e histórico próprio.
   Liga registros por coincidência de Task/arquivo/hash, sem atribuir causalidade.
   Testa sintaxe, não gameplay, build ou critério de aceite. Não abre gate do MVP.
+- Transporte CLI **experimental, somente testado com executável falso**:
+  `app/lia/agent_cli.py` valida JSONL, limites e timeout, mas não tem rota,
+  login, Session real ou gateway conectado. `--allowedTools` não é sandbox;
+  nenhum `claude -p` real foi executado ou autorizado por esse módulo. Combos
+  com custo/composição desconhecidos ficam bloqueados como decisão de produto.
 - Roteiro de fatia vertical por Task vinculado ao QA manual, sem validação de
   jogo ou playtest pelo Studio. Grants explícitos por Task/projeto, com negação
   prevalecendo, são checados no uso das quatro capacidades reais restritas
   (arquivo Python e Ollama). Não liberam comandos arbitrários; não são sandbox
   do sistema operacional nem autorização para engines, build ou publicação.
 
-## Requisitos
-- Python 3.9+ (apenas biblioteca padrão — **sem `pip install`**).
-- Navegador para a interface. Windows é o destino final; aqui roda como servidor local.
+## Dependências por camada
+- **Core `app/lia/`:** apenas biblioteca padrão do Python; nenhuma dependência
+  externa foi encontrada na inspeção estática de imports dos módulos atuais.
+- **Desenvolvimento:** `python run.py` continua funcionando com Python 3.9+ e
+  biblioteca padrão, sem `pip install`. O navegador exibe a SPA local.
+- **Shell/adapters/build:** dependências externas são permitidas só quando
+  justificadas, com versões diretas **exatas** fixadas e registradas em
+  `THIRD_PARTY_NOTICES.md` (licença/finalidade). O build Windows opcional usa
+  `desktop/requirements-windows.txt`; suas dependências transitivas ainda exigem
+  lock/auditoria antes de qualquer distribuição.
+- **Usuário final (objetivo não validado):** o instalador deve entregar runtime e
+  dependências prontos; nunca pedir `pip`, Python instalado ou mostrar erro de
+  dependência. O teste real em máquina Windows limpa ainda não foi executado.
+
+Windows é o destino final; aqui o caminho de desenvolvimento roda como servidor local.
 
 ## Como executar
 ```bash

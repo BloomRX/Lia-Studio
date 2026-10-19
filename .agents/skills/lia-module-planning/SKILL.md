@@ -1,6 +1,6 @@
 ---
 name: lia-module-planning
-description: Planeja módulos e tarefas verificáveis a partir da visão aprovada do jogo, sem implementar gameplay nem tratar hipóteses como fatos.
+description: Use depois da Etapa 0 quando o Dev pedir para dividir a visão do jogo em módulos, tarefas, dependências e critérios de aceite verificáveis. NÃO use para criar a ideia inicial, programar gameplay, fazer handoff ou declarar testes aprovados.
 ---
 
 # Planejamento de módulos — Lia Studio

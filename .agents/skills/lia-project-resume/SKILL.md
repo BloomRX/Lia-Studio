@@ -1,6 +1,6 @@
 ---
 name: lia-project-resume
-description: Retoma um jogo a partir dos documentos e evidências locais, identificando bloqueios e próximo passo sem inventar progresso.
+description: Use ao reabrir um projeto de jogo após pausa, receber um handoff ou perguntar onde paramos; reconstrói estado, bloqueios e próximo passo a partir de documentos/evidências locais. NÃO use para começar novo projeto, implementar código ou presumir aprovação do jogo.
 ---
 
 # Retomada de projeto — Lia Studio

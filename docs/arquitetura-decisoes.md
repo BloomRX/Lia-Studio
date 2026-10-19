@@ -771,3 +771,59 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   aprovação, prova de causalidade ou gate aberto. Corruptelas/symlinks em JSON
   falham fechados e recovery permanece ação separada. `runtime_policy.json`
   local e grants não são copiados para HANDOFF/export do projeto.
+
+## Decisão 38 — dependências por camada e Skills sem cópia (2026-10-18)
+
+- O Core `app/lia/` continua só com stdlib Python; `python run.py` permanece
+  caminho de desenvolvedor. Shell, adapters e build podem usar dependências
+  opcionais, com versão direta exata, licença/finalidade em
+  `THIRD_PARTY_NOTICES.md` e dependências transitivas auditadas/travadas antes de release.
+  Na máquina do usuário final o instalador deverá incluir runtime/dependências,
+  sem `pip`/Python separado/erro de pacote; isto é requisito, **não teste feito**.
+- `.agents/skills/` é fonte única. `.claude/` deve ser ignorado pelo Git antes
+  da junction local que o Dev criará no Windows. Não versionar cópias da Skill
+  nem tratar a descoberta pelo Claude Code como já verificada neste sandbox.
+
+## Decisão 39 — composição de fallback e política Free-First (2026-10-18)
+
+- **Escolha: opção 2** da auditoria: antes de usar um combo de gateway, o Studio
+  deve conhecer e mostrar seus membros, ordem e classificação de custo. Se a
+  composição, identidade do destino ou custo potencial não puder ser verificado,
+  **bloquear o combo** para execução pelo Studio; aviso genérico ou consentimento
+  anterior não impedem fallback pago oculto. Não armazenar credencial no projeto.
+- Opção 1 (combos só da mesma faixa) pode ser política manual do Dev no gateway,
+  mas não é garantia verificável pelo Studio; opção 3 (UI de política de custo)
+  fica para depois, sem fallback silencioso. Iniciar sem combos sob gateway até
+  prova de introspecção/controle e teste explícito no Windows pelo Dev.
+  `--max-budget-usd` é estimativa sob gateway e **não** teto de fatura.
+- Histórico de falhas 503 simultâneas relatado pelo Dev em 18/10 não foi
+  verificado aqui. Runtime CLI real, preços e compatibilidade Anthropic atrás
+  de `localhost:20128` também não foram testados; esta decisão é um bloqueio de
+  segurança, não autorização para disparar inferência.
+
+## Decisão 40 — fronteira de transporte CLI antes de Session real (2026-10-18)
+
+- `agent_cli.py` oferece **somente transporte de teste** com comando/env
+  explícitos e `subprocess` sem shell, cap de stdout/stderr/linha/eventos, tempo
+  limite, JSONL e digest; o teste usa Python falso. Constrói argumentos
+  candidatos para `claude -p ... --output-format stream-json --verbose
+  --allowedTools Read,Grep,Glob`, mas a compatibilidade dessas flags com o CLI
+  do Dev/gateway não foi comprovada. Não há rota/UI para iniciar esse adapter,
+  autenticação, persistência de stream ou Session de Agent real. Nada foi
+  enviado a `localhost:20128` nem executou Claude Code neste sandbox.
+- Escolha para a futura menor fatia: **uma Task, um `.py` vinculado, parecer
+  sem aplicar código**, consentimento e grant novos, Studio Session ID local
+  distinto do `session_id` não confiável do CLI, estados/erros versionados em
+  histórico **separado** de `sessions.json` (que só admite simulação). Sem
+  avanço de Task, QA ou gate. O parser sintático, Jobs Ollama e
+  `attempt_events.json` não são esse Runtime. Tool Registry atual é preflight
+  para capacidades fixas internas, não enforcement de Tools no CLI externo.
+- `--allowedTools` não é sandbox, não limita leitura por caminho nem garante
+  ausência de escrita por hooks/configuração/processos filhos. Antes de ativar
+  CLI real: verificar `--version`/`--help` e stream real no Windows pelo Dev,
+  decidir isolamento/cwd, ambiente/credenciais mínimos, Skills/subagents/hooks,
+  cancelamento de árvore, limites de custo e composição do gateway (Decisão 39),
+  schema de Session real, retenção/acesso e redaction do stream bruto. O stream
+  **não é evidência confiável grátis**: pode conter fonte e segredos; nesta
+  preparação não é salvo. Se qualquer requisito não for verificável, bloquear
+  execução real em vez de alegar parecer somente leitura.

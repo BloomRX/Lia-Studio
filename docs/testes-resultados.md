@@ -300,3 +300,18 @@ partes. A execução completa, preservada sem argumentos, também passou com
 independente, sem GitHub real. Roteiro e comandos individuais em
 [ENTREGA-INTEGRADA-2026-10-17.md](ENTREGA-INTEGRADA-2026-10-17.md).
 Esses resultados são automatizados no Linux, não teste de uso/Windows atual.
+
+### Revisão de política e transporte CLI preparatório — 18/10/2026
+
+Após pins diretos do build, auditoria estática de imports do Core, descrições
+de Skills e parser/transporte CLI **somente com Python falso** (sem Claude Code),
+`python verify_alpha.py --part 1` a `--part 10` passaram, **um comando por
+chamada**. Total: **212 testes Python**, regressão UI/JS e compilação.
+Os 5 testes novos de CLI verificam argumentos candidatos, saída JSONL, exit
+não zero, timeout, limite de bytes e ambiente explicitamente passado; os 3
+testes de dependências verificam imports diretos, pins/licenças declaradas e
+`.claude/` ignorado. Isso **não** comprova `claude -p` atrás de gateway, Session
+real, ausência de escrita por CLI, custo, Windows ou instalador em máquina limpa.
+Consulte Decisões 38–40; o arquivo `agent_cli.py` não tem rota/UI nem cria
+Session. O Core continua sem import de dependência externa. As duas suítes
+DevKit independentes não foram modificadas nesta revisão.
