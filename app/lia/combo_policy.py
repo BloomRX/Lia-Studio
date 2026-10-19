@@ -21,22 +21,29 @@ MONEY = re.compile(r"(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,6})?\Z")
 HASH = re.compile(r"[0-9a-f]{64}\Z")
 
 
+def _valid_member(member: Any) -> bool:
+    return (type(member) is dict and set(member) == {"model", "cost_class", "estimate_usd"}
+            and type(member["model"]) is str and ALIAS.fullmatch(member["model"]) is not None
+            and type(member["cost_class"]) is str and member["cost_class"] in COST_CLASSES
+            and (member["estimate_usd"] is None
+                 or (type(member["estimate_usd"]) is str
+                     and MONEY.fullmatch(member["estimate_usd"]) is not None)))
+
+
 def validate_declaration(data: Any) -> None:
     """O cliente declara membros/risco; não consulta /v1/models ou dashboard."""
-    if (type(data) is not dict or set(data) != {"gateway_alias", "mode", "members"}
+    if (type(data) is not dict or set(data) !=
+        ({"gateway_alias", "mode", "members", "judge"} if data.get("mode") == "fusion"
+         else {"gateway_alias", "mode", "members"})
         or type(data["gateway_alias"]) is not str
         or not ALIAS.fullmatch(data["gateway_alias"])
         or type(data["mode"]) is not str or data["mode"] not in MODES
         or type(data["members"]) is not list or not 1 <= len(data["members"]) <= 12):
         raise StorageError("declaração de combo inválida; informe alias, modo e membros")
-    for member in data["members"]:
-        if (type(member) is not dict or set(member) != {"model", "cost_class", "estimate_usd"}
-            or type(member["model"]) is not str or not ALIAS.fullmatch(member["model"])
-            or type(member["cost_class"]) is not str or member["cost_class"] not in COST_CLASSES
-            or (member["estimate_usd"] is not None and
-                (type(member["estimate_usd"]) is not str
-                 or not MONEY.fullmatch(member["estimate_usd"])))):
-            raise StorageError("membro de combo inválido; estimativa é texto decimal ou nula")
+    if not all(_valid_member(m) for m in data["members"]):
+        raise StorageError("membro de combo inválido; estimativa é texto decimal ou nula")
+    if data["mode"] == "fusion" and not _valid_member(data["judge"]):
+        raise StorageError("fusion exige juiz declarado com custo e estimativa opcional")
 
 
 def revision(data: Dict[str, Any]) -> str:
@@ -50,28 +57,32 @@ def preview(data: Dict[str, Any]) -> Dict[str, Any]:
     """Nunca mostrar valor declarado como fatura, limite real ou configuração verificada."""
     digest = revision(data)
     members: List[Dict[str, Any]] = data["members"]
+    judge = data["judge"] if data["mode"] == "fusion" else None
     estimates = [Decimal(m["estimate_usd"]) if m["estimate_usd"] is not None else None
-                 for m in members]
+                 for m in members + ([judge] if judge is not None else [])]
     if any(x is None for x in estimates):
         estimate = None
     elif data["mode"] == "round-robin":
         estimate = max(estimates)
     else:
-        # Fusion aciona todos; fallback pode cobrar tentativas que falham.
+        # Fusion aciona membros e juiz; fallback pode cobrar tentativas que falham.
         estimate = sum(estimates, Decimal("0"))
-    potential_cost = any(m["cost_class"] != "local" for m in members)
+    potential_cost = any(m["cost_class"] != "local" for m in
+                         members + ([judge] if judge is not None else []))
     return {"gateway_alias":data["gateway_alias"], "mode":data["mode"],
             "members":[{"model":m["model"], "cost_class":m["cost_class"],
                          "estimate_usd":m["estimate_usd"]} for m in members],
+            "judge":dict(judge) if judge is not None else None,
             "revision":digest, "declared_by_user":True, "gateway_verified":False,
             "declared_potential_external_cost":potential_cost,
             "estimate_rule":("max_one_member_per_call" if data["mode"] == "round-robin"
-                             else "sum_all_members" if data["mode"] == "fusion"
+                             else "sum_all_members_plus_judge" if data["mode"] == "fusion"
                              else "sum_possible_attempts"),
             "declared_estimate_usd":format(estimate, "f") if estimate is not None else None,
             "estimate_is_invoice_or_hard_limit":False,
             "runtime_connected":False,
             "warning":"Composição declarada, não verificada; gateway pode mudar. "
+                      "Troca de membros equivalentes e esgotamento da cota free_quota não são detectados pelo canário. "
                       "Preços/quotas são estimativas, não fatura nem teto. "
                       "Nenhum Agent Runtime está conectado."}
 

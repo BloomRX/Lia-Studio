@@ -32,8 +32,11 @@ class TestDependencyLayers(unittest.TestCase):
 
     def test_claude_instructions_are_short_literal_and_not_a_skill_copy(self):
         text = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
-        self.assertLess(len(text), 1800)
+        self.assertLessEqual(len(text.encode("utf-8")), 2200)
         self.assertNotIn("@import", text)
+        self.assertFalse(any(line.lstrip().startswith("@") for line in text.splitlines()))
+        for path in ("LEIA-ME-SESSAO.md", "GUIA-LIA-STUDIO.md", "PADRAO-DA-MARCA.md", "GLOSSARIO.md"):
+            self.assertIn(f"docs/{path}", text)
         self.assertIn(".agents/skills/", text)
         self.assertIn("não é sandbox", text)
         self.assertIn("NÃO EXECUTADO", text)
@@ -52,6 +55,8 @@ class TestDependencyLayers(unittest.TestCase):
     def test_claude_folder_ignored_and_descriptions_trigger_not_copy(self):
         ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
         self.assertIn(".claude/", ignore)
+        self.assertIn("**/combo_declarations.json", ignore)
+        self.assertIn("**/combo_declarations.json.bak", ignore)
         for name in ("lia-project-resume", "lia-module-planning", "lia-task-handoff"):
             text = (ROOT / ".agents" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
             description = next(line for line in text.splitlines() if line.startswith("description:"))

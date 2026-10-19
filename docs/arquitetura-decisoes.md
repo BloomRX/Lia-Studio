@@ -805,8 +805,10 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   desconhecido pode gerar cobrança, e tentativas falhas também podem cobrar.
   **Round-robin:** o membro escolhido pode variar a cada chamada; qualquer
   membro pago/desconhecido oferece risco pago, sem afirmar qual foi usado.
-  **Fusion:** considera todos os membros acionados e o custo estimado é a
-  **soma** por chamada, não o máximo; repetição de membro conta novamente.
+  **Fusion:** considera todos os membros acionados **e uma chamada adicional ao
+  juiz obrigatório**. A estimativa soma membros e juiz por chamada, não usa
+  o máximo; repetição de membro conta novamente. Sem estimativa do juiz,
+  não mostrar total monetário.
   Cota `free_quota` pode esgotar e a cobrança após o esgotamento é desconhecida:
   tratá-la como risco de custo potencial, assim como `paid`/`unknown`. Todos
   esses casos exigem consentimento **explícito de custo potencial** por ação,
@@ -815,21 +817,24 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   verificado, teto, nem atestado de cota disponível; se faltar algum valor,
   não calcular total. Round-robin só usa o maior valor declarado para **uma**
   escolha, sem cobrir retries; fallback soma tentativas possíveis, não apenas
-  a última. Fusion soma todos, inclusive repetições. Nenhum destes números é
+  a última. Fusion soma membros, repetições e juiz. Nenhum destes números é
   limite de cobrança garantido.
 - `app/lia/combo_policy.py` é **somente prévia pura, em memória, sem I/O**:
-  exige alias, modo, 1–12 membros (modelo, classe e estimativa decimal opcional),
+  exige alias, modo, 1–12 membros (modelo, classe e estimativa decimal opcional)
+  e juiz com a mesma classificação em fusion,
   calcula revisão SHA-256 do conteúdo e recusa consentimento para revisão antiga.
   Reconhecimento separado de custo potencial para `free_quota`/`paid`/`unknown`
   retorna `execution_authorized: false`; não concede permissão, não guarda
   timestamp nem declaração no projeto, não chama gateway e não é gate executável.
-  Identidade confiável do combo, persistência, data e UI ainda faltam. Sem
+  Identidade confiável do gateway, editor de declarações e comparação real
+  ainda faltam; a Decisão 41 prepara persistência local e tela somente leitura. Sem
   declaração válida, identidade do combo, consentimento ou classificação de
   risco, **uma futura execução** deve bloquear. Mesmo com declaração, o Studio
-  **não consegue detectar alteração posterior** do gateway; mostrar essa
+  **não garante detectar alteração posterior** do gateway: o canário da
+  Decisão 41 detecta apenas capacidade/janela diferentes. Mostrar essa
   incerteza e não alegar custo zero garantido. Um teto
   `--max-budget-usd` pode usar estimativa Anthropic sob gateway, **não** limita
-  comprovadamente a fatura. Política executável e UI ainda não estão conectadas:
+  comprovadamente a fatura. Política executável e UI de execução continuam desligadas:
   Agent Runtime/combos permanecem desligados até teste `claude -p` no ambiente
   do Dev e revisão do contrato de execução da Decisão 40. O histórico de falhas
   503 simultâneas relatado pelo Dev em 18/10, o CLI real, preços e compatibilidade
@@ -869,3 +874,45 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   de segredos, exclusão de export/backup comum, os mesmos caps e prazo máximo
   de **24 horas** com descarte verificável. Guardar bruto antes do parse não
   o torna prova de resultado ou licença para reter fonte, prompts e credenciais.
+
+## Decisão 41 — fotografia local e canário limitado para combos (2026-10-19)
+
+- **Dados locais, NÃO Git:** `combo_declarations.json` na raiz configurada de
+  projetos (`LIA_PROJECTS_DIR`, por padrão fora do repositório), fora dos
+  projetos exportáveis. `.gitignore` cobre o arquivo, `.bak` e cópia de corrupção
+  mesmo com raiz customizada dentro do checkout. Formato possui número de esquema
+  do Storage e hash de revisão da declaração; **não** é "versionada no Git".
+  Gravação atômica, leitura validada, backup e recuperação manual seguem Storage.
+  A revisão da fotografia inclui a revisão da composição, os metadados e data;
+  rebaselining com composição igual exige confirmação e **nova revisão**, não
+  reutiliza consentimento para a fotografia antiga.
+  Nenhuma chave, cookie, resposta bruta ou prompt é guardado. A declaração contém
+  membros e juiz explícito em fusion, classe e estimativa facultativa, data UTC,
+  ID de tier, capacidades/janela normalizadas e horário da fotografia. Troca da
+  declaração exige revisão anterior e confirmação, não renova data silenciosamente.
+- **Canário parcial:** `combo_canary.py` compara mesmo ID de tier, capacidades
+  ordenadas e janela de contexto com a fotografia inicial **imutável**. Mudança
+  detectada = `stale`, exige redeclaração; resposta ausente, tier ambíguo ou
+  campos incompatíveis = `unavailable`, nunca `unchanged_canary`. Falha de
+  rede deve virar pergunta ao Dev por tentativa: consentimento explícito da
+  revisão e do custo potencial, data da última comparação bem-sucedida e registro
+  local com ID da tentativa; não autoriza a próxima tentativa nem o Agent Runtime.
+  Repetição do mesmo ID de tentativa falha, histórico corrente limitado a 100
+  entradas por tier e histórico preservado entre redeclarações limitado a 1000
+  entradas no arquivo local. Se atingir o limite, bloquear novos registros até
+  política explícita de retenção, sem descarte automático.
+- **Limites que aparecem na tela:** trocar membros por outros de mesmas
+  capacidades/janela passa despercebido; **cota `free_quota` pode acabar ou
+  passar a cobrar sem alterar o canário**. Um canário igual NÃO atesta membros,
+  preço, cota ou custo zero. A prévia em Configuração é só leitura local: mostra
+  idade "declarado há N dias", juiz, estimativa incompleta, última conferência e
+  último consentimento para falha, sempre "NÃO CONFERIDO nesta visita". Não há
+  botão de uso/consentimento ou consulta a gateway nesta versão.
+- **Não conectado:** o Core aceita respostas injetadas em testes, sem fazer HTTP.
+  O schema real de `/v1/models` e a credencial já existente precisam de teste
+  no PC do Dev e adapter confiável limitado a esse tier (sem nova credencial,
+  sem dashboard). Nenhum writer HTTP/UI aceita resposta arbitrária como prova.
+  O retorno do Core nunca autoriza processo. Antes de uso real, vincular tier à
+  identidade da configuração do gateway, obter comparação atual e aplicar gates
+  e grants no ponto de ação. Runtime, combos executáveis e Sessions reais seguem
+  desligados até `claude -p` atrás do gateway no PC do Dev.

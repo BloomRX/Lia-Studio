@@ -7,3 +7,7 @@
 - Combos do gateway são declarações do Dev, não fatos verificados. Modos `fallback`, `round-robin` e `fusion` têm riscos distintos; fusion pode somar custos. Sem composição/consentimento, não execute nem faça fallback pago oculto.
 - Não leia, copie, registre ou publique credenciais, memórias pessoais, prompts brutos ou streams do modelo sem autorização e política de retenção. Nunca atribua ao Studio testes/builds que não executou.
 - Para testes automatizados: `python verify_alpha.py --part N`, **uma parte por chamada**, nunca em paralelo. Testes Windows e do gateway real pertencem ao Dev; sem executá-los, marque NÃO EXECUTADO.
+
+Consulte `docs/LEIA-ME-SESSAO.md` e `docs/GUIA-LIA-STUDIO.md` quando iniciar uma sessão ou planejar mudanças.
+Consulte `docs/PADRAO-DA-MARCA.md` quando decidir linguagem, apresentação ou identidade visual.
+Consulte `docs/GLOSSARIO.md` quando nomear conceitos, arquivos ou interfaces.

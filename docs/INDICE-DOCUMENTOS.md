@@ -4,8 +4,9 @@ Este índice orienta leitura, **não substitui** documentos nem decide seu desca
 Auditoria local: 53 Markdown em `docs/`, `planejamento/` e `.agents/skills/`
 antes dos novos documentos de 18/10; **nenhuma duplicata exata por SHA-256**.
 Há sobreposição temática e registros históricos deliberados. Não apagar um
-arquivo somente porque seu tema aparece em outro. Três deleções preexistentes
-no worktree permanecem fora dos commits desta revisão.
+arquivo somente porque seu tema aparece em outro. Na revisão anterior havia três
+deleções preexistentes fora dos commits; o clone limpo de 19/10 em `123015e`
+não as apresenta. Não interpretar o registro histórico como estado atual.
 
 ## Ordem para decisões em vigor
 

@@ -1316,12 +1316,43 @@ async function wireConfig(pid, data) {
   };
 }
 
+/* ----- combos declarados (leitura local, nenhum gateway ou executor) ----- */
+function comboDeclarationPanel(payload) {
+  const items = payload.combos || [];
+  const cards = items.map(c => `<div class="card">
+    <h3>${esc(c.gateway_alias)} · ${esc(c.mode)}</h3>
+    <p>Declarado há ${esc(c.age_days)} dias (${esc(c.declared_at)}). Última comparação bem-sucedida: ${esc(c.last_success_at)}.</p>
+    <p>Estado: <b>NÃO CONFERIDO nesta visita</b>. Revisão: <code>${esc(c.revision)}</code>.</p>
+    <p>Membros declarados: ${c.members.map(m => esc(m.model) + " (" + esc(m.cost_class) + ")").join(", ")}.
+      ${c.judge ? `Juiz adicional: ${esc(c.judge.model)} (${esc(c.judge.cost_class)}).` : ""}</p>
+    <p>Estimativa declarada: ${c.declared_estimate_usd === null ? "indisponível (valor incompleto)" : esc(c.declared_estimate_usd) + " USD"}.
+       Não é fatura nem teto; fusion soma membros e juiz.</p>
+    ${c.last_unavailable_decision ? `<p>Última decisão de seguir sem conferência
+      ${c.last_decision_from_previous_declaration ? "(DECLARAÇÃO ANTERIOR, não concede permissão atual)" : "(somente para a tentativa registrada)"}:
+      ${esc(c.last_unavailable_decision.at)} para a tentativa ${esc(c.last_unavailable_decision.attempt_id)};
+      última conferência bem-sucedida: ${esc(c.last_unavailable_decision.last_success_at)};
+      custo potencial reconhecido: ${c.last_unavailable_decision.potential_cost_acknowledged ? "sim" : "não (somente classe local declarada)"}.</p>` : ""}
+    ${c.clock_warning ? "<p>Relógio local anterior à declaração: revise a data.</p>" : ""}
+  </div>`).join("");
+  return `<div class="card"><h2>Combos do gateway — declarações locais</h2>
+    <p><b>Composição declarada pelo Dev, NÃO verificada no gateway.</b> Nenhum combo pode executar Task nesta versão.
+    O endpoint /v1/models não foi consultado nesta visita. Comparação igual não prova que os membros continuam iguais.</p>
+    <p><b>Limites do canário:</b> trocar membros por outros de mesma capacidade e janela pode passar despercebido.
+    A cota free_quota pode acabar ou passar a cobrar sem mudar capacidade ou janela. Canário verde não confirma custo zero.</p>
+    <p>Se /v1/models estiver indisponível no futuro, será uma pergunta ao Dev por tentativa, com custo potencial
+    e última conferência visíveis; não será tratado como igualdade. Mudança detectada exigirá nova declaração.
+    Nenhuma decisão nesta tela autoriza Agent Runtime.</p>
+    ${cards || "<p>Nenhuma declaração local. A conexão do gateway e a edição de combos ainda não estão disponíveis.</p>"}
+  </div>`;
+}
+
 /* ----- global config ----- */
 async function renderGlobalConfig() {
-  let settings, catalog;
+  let settings, catalog, comboDeclarations;
   try {
     settings = await api("GET", "/api/providers/settings");
     catalog = (await api("GET", "/api/providers")).catalog;
+    comboDeclarations = await api("GET", "/api/combos/declarations");
   } catch (e) { view.innerHTML = `<div class="banner danger">Erro: ${esc(e.message)}</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
   const cat = catalog.map(c => `<div class="card">
     <h3>${esc(c.name)} ${pill(c.kind)}</h3>
@@ -1345,6 +1376,7 @@ async function renderGlobalConfig() {
       <button id="ollama-probe-button" class="ghost" onclick="probeOllama()">Verificar Ollama local (somente leitura)</button>
       <div id="ollama-probe-result" class="muted" role="status" aria-live="polite"></div>
     </div>
+    ${comboDeclarationPanel(comboDeclarations)}
     <h2>Catálogo (não conectado)</h2>
     <div class="grid">${cat}</div>`;
   window.probeOllama = async function () {

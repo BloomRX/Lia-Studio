@@ -173,9 +173,19 @@ acesso local restrito, revisão/redaction, exclusão do export/backup comum,
 mesmos caps e descarte verificável em até 24 h (Decisão 40). Isso não está
 implementado. Flags Read/Grep/Glob não são sandbox do SO.
 
-`app/lia/combo_policy.py` apenas valida e resume **em memória** declaração de
-combo do Dev (alias, modo e membros/custo declarado) e reconhecimento de risco;
-não persiste preço, declaração ou consentimento, não consulta gateway/dashboard,
-nem autoriza execução. A prévia e o hash de revisão não verificam identidade,
-composição, quota disponível ou fatura. Futuras UI/persistência exigem nova
-revisão de privacidade; nunca incluir credenciais de gateway em declarações.
+`app/lia/combo_policy.py` calcula prévia em memória de membros e juiz de
+fusion, sem execução. `combo_canary.py` adiciona armazenamento local **opt-in
+por código interno**, ainda sem writer HTTP/UI nem gateway: o arquivo global
+`combo_declarations.json` (raiz `LIA_PROJECTS_DIR`, fora dos projetos/export)
+guarda composição, juiz, classe/estimativa declarada, data UTC, capacidades e
+janela normalizadas do tier e decisões de seguir sem conferência associadas a
+IDs de tentativa (máximo 100 por tier ativo e 1000 no histórico local de
+redeclarações, sem descarte automático). Storage usa envelope com número de
+esquema, backup/recovery manual e recusa corrupção. `.gitignore` exclui esse
+arquivo e backups mesmo quando a pasta de projetos fica sob o checkout. Não
+inclui chave, sessão de dashboard, resposta bruta do endpoint ou prompt. A
+API/UI só lê resumo local; sem consulta a `/v1/models` ou botão de execução.
+Hash e canário não verificam membros, cota, cobrança ou preço; na tela ficam
+visíveis idade, última comparação e limitações do canário. Antes de ativar
+integração, revisar privacidade, retenção/auditoria dos registros e segurança
+do adapter; nunca colocar credenciais na declaração ou no Git.

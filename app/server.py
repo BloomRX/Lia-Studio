@@ -8,6 +8,7 @@ ou simplesmente executado com `python run.py`.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 import os
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -15,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import bootstrap, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import bootstrap, combo_canary, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -367,6 +368,8 @@ class Handler(BaseHTTPRequestHandler):
                 if set(body) != {"command", "path", "confirm"}:
                     raise StorageError("envie binário selecionado e confirmação")
                 return engine_probe.version(body["command"], body["path"], body["confirm"]), 200
+            if parts == ["api", "combos", "declarations"] and method == "GET":
+                return combo_canary.local_previews(storage, datetime.now(timezone.utc).isoformat()), 200
             if parts == ["api", "providers"]:
                 return {"catalog": providers.provider_catalog()}, 200
             if parts == ["api", "providers", "settings"] and method == "GET":

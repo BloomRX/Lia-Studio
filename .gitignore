@@ -6,6 +6,10 @@ __pycache__/
 
 # Ambiente local da aplicação (projetos do Dev ficam fora do repo por padrão)
 LiaStudioProjects/
+# Declarações privadas do Dev e cópias de recuperação, mesmo com raiz de projetos customizada dentro do repo.
+**/combo_declarations.json
+**/combo_declarations.json.bak
+**/combo_declarations.json.corrupt-*
 # Dados efêmeros do preview na Arena (nunca versionar projetos de teste)
 .arena/
 

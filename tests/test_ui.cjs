@@ -491,12 +491,31 @@ assert.equal(reloads, 1);
     configCalls.push({url, options});
     return {ok: true, json: async () => url === '/api/providers/settings'
       ? {mode: 'offline'} : url === '/api/providers'
-        ? {catalog: []} : {status: 'detected', message: 'Ollama respondeu',
+        ? {catalog: []} : url === '/api/combos/declarations'
+          ? {combos: [], runtime_connected: false, gateway_checked: false}
+          : {status: 'detected', message: 'Ollama respondeu',
           models: ['<img src=x onerror=alert(1)>'], connected: false}};
   };
   await context.renderGlobalConfig();
   assert.match(view.innerHTML, /Verificar Ollama local/);
-  assert.deepEqual(configCalls.map(call => call.url), ['/api/providers/settings', '/api/providers']);
+  assert.deepEqual(configCalls.map(call => call.url),
+    ['/api/providers/settings', '/api/providers', '/api/combos/declarations']);
+  assert.match(view.innerHTML, /cota free_quota pode acabar/);
+  assert.match(view.innerHTML, /NÃO verificada no gateway/);
+  const comboHtml = context.comboDeclarationPanel({combos:[{
+    gateway_alias:'<img src=x onerror=alert(1)>', mode:'fusion', age_days:34,
+    declared_at:'2026-09-15',last_success_at:'2026-09-15',revision:'abc',
+    members:[{model:'member',cost_class:'free_quota'}],
+    judge:{model:'judge',cost_class:'paid'},declared_estimate_usd:null,
+    last_unavailable_decision:{at:'2026-10-19',attempt_id:'tentativa-1',last_success_at:'2026-09-15',
+      potential_cost_acknowledged:true},
+  }]});
+  assert.match(comboHtml,/Declarado há 34 dias/);
+  assert.match(comboHtml,/Juiz adicional/);
+  assert.match(comboHtml,/indisponível \(valor incompleto\)/);
+  assert.match(comboHtml,/última conferência bem-sucedida/);
+  assert.match(comboHtml,/&lt;img/);
+  assert.doesNotMatch(comboHtml,/<img/);
   await context.window.probeOllama();
   assert.equal(configCalls.at(-1).url, '/api/providers/local-ollama/probe');
   assert.equal(configCalls.at(-1).options.method, 'POST');
