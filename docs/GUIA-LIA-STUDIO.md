@@ -9,10 +9,7 @@ Duas partes, independentes:
 - **Parte B — o que construir e por quê.** Arquitetura. Muda produto.
 
 Nada aqui cria dependência do Lia Project. Nada aqui declara execução real onde ela é
-simulada, nem abre gate de estágio. **Atualização 18/10:** apenas o Core `app/lia/`
-permanece stdlib; shell/build podem ter dependências fixadas. `.claude/` já é
-ignorado pelo Git nesta branch; não rode o antigo `Add-Content` abaixo de novo.
-A junction é tarefa local do Dev e ainda não foi validada aqui.
+simulada, nem abre gate de estágio. Python continua só com biblioteca padrão.
 
 ---
 
@@ -26,21 +23,21 @@ Claude Code. O conteúdo não precisa mudar.
 
 O que falta é o caminho: o Claude Code lê `.claude/skills/`, não `.agents/skills/`.
 
-O `.agents/skills/README.md` agora define fonte única e junction local, sem
-cópia duplicada. Depois do pull, somente o Dev no Windows pode ligá-la:
+O próprio `.agents/skills/README.md` já previu uma cópia "gerada a partir desta fonte e
+mantida em sincronia, **sem divergir**". A forma de nunca divergir é não ter cópia:
 
-```powershell
-# .claude/ já está no .gitignore nesta revisão; confira após o pull.
-git check-ignore .claude/skills
-# Somente o Dev no Windows cria a junction, se ainda não existir:
-New-Item -ItemType Directory -Force -Path ".claude" | Out-Null
-New-Item -ItemType Junction -Path ".claude\skills" -Target (Resolve-Path ".agents\skills").Path
-# Reinicie o Claude Code e confira /skills; sem teste, marque NÃO EXECUTADO.
+```
+# 1) ANTES DE TUDO
+Add-Content -Path ".gitignore" -Value "`n# Espelho das skills para o Claude Code (junction, nao versionar)`n.claude/"
+
+# 2) o junction (Windows, sem admin, sem duplicar arquivo)
+New-Item -ItemType Junction -Path ".claude\skills" -Target ".agents\skills"
+
+# 3) reiniciar o Claude Code e conferir com  /skills
 ```
 
-⚠ Não execute o antigo `Add-Content` repetidamente; a alteração do Git já veio
-antes da junction. Confira que `.claude/skills` não existe antes de criar e que
-o alvo resolvido é a pasta certa. A junction não deve entrar em commits.
+⚠ O passo 1 vem primeiro. O `.gitignore` atual não tem `.claude/`, e o Git no Windows trata
+junction como pasta normal — ele commitaria as quatro skills duplicadas.
 
 ⚠ Skill só é descoberta **na inicialização**. Editou? Reinicie.
 
@@ -157,9 +154,8 @@ requisitos. Mas trate isso como bônus, não como a razão — **mesmo com o `pi
 
 > Sobre a regra "sem pip install" em si: **o Dev já decidiu** — ela vira regra em camadas
 > (núcleo `app/lia/` stdlib, shell/adaptadores/build com dependência fixada por versão,
-> usuário final nunca roda pip nem precisa de Python). O texto revisado está no README;
-> o padrão da marca está em `docs/PADRAO-DA-MARCA.md`. Pacote em máquina limpa
-> ainda não foi validado.
+> usuário final nunca roda pip nem precisa de Python). O texto novo do README e o padrão
+> de pastas da marca estão em `PADRAO-DE-PASTAS-E-DISTRIBUICAO.md`.
 
 ### As opções que importam
 
@@ -329,9 +325,8 @@ Regras mínimas:
 - **Não** declarar Session como prova de execução real enquanto o modo for simulado. A
   distinção simulado × real é o ativo mais valioso deste repositório; perder ela custa mais
   do que qualquer funcionalidade ganha.
-- **Não** acoplar o Registry a um SDK de fornecedor único. O motivo principal é
-  neutralidade entre runtimes; `subprocess` é a fronteira mínima para CLIs
-  distintos. A permissão de dependências no build não muda essa decisão.
+- **Não** adotar o SDK oficial. `pip install` + Python 3.10 custam mais do que entregam
+  aqui; `subprocess` resolve com a biblioteca padrão.
 
 ---
 
