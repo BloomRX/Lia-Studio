@@ -26,8 +26,8 @@ Claude Code. O conteúdo não precisa mudar.
 
 O que falta é o caminho: o Claude Code lê `.claude/skills/`, não `.agents/skills/`.
 
-O próprio `.agents/skills/README.md` já previu uma cópia "gerada a partir desta fonte e
-mantida em sincronia, **sem divergir**". A forma de nunca divergir é não ter cópia:
+O `.agents/skills/README.md` agora define fonte única e junction local, sem
+cópia duplicada. Depois do pull, somente o Dev no Windows pode ligá-la:
 
 ```powershell
 # .claude/ já está no .gitignore nesta revisão; confira após o pull.
@@ -157,8 +157,9 @@ requisitos. Mas trate isso como bônus, não como a razão — **mesmo com o `pi
 
 > Sobre a regra "sem pip install" em si: **o Dev já decidiu** — ela vira regra em camadas
 > (núcleo `app/lia/` stdlib, shell/adaptadores/build com dependência fixada por versão,
-> usuário final nunca roda pip nem precisa de Python). O texto novo do README e o padrão
-> de pastas da marca estão em `PADRAO-DE-PASTAS-E-DISTRIBUICAO.md`.
+> usuário final nunca roda pip nem precisa de Python). O texto revisado está no README;
+> o padrão da marca está em `docs/PADRAO-DA-MARCA.md`. Pacote em máquina limpa
+> ainda não foi validado.
 
 ### As opções que importam
 
@@ -328,8 +329,9 @@ Regras mínimas:
 - **Não** declarar Session como prova de execução real enquanto o modo for simulado. A
   distinção simulado × real é o ativo mais valioso deste repositório; perder ela custa mais
   do que qualquer funcionalidade ganha.
-- **Não** adotar o SDK oficial. `pip install` + Python 3.10 custam mais do que entregam
-  aqui; `subprocess` resolve com a biblioteca padrão.
+- **Não** acoplar o Registry a um SDK de fornecedor único. O motivo principal é
+  neutralidade entre runtimes; `subprocess` é a fronteira mínima para CLIs
+  distintos. A permissão de dependências no build não muda essa decisão.
 
 ---
 
