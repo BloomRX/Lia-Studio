@@ -784,22 +784,56 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   da junction local que o Dev criará no Windows. Não versionar cópias da Skill
   nem tratar a descoberta pelo Claude Code como já verificada neste sandbox.
 
-## Decisão 39 — composição de fallback e política Free-First (2026-10-18)
+## Decisão 39 — combo de gateway declarado pelo Dev e Free-First (retificada em 2026-10-19)
 
-- **Escolha: opção 2** da auditoria: antes de usar um combo de gateway, o Studio
-  deve conhecer e mostrar seus membros, ordem e classificação de custo. Se a
-  composição, identidade do destino ou custo potencial não puder ser verificado,
-  **bloquear o combo** para execução pelo Studio; aviso genérico ou consentimento
-  anterior não impedem fallback pago oculto. Não armazenar credencial no projeto.
-- Opção 1 (combos só da mesma faixa) pode ser política manual do Dev no gateway,
-  mas não é garantia verificável pelo Studio; opção 3 (UI de política de custo)
-  fica para depois, sem fallback silencioso. Iniciar sem combos sob gateway até
-  prova de introspecção/controle e teste explícito no Windows pelo Dev.
-  `--max-budget-usd` é estimativa sob gateway e **não** teto de fatura.
-- Histórico de falhas 503 simultâneas relatado pelo Dev em 18/10 não foi
-  verificado aqui. Runtime CLI real, preços e compatibilidade Anthropic atrás
-  de `localhost:20128` também não foram testados; esta decisão é um bloqueio de
-  segurança, não autorização para disparar inferência.
+- **Correção do Dev à escolha anterior:** segundo sua observação, `/v1/models`
+  não expõe membros de combo e `/api/combos` requer sessão do dashboard. A
+  inspeção automática da antiga opção 2 bloquearia todos os combos neste
+  gateway. **Escolha: terceira via, declaração explícita do Dev**, sem exigir
+  acesso ao dashboard, scraping, cookie ou segredo no Studio. Esses endpoints e
+  seu schema não foram verificados neste sandbox; a declaração **não prova** a
+  configuração real nem é permissão da Task.
+- Registrar futuramente por combo: alias/ID do gateway, **modo obrigatório**
+  (`fallback`, `round-robin` ou `fusion`), membros declarados em ordem e classe
+  de custo de cada um (`local`, `free_quota`, `paid`, `unknown`), revisão/hash e
+  data da declaração. Não aceitar lista vazia, classe/mode desconhecidos ou
+  consentimento implícito. Antes de cada execução, mostrar toda a composição
+  declarada, o modo, o risco, a revisão e pedir confirmação específica; mudança
+  da declaração exige nova revisão/consentimento. A UI deve dizer **declarado
+  pelo Dev, não verificado no gateway**, inclusive se a configuração mudar lá.
+- **Fallback:** pode tentar o próximo membro após falha; qualquer membro pago ou
+  desconhecido pode gerar cobrança, e tentativas falhas também podem cobrar.
+  **Round-robin:** o membro escolhido pode variar a cada chamada; qualquer
+  membro pago/desconhecido oferece risco pago, sem afirmar qual foi usado.
+  **Fusion:** considera todos os membros acionados e o custo estimado é a
+  **soma** por chamada, não o máximo; repetição de membro conta novamente.
+  Cota `free_quota` pode esgotar e a cobrança após o esgotamento é desconhecida:
+  tratá-la como risco de custo potencial, assim como `paid`/`unknown`. Todos
+  esses casos exigem consentimento **explícito de custo potencial** por ação,
+  além dos grants; nenhuma promoção silenciosa de uma rota gratuita para uma
+  paga. Estimativa informada pelo Dev (inclusive zero) não é fatura, preço
+  verificado, teto, nem atestado de cota disponível; se faltar algum valor,
+  não calcular total. Round-robin só usa o maior valor declarado para **uma**
+  escolha, sem cobrir retries; fallback soma tentativas possíveis, não apenas
+  a última. Fusion soma todos, inclusive repetições. Nenhum destes números é
+  limite de cobrança garantido.
+- `app/lia/combo_policy.py` é **somente prévia pura, em memória, sem I/O**:
+  exige alias, modo, 1–12 membros (modelo, classe e estimativa decimal opcional),
+  calcula revisão SHA-256 do conteúdo e recusa consentimento para revisão antiga.
+  Reconhecimento separado de custo potencial para `free_quota`/`paid`/`unknown`
+  retorna `execution_authorized: false`; não concede permissão, não guarda
+  timestamp nem declaração no projeto, não chama gateway e não é gate executável.
+  Identidade confiável do combo, persistência, data e UI ainda faltam. Sem
+  declaração válida, identidade do combo, consentimento ou classificação de
+  risco, **uma futura execução** deve bloquear. Mesmo com declaração, o Studio
+  **não consegue detectar alteração posterior** do gateway; mostrar essa
+  incerteza e não alegar custo zero garantido. Um teto
+  `--max-budget-usd` pode usar estimativa Anthropic sob gateway, **não** limita
+  comprovadamente a fatura. Política executável e UI ainda não estão conectadas:
+  Agent Runtime/combos permanecem desligados até teste `claude -p` no ambiente
+  do Dev e revisão do contrato de execução da Decisão 40. O histórico de falhas
+  503 simultâneas relatado pelo Dev em 18/10, o CLI real, preços e compatibilidade
+  atrás de `localhost:20128` não foram verificados neste sandbox.
 
 ## Decisão 40 — fronteira de transporte CLI antes de Session real (2026-10-18)
 
@@ -822,8 +856,16 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   ausência de escrita por hooks/configuração/processos filhos. Antes de ativar
   CLI real: verificar `--version`/`--help` e stream real no Windows pelo Dev,
   decidir isolamento/cwd, ambiente/credenciais mínimos, Skills/subagents/hooks,
-  cancelamento de árvore, limites de custo e composição do gateway (Decisão 39),
-  schema de Session real, retenção/acesso e redaction do stream bruto. O stream
-  **não é evidência confiável grátis**: pode conter fonte e segredos; nesta
-  preparação não é salvo. Se qualquer requisito não for verificável, bloquear
+  cancelamento de árvore, limites de custo e composição do gateway (Decisão 39)
+  e schema de Session real. Se qualquer requisito não for verificável, bloquear
   execução real em vez de alegar parecer somente leitura.
+- **Retenção e limites explícitos do stream (19/10):** nesta preparação o bruto
+  só existe na memória do processo enquanto é analisado: até **256 KiB stdout,
+  16 KiB stderr, 32 KiB por linha, 200 eventos e 30 segundos**. Não é salvo em
+  disco, exportado, exibido integralmente ou marcado evidência; após a análise
+  só ficam resumo estrutural e SHA-256, sem conteúdo. Uma Session real futura
+  deve manter **retenção bruta desligada por padrão**. Se evidência bruta for
+  necessária, exigir opt-in por Session, acesso local restrito, revisão/redaction
+  de segredos, exclusão de export/backup comum, os mesmos caps e prazo máximo
+  de **24 horas** com descarte verificável. Guardar bruto antes do parse não
+  o torna prova de resultado ou licença para reter fonte, prompts e credenciais.

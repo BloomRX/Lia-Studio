@@ -220,7 +220,14 @@ Runtime alternativo autorizado
 
 Porém, **fallback não deve significar cobrança inesperada**.
 
-Antes de migrar de uma opção gratuita/local para uma opção que possa gerar custo, o Studio deve respeitar a política de custo definida pelo usuário.
+Antes de migrar de uma opção gratuita/local para uma opção que possa gerar custo, o Studio deve respeitar a política de custo definida pelo usuário. Uma cota gratuita pode acabar; não tratar `free_quota` como custo garantidamente zero.
+
+**Combos atrás de gateway (Decisão 39, retificada em 19/10/2026):** segundo o Dev, `/v1/models` não expõe membros e `/api/combos` exige sessão do dashboard. Não usar cookie/scraping, nem apresentar composição declarada pelo Dev como verificação do gateway. O contrato offline `app/lia/combo_policy.py` aceita alias, modo (`fallback`, `round-robin`, `fusion`) e membros declarados (modelo, classe `local`/`free_quota`/`paid`/`unknown`, estimativa USD em string decimal opcional) e devolve prévia com revisão; não salva configuração nem executa nada. Não há combo, UI ou Agent Runtime conectado.
+
+- `fallback`: pode cobrar tentativas falhas; a soma dos valores declarados é só uma prévia de possíveis tentativas, não teto.
+- `round-robin`: não sabemos qual membro será escolhido; a prévia é o maior valor declarado **para uma** escolha, sem cobrir retries.
+- `fusion`: vários membros acionados; a prévia **soma** todos, inclusive membros repetidos.
+- Qualquer `free_quota`, `paid` ou `unknown` exige reconhecimento explícito de custo potencial (além da confirmação da revisão); mesmo uma estimativa declarada como zero não garante gratuidade. Se faltar preço para algum membro, a prévia não fornece total. Declaração e reconhecimento nunca são autorização de execução: antes de conectar Runtime, exigem-se permissões/grants, confirmação por ação, isolamento e teste real `claude -p` atrás do gateway no ambiente do Dev. Mudança do gateway após declaração pode passar despercebida; `--max-budget-usd` não é teto comprovado da fatura.
 
 Exemplo:
 

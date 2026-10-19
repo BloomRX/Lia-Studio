@@ -163,9 +163,19 @@
 
 `app/lia/agent_cli.py` é apenas código de transporte exercitado por CLI falso
 nos testes; a API/UI não o chama, não há Session de Agent real nem acesso ao
-gateway. O stream JSONL é limitado e resumido apenas em memória durante o teste;
+gateway. O stream JSONL é limitado e resumido apenas em memória durante o teste
+(256 KiB stdout, 16 KiB stderr, 32 KiB por linha, 200 eventos e 30 s);
 não há log bruto persistido ou evidência criada. `session_id` do CLI é dado
 não confiável e não substitui o ID local da futura Session. Stream bruto pode
-conter fonte, prompts, caminhos e segredos: não afirmar que gravá-lo é gratuito
-ou seguro; decidir armazenamento protegido, limite/retenção/redaction e consentimento
-antes de ativar execução real. Flags Read/Grep/Glob não são sandbox do SO.
+conter fonte, prompts, caminhos e segredos. Retenção bruta de Session real
+futura deve estar desligada por padrão; eventual opt-in por Session exige
+acesso local restrito, revisão/redaction, exclusão do export/backup comum,
+mesmos caps e descarte verificável em até 24 h (Decisão 40). Isso não está
+implementado. Flags Read/Grep/Glob não são sandbox do SO.
+
+`app/lia/combo_policy.py` apenas valida e resume **em memória** declaração de
+combo do Dev (alias, modo e membros/custo declarado) e reconhecimento de risco;
+não persiste preço, declaração ou consentimento, não consulta gateway/dashboard,
+nem autoriza execução. A prévia e o hash de revisão não verificam identidade,
+composição, quota disponível ou fatura. Futuras UI/persistência exigem nova
+revisão de privacidade; nunca incluir credenciais de gateway em declarações.

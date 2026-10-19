@@ -30,6 +30,14 @@ class TestDependencyLayers(unittest.TestCase):
                                  and name not in modules and name != "app"]
                 self.assertEqual(external, [])
 
+    def test_claude_instructions_are_short_literal_and_not_a_skill_copy(self):
+        text = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+        self.assertLess(len(text), 1800)
+        self.assertNotIn("@import", text)
+        self.assertIn(".agents/skills/", text)
+        self.assertIn("não é sandbox", text)
+        self.assertIn("NÃO EXECUTADO", text)
+
     def test_build_dependencies_pinned_and_noticed(self):
         requirements = (ROOT / "desktop" / "requirements-windows.txt").read_text(encoding="utf-8")
         packages = [line.strip() for line in requirements.splitlines()

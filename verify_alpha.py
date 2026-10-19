@@ -58,6 +58,7 @@ CHECKS = {
     "slice": ("Roteiro de fatia vertical (sem jogo/runner)", [sys.executable, "tests/test_vertical_slice.py"]),
     "validation": ("Validação sintática Python local (não gameplay)", [sys.executable, "tests/test_validation_sessions.py"]),
     "agent_cli": ("Transporte CLI experimental com processo falso", [sys.executable, "tests/test_agent_cli.py"]),
+    "combo_policy": ("Prévia de combos declarados, sem gateway ou execução", [sys.executable, "tests/test_combo_policy.py"]),
     "chat": ("Chat Ollama opt-in com serviço falso", [sys.executable, "tests/test_ollama_chat.py"]),
     "drafts": ("Edição de código com diff, aceite e backup", [sys.executable, "tests/test_code_drafts.py"]),
     "draft_jobs": ("Jobs canceláveis de inferência com HTTP falso", [sys.executable, "tests/test_draft_jobs.py"]),
@@ -80,7 +81,7 @@ PARTS = (
     ("HTTP: Sessions, recuperação e descoberta local", ("core-6",)),
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation")),
-    ("CLI/Ollama falsos, diff e Jobs canceláveis", ("agent_cli", "chat", "drafts", "draft_jobs")),
+    ("CLI/combo declarativo, Ollama falsos, diff e Jobs", ("agent_cli", "combo_policy", "chat", "drafts", "draft_jobs")),
     ("Integração, desktop falso, compilação e UI", ("integration", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 
