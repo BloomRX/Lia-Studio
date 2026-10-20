@@ -523,6 +523,35 @@ assert.equal(reloads, 1);
   assert.match(probeResult.innerHTML, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(probeResult.innerHTML, /<img/);
   assert.equal(probeButton.disabled, false);
+  const comboField = {value: JSON.stringify({gateway_alias:'meu-tier',mode:'fusion',
+    members:[{model:'free',cost_class:'free_quota',estimate_usd:'0'}],
+    judge:{model:'juiz',cost_class:'paid',estimate_usd:'0.4'}}), focus(){}};
+  const comboResult = {textContent:''};
+  const comboSave = {disabled:false};
+  context.document.getElementById = id => ({view, toast, 'combo-json':comboField,
+    'combo-result':comboResult, 'combo-save':comboSave})[id];
+  const requestsBeforeCombos = configCalls.length;
+  context.fetch = async (url, options) => {
+    configCalls.push({url, options});
+    return {ok:true, json:async () => url === '/api/providers/settings' ? {mode:'offline'}
+      : url === '/api/providers' ? {catalog:[]}
+      : url === '/api/combos/declarations' && options.method === 'GET'
+        ? {combos:[]}
+        : url === '/api/combos/preview' ? {gateway_alias:'meu-tier',mode:'fusion',
+          members:[{model:'free',cost_class:'free_quota'}],judge:{model:'juiz',cost_class:'paid'},
+          declared_potential_external_cost:true,declared_estimate_usd:'0.4'} : {combos:[]}};
+  };
+  await context.window.saveCombo();
+  const comboCalls = configCalls.slice(requestsBeforeCombos);
+  assert.equal(comboCalls[0].url,'/api/combos/preview');
+  assert.equal(comboCalls[1].url,'/api/combos/declarations');
+  assert.equal(comboCalls[1].options.method,'POST');
+  assert.deepEqual(JSON.parse(comboCalls[1].options.body), {
+    declaration:JSON.parse(comboField.value),expected_revision:null,confirm:true,
+    allow_potential_cost:true});
+  assert.match(comboResult.textContent,/foto/);
+  assert.equal(comboSave.disabled,false);
+  assert.doesNotMatch(view.innerHTML,/Agent Runtime conectado/);
   // Alpha UI.1: contextos visuais não alteram o estágio nem duplicam a pipeline.
   const phase = context.renderStageContext('project-1', 'delivery', {
     stage_gate: project.stage_gate, docs: ['GDD.md'], modules: [], qa: [],

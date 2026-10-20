@@ -167,14 +167,27 @@ NAME = "combo_declarations.json"  # formato com schema_version do Storage, NUNCA
 
 
 def validate_global(data: Any) -> None:
-    if (type(data) is not dict or set(data) != {"records", "decision_history"}
+    if (type(data) is not dict or set(data) not in ({"records", "decision_history"},
+                                                {"records", "decision_history", "checks"})
         or type(data["records"]) is not dict or len(data["records"]) > 32
-        or type(data["decision_history"]) is not list or len(data["decision_history"]) > 1000):
+        or type(data["decision_history"]) is not list or len(data["decision_history"]) > 1000
+        or type(data.get("checks", {})) is not dict):
         raise StorageError("declarações locais de combos inválidas")
     for alias, record in data["records"].items():
         validate_record(record)
         if alias != record["declaration"]["gateway_alias"]:
             raise StorageError("ID de tier divergente da declaração")
+    # Checkpoints introduzidos após as declarações antigas: arquivo anterior sem
+    # "checks" continua válido, não há migração silenciosa na leitura.
+    for alias, check in data.get("checks", {}).items():
+        record = data["records"].get(alias)
+        if (record is None or type(check) is not dict or set(check) !=
+            {"status", "checked_at", "canary_revision", "latest_probe_status"}
+            or check["status"] not in ("unchanged_canary", "stale", "unavailable")
+            or check["latest_probe_status"] not in ("unchanged_canary", "stale", "unavailable")
+            or check["canary_revision"] != record["canary_revision"]
+            or _date(check["checked_at"]) < _date(record["declared_at"])):
+            raise StorageError("estado de conferência de combo inválido")
     ids = set()
     for event in data["decision_history"]:
         if (type(event) is not dict or set(event) != {"tier_id", "attempt_id", "at", "revision",
@@ -196,9 +209,9 @@ def validate_global(data: Any) -> None:
 def load(storage: Storage) -> Dict[str, Any]:
     raw = storage.read_structured_global(NAME)
     if raw == {} and not (storage.projects_dir / NAME).exists():
-        return {"records": {}, "decision_history": []}
+        return {"records": {}, "decision_history": [], "checks": {}}
     validate_global(raw)
-    return raw
+    return {**raw, "checks":raw.get("checks", {})}
 
 
 def save_declaration(storage: Storage, declaration: Dict[str, Any], response: Any,
@@ -215,6 +228,7 @@ def save_declaration(storage: Storage, declaration: Dict[str, Any], response: An
         if old is not None and old["revision"] == candidate["revision"] and old["baseline"] == candidate["baseline"]:
             raise StorageError("declaração idêntica; não renove sua data automaticamente")
         data["records"][declaration["gateway_alias"]] = candidate
+        data["checks"].pop(declaration["gateway_alias"], None)
         validate_global(data)
         storage.write_structured_global(NAME, data)
         return candidate
@@ -272,6 +286,41 @@ def local_previews(storage: Storage, now: str) -> Dict[str, Any]:
                       "last_unavailable_decision":last_event,
                       "last_decision_from_previous_declaration":(last_event is not None and
                           last_event["canary_revision"] != record["canary_revision"]),
-                      "canary_status":"not_checked_now", "warnings":list(WARNINGS),
+                      "canary_status":state["checks"].get(alias, {}).get("status", "not_checked_now"),
+                      "last_checked_at":state["checks"].get(alias, {}).get("checked_at"),
+                      "latest_probe_status":state["checks"].get(alias, {}).get("latest_probe_status"),
+                      "warnings":list(WARNINGS),
                       "execution_authorized":False})
     return {"combos":items, "runtime_connected":False, "gateway_checked":False}
+
+
+
+def check_tier(storage: Storage, tier_id: str, response: Any, checked_at: str) -> Dict[str, Any]:
+    """Compara e persiste SÓ status/data. Response deve vir do adapter confiável."""
+    with storage.stage_lock:
+        data = load(storage)
+        record = data["records"].get(tier_id)
+        if record is None:
+            raise StorageError("tier não declarado")
+        result = compare(record, response, checked_at)
+        if _date(checked_at) < _date(record["last_success_at"]):
+            raise StorageError("relógio anterior à última conferência")
+        observed_status = result["status"]
+        # Uma alteração DETECTADA nunca volta a "verde" por queda da rede ou
+        # reversão aparente do gateway: só nova declaração/revisão a limpa.
+        if data["checks"].get(tier_id, {}).get("status") == "stale":
+            result["status"] = "stale"
+            result["requires_redeclaration"] = True
+            result["requires_explicit_decision"] = False
+        elif observed_status == "unchanged_canary":
+            data["records"][tier_id] = mark_success(record, result)
+        result["latest_probe_status"] = observed_status
+        # Nunca atualizar a fotografia após alteração detectada, nem usar
+        # cache antigo como veredito da conferência atual.
+        data["checks"][tier_id] = {"status":result["status"],
+                                    "latest_probe_status":observed_status,
+                                    "checked_at":checked_at,
+                                    "canary_revision":record["canary_revision"]}
+        validate_global(data)
+        storage.write_structured_global(NAME, data)
+        return result

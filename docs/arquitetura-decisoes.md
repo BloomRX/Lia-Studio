@@ -907,7 +907,8 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   preço, cota ou custo zero. A prévia em Configuração é só leitura local: mostra
   idade "declarado há N dias", juiz, estimativa incompleta, última conferência e
   último consentimento para falha, sempre "NÃO CONFERIDO nesta visita". Não há
-  botão de uso/consentimento ou consulta a gateway nesta versão.
+  botão de uso/consentimento ou consulta a gateway nesta versão (preparação
+  anterior à Decisão 42).
 - **Não conectado:** o Core aceita respostas injetadas em testes, sem fazer HTTP.
   O schema real de `/v1/models` e a credencial já existente precisam de teste
   no PC do Dev e adapter confiável limitado a esse tier (sem nova credencial,
@@ -916,3 +917,42 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   identidade da configuração do gateway, obter comparação atual e aplicar gates
   e grants no ponto de ação. Runtime, combos executáveis e Sessions reais seguem
   desligados até `claude -p` atrás do gateway no PC do Dev.
+
+## Decisão 42 — editor de combo e consulta opt-in de metadados (2026-10-19)
+
+- **Escopo autorizado:** o Dev autorizou prosseguir com a implementação, não
+  ligou Agent Runtime, combo executável ou Session real. A Configuração permite
+  preencher/revisar JSON estrito de composição (sem credencial), revisar prévia
+  de risco e confirmar declaração. `POST /api/combos/preview` não faz rede/escrita;
+  `POST /api/combos/declarations` exige revisão atual, confirmação e, para
+  `free_quota`/`paid`/`unknown` em membro ou juiz, reconhecimento separado do
+  risco de custo. A gravação só ocorre com fotografia comparável do mesmo tier.
+  Consentimento para metadados NÃO autoriza inferência, gasto nem Tasks.
+- **Adapter opt-in e limite de confiança:** `gateway_models.py` só faz GET
+  `http://127.0.0.1:20128/v1/models` **no computador que executa o Studio**,
+  com chave **já fornecida no ambiente do processo** (`ANTHROPIC_AUTH_TOKEN`
+  preferido, ou `ANTHROPIC_API_KEY`), sem aceitar URL, token ou resposta do
+  navegador. Sem chave existente, não pede nem salva outra. Sem proxy, sem
+  redirect, timeout 3 s e leitura limitada a 256 KiB; seleciona ID exato e
+  retém apenas capacidades/janela normalizadas. Erros e corpo bruto nunca são
+  devolvidos ao cliente. Formato real, headers e disponibilidade no gateway do
+  Dev são hipóteses: só testes com serviço falso foram feitos aqui.
+- **Conferência explícita e recuperação:** `POST /api/combos/check` requer tier
+  previamente declarado e confirmação; busca metadados do gateway, grava apenas
+  horário/status (`stale`, `unavailable`, `unchanged_canary`) e não regrava a
+  fotografia inicial. Revisão antiga impede redeclaração antes da consulta;
+  arquivo antigo sem `checks` é legível sem migração forçada. `stale` é
+  **persistente**: indisponibilidade ou aparente reversão posterior não apagam
+  uma alteração já detectada. `stale` exige nova declaração/revisão; `unavailable` é diferente de igualdade e mantém data da
+  última conferência bem-sucedida. A tela mostra os dois pontos cegos do canário
+  (troca equivalente e fim de `free_quota`), mesmo quando o status é igual.
+  Ainda não há tentativa real para vincular consentimento de seguir sem consulta:
+  **não mostrar botão de aprovação da tentativa**. Quando existir ação real,
+  verificar no instante de uso e pedir decisão *por tentativa* conforme 41.
+- **Alternativas rejeitadas:** introspecção de membros em `/v1/models`, sessão
+  do dashboard, URL/chave informada pelo browser, aceitar fotografia manual como
+  observação do gateway, rebaselining automático, tratar indisponibilidade como
+  igualdade ou liberar processo com `--allowedTools`. Para usar outro host,
+  revisar identidade confiável do gateway, escopo de credencial, SSRF/redirect e
+  política de rede antes de mudar esta exceção local. Não inferir que HTTP local
+  prove composição, preço, cota ou ausência de cobrança.

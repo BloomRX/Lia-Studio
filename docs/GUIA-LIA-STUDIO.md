@@ -9,7 +9,9 @@ Duas partes, independentes:
 - **Parte B — o que construir e por quê.** Arquitetura. Muda produto.
 
 Nada aqui cria dependência do Lia Project. Nada aqui declara execução real onde ela é
-simulada, nem abre gate de estágio. Python continua só com biblioteca padrão.
+simulada, nem abre gate de estágio. **Atualização 19/10:** apenas `app/lia/`
+usa somente a biblioteca padrão; shell/build opcionais têm dependências fixadas.
+Este guia é histórico: para execução de combos prevalecem Decisões 39–42.
 
 ---
 
@@ -23,21 +25,16 @@ Claude Code. O conteúdo não precisa mudar.
 
 O que falta é o caminho: o Claude Code lê `.claude/skills/`, não `.agents/skills/`.
 
-O próprio `.agents/skills/README.md` já previu uma cópia "gerada a partir desta fonte e
-mantida em sincronia, **sem divergir**". A forma de nunca divergir é não ter cópia:
+`.agents/skills/` é a fonte única; `.claude/` já está no `.gitignore` nesta
+branch. Não repita `Add-Content`: adicionaria linhas duplicadas. Só o Dev, no
+Windows, pode criar a junction local após confirmar que ela ainda não existe:
 
+```powershell
+git check-ignore .claude/skills
+New-Item -ItemType Directory -Force -Path ".claude" | Out-Null
+New-Item -ItemType Junction -Path ".claude\skills" -Target (Resolve-Path ".agents\skills").Path
+# Reinicie e confira /skills. Sem teste no Windows, marque NÃO EXECUTADO.
 ```
-# 1) ANTES DE TUDO
-Add-Content -Path ".gitignore" -Value "`n# Espelho das skills para o Claude Code (junction, nao versionar)`n.claude/"
-
-# 2) o junction (Windows, sem admin, sem duplicar arquivo)
-New-Item -ItemType Junction -Path ".claude\skills" -Target ".agents\skills"
-
-# 3) reiniciar o Claude Code e conferir com  /skills
-```
-
-⚠ O passo 1 vem primeiro. O `.gitignore` atual não tem `.claude/`, e o Git no Windows trata
-junction como pasta normal — ele commitaria as quatro skills duplicadas.
 
 ⚠ Skill só é descoberta **na inicialização**. Editou? Reinicie.
 
@@ -155,7 +152,8 @@ requisitos. Mas trate isso como bônus, não como a razão — **mesmo com o `pi
 > Sobre a regra "sem pip install" em si: **o Dev já decidiu** — ela vira regra em camadas
 > (núcleo `app/lia/` stdlib, shell/adaptadores/build com dependência fixada por versão,
 > usuário final nunca roda pip nem precisa de Python). O texto novo do README e o padrão
-> de pastas da marca estão em `PADRAO-DE-PASTAS-E-DISTRIBUICAO.md`.
+> de marca estão em `docs/PADRAO-DA-MARCA.md`; limites legais em
+> `THIRD_PARTY_NOTICES.md`. Distribuição Windows ainda não foi validada.
 
 ### As opções que importam
 
@@ -165,11 +163,11 @@ requisitos. Mas trate isso como bônus, não como a razão — **mesmo com o `pi
 | `--output-format stream-json` | um evento JSON por linha, em tempo real |
 | `--verbose` | **obrigatório** junto com `stream-json`, senão o fluxo não sai completo |
 | `--include-partial-messages` | eventos token a token, se quiser o texto aparecendo ao vivo |
-| `--allowedTools "Read,Grep"` | pré-aprova ferramentas; sem isso a execução trava esperando prompt |
+| `--allowedTools "Read,Grep"` | candidato a pré-aprovação; não isola arquivo, hook ou subprocesso |
 | `--tools` | restringe quais ferramentas existem |
 | `--permission-mode` | postura de permissão da execução |
 | `--max-turns N` | teto de voltas do loop |
-| `--max-budget-usd` | teto de gasto (exige Claude Code ≥ 2.1.217) |
+| `--max-budget-usd` | estimativa do CLI, **não é teto de fatura sob gateway** |
 | `--resume <session_id>` | continua uma sessão anterior |
 | `--json-schema` | obriga a resposta a seguir um schema seu |
 | `--bare` | pula descoberta de skills/hooks/subagents/MCP — resultado igual em toda máquina |
@@ -184,8 +182,9 @@ requisitos. Mas trate isso como bônus, não como a razão — **mesmo com o `pi
   quebrado. **Cheque o código de saída primeiro, parseie depois.**
 - **Sempre com timeout.** Uma execução que esbarra em prompt de permissão inesperado fica
   pendurada até alguém matar.
-- **Grave o fluxo cru antes de parsear.** Se o parse falhar, você precisa dos bytes
-  originais pra depurar — e isso vira evidência de Session de graça.
+- **Não grave o fluxo cru por padrão.** Pode conter prompts, fonte, caminhos e
+  credenciais; Decisão 40 limita bytes/tempo em memória e define eventual
+  opt-in com retenção máxima. Stream não é evidência confiável por si.
 - **stdin tem teto de 10 MB.** Arquivo grande vai por caminho no prompt, não por pipe.
 - **`--bare` é o modo reprodutível**, mas ele desliga skills e subagents. Para rodar as
   skills do projeto, **não** use `--bare`.
@@ -201,7 +200,7 @@ adaptador com cinco perguntas — e as três alternativas que você listou respo
 | executar uma vez | `claude -p "<t>"` | `codex exec "<t>"` | `opencode run "<t>"` |
 | saída de máquina | `--output-format json\|stream-json` | `--json` | `--format json` |
 | resposta com schema | `--json-schema` | `--output-schema` | pela API |
-| permissão sem perguntar | `--permission-mode` + `--allowedTools` | `--sandbox workspace-write` | `--auto` |
+| flags de permissão (não sandbox garantido) | `--permission-mode` + `--allowedTools` | `--sandbox workspace-write` | `--auto` |
 | continuar sessão | `--resume <id>` | `codex exec resume --last` | `--session <id>` |
 
 Cinco campos por runtime. O núcleo do Studio nunca sabe qual está rodando — é literalmente
@@ -216,12 +215,12 @@ a extensibilidade que o §17 pede, e o Role continua o mesmo quando o usuário t
 | Model | o que aquele endereço anunciar |
 | Role/Profile | subagents em `.claude/agents/` — `explore`, `reviewer`, `visual-qa`, `test-runner` |
 | Skill | `.agents/skills/` (pronto) |
-| Session | uma invocação, com `session_id` devolvido pelo próprio runtime |
-| Evidence | o fluxo `stream-json` gravado em disco |
+| Session | ID local do Studio; `session_id` do CLI é dado não confiável |
+| Evidence | evidência separada, revisada; stream bruto não é prova |
 | Lead → Worker | subagents do runtime, ou várias invocações orquestradas pelo Studio |
 
-O `session_id` vem de graça no JSON de saída e serve pra retomar depois. Os campos que a
-§12 pede rastrear (runtime, skills usadas, tools, duração, erro) estão todos no fluxo.
+O `session_id` devolvido pelo CLI não substitui o ID local da Session futura.
+Metadados de runtime/erro do fluxo não provam Task, Skill, Tool ou evidência validada.
 
 ### A fatia vertical mais barata
 
@@ -232,9 +231,9 @@ Uma Session **real** que não abre gate nenhum e não toca em estágio:
 > arquivo. O Studio grava o fluxo como evidência, registra a Session com o `session_id`
 > real e **não** marca a Task como nada.
 
-Isso prova a canalização inteira — runtime, permissão, Session, evidência — sem produzir
-uma única alteração em disco e sem nenhuma afirmação de aprovação. Depois disso, liberar
-escrita é mudar uma lista de ferramentas.
+Esse roteiro **ainda não foi testado**. `--allowedTools` não é sandbox; hooks e
+processos filhos podem escrever. Antes de execução real, testar `claude -p` atrás
+do gateway no PC do Dev e aprovar isolamento, custo e retenção (Decisão 40).
 
 ## B4. O conflito Free-First × fallback do gateway
 
@@ -249,19 +248,17 @@ vai pro 2, toma 503, vai pro 3. Ele não sabe e não pergunta se o membro 3 é p
 gateway como Provider sem mais nada viola a sua §8 no primeiro 503 — e 503 é comum: no
 canário de 18/10/2026, cinco provedores estavam fora ao mesmo tempo.
 
-Três saídas, em ordem de esforço:
-
-1. **Combo só com membros da mesma faixa de custo.** Zero código, funciona hoje. Combo
-   "grátis" não tem membro pago dentro.
-2. **O Studio lê a composição do combo e mostra os membros antes de executar.** Atende
-   também a §6 ("o Studio não deve esconder o custo").
-3. **A escolha do combo vira a "Política de custo"** da UI que a §12 já desenhou.
+**Escolha vigente (Decisões 39–42):** o Dev declara membros, modo, classe de
+custo e juiz de fusion. `/v1/models` não expõe membros; `/api/combos` exige
+sessão de dashboard, que o Studio não usa. O canário de capacidade/janela é
+parcial: nem troca equivalente nem esgotamento de `free_quota` são detectados.
+Configuração pode consultar metadados localmente, mas nenhuma Task executa combo.
 
 Dois detalhes que ajudam: a §14 pede rastrear qual provider executou — o dashboard do
 gateway já registra isso. E `--output-format json` devolve `total_cost_usd` por execução,
-o que dá um teto real via `--max-budget-usd`. Mas atenção: nesta montagem esse número é
-**estimativa com preço de tabela da Anthropic**, não o custo verdadeiro atrás do gateway.
-Serve como limite de segurança, **não** como fatura.
+mas `--max-budget-usd` **não** impõe teto real da fatura atrás do gateway:
+é estimativa com preço de tabela da Anthropic, não o custo verdadeiro.
+Não usar como limite comprovado nem como fatura.
 
 ### Sobre embarcar o 9Router no produto: não
 
@@ -281,10 +278,11 @@ Aceite um **endereço de servidor configurável**, com teste de conexão e lista
 modelos que aquele endereço anuncia. Aí o 9Router funciona sem uma linha de código dedicada
 a ele, qualquer outro gateway compatível também, e você não herda dependência nenhuma.
 
-Isso resolve "nuvem ou local" de graça: endereço é endereço. O que **não** pode é
-`localhost` fixo no código — se o Studio rodar em outro lugar que não a máquina do modelo,
-`localhost` deixa de existir. Você já tem o precedente certo no diagnóstico opcional do
-Ollama, que é loopback **do computador que executa o Studio**, declarado assim.
+Esse é um objetivo **futuro** de neutralidade. O diagnóstico experimental de
+`/v1/models` desta revisão usa **somente 127.0.0.1:20128 no computador que
+executa o Studio**, sem URL arbitrária do navegador; em preview remoto não
+acessa a máquina do Dev. Não generalizar nem aceitar host externo sem revisar
+credenciais, política de rede e origem.
 
 ## B5. A ponte com a Lia waifu
 
@@ -325,8 +323,9 @@ Regras mínimas:
 - **Não** declarar Session como prova de execução real enquanto o modo for simulado. A
   distinção simulado × real é o ativo mais valioso deste repositório; perder ela custa mais
   do que qualquer funcionalidade ganha.
-- **Não** adotar o SDK oficial. `pip install` + Python 3.10 custam mais do que entregam
-  aqui; `subprocess` resolve com a biblioteca padrão.
+- **Não** tornar SDK oficial obrigatório no Core. Shell/adapters/build podem ter
+  dependências opcionais auditadas e fixadas; `subprocess` é candidato CLI,
+  não sandbox nem prova de compatibilidade até teste no Windows.
 
 ---
 

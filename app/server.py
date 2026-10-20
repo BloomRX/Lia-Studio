@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import bootstrap, combo_canary, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, handoff, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, handoff, gateway_models, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -68,6 +68,12 @@ def _send_file(handler, path: Path, content_type: str) -> None:
 
 def _err(handler, status: int, message: str) -> None:
     _send_json(handler, {"error": message}, status)
+
+
+def _tier_payload(observed: dict) -> dict:
+    """Adapta apenas campos normalizados, nunca a resposta bruta do gateway."""
+    return {"data":[{"id":observed["tier_id"], "capabilities":observed["capabilities"],
+                     "context_window":observed["context_window"]}]}
 
 
 # ---------- rotas de projeto ----------
@@ -370,6 +376,38 @@ class Handler(BaseHTTPRequestHandler):
                 return engine_probe.version(body["command"], body["path"], body["confirm"]), 200
             if parts == ["api", "combos", "declarations"] and method == "GET":
                 return combo_canary.local_previews(storage, datetime.now(timezone.utc).isoformat()), 200
+            if parts == ["api", "combos", "preview"] and method == "POST":
+                if set(body) != {"declaration"}:
+                    raise StorageError("envie somente a declaração do combo")
+                return combo_policy.preview(body["declaration"]), 200
+            if parts == ["api", "combos", "declarations"] and method == "POST":
+                if set(body) != {"declaration", "expected_revision", "confirm", "allow_potential_cost"}:
+                    raise StorageError("declaração, revisão e confirmações obrigatórias")
+                declaration = body["declaration"]
+                combo_policy.acknowledge(declaration, combo_policy.revision(declaration),
+                                         body["confirm"], body["allow_potential_cost"])
+                previous = combo_canary.load(storage)["records"].get(declaration["gateway_alias"])
+                if (previous is None and body["expected_revision"] is not None) or (previous is not None and
+                    body["expected_revision"] != previous["canary_revision"]):
+                    raise StorageError("revisão anterior do combo incorreta; recarregue")
+                observed = gateway_models.inspect(declaration["gateway_alias"], confirmed=True)
+                if observed is None:
+                    raise StorageError("metadados do tier indisponíveis/incompatíveis; declaração não salva")
+                combo_canary.save_declaration(storage, declaration, _tier_payload(observed),
+                                              datetime.now(timezone.utc).isoformat(),
+                                              body["expected_revision"], True)
+                return combo_canary.local_previews(storage, datetime.now(timezone.utc).isoformat()), 201
+            if parts == ["api", "combos", "check"] and method == "POST":
+                if set(body) != {"tier_id", "confirm"} or body["confirm"] is not True:
+                    raise StorageError("confirme a consulta do tier declarado")
+                if (type(body["tier_id"]) is not str or
+                    body["tier_id"] not in combo_canary.load(storage)["records"]):
+                    raise StorageError("tier não declarado")
+                observed = gateway_models.inspect(body["tier_id"], confirmed=True)
+                result = combo_canary.check_tier(storage, body["tier_id"],
+                                                  _tier_payload(observed) if observed is not None else None,
+                                                  datetime.now(timezone.utc).isoformat())
+                return result, 200
             if parts == ["api", "providers"]:
                 return {"catalog": providers.provider_catalog()}, 200
             if parts == ["api", "providers", "settings"] and method == "GET":

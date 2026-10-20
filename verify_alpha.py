@@ -60,6 +60,7 @@ CHECKS = {
     "agent_cli": ("Transporte CLI experimental com processo falso", [sys.executable, "tests/test_agent_cli.py"]),
     "combo_policy": ("Prévia de combos declarados, sem gateway ou execução", [sys.executable, "tests/test_combo_policy.py"]),
     "combo_canary": ("Canário offline com resposta falsa e registros locais", [sys.executable, "tests/test_combo_canary.py"]),
+    "gateway_models": ("Metadados do gateway somente com resposta falsa", [sys.executable, "tests/test_gateway_models.py"]),
     "chat": ("Chat Ollama opt-in com serviço falso", [sys.executable, "tests/test_ollama_chat.py"]),
     "drafts": ("Edição de código com diff, aceite e backup", [sys.executable, "tests/test_code_drafts.py"]),
     "draft_jobs": ("Jobs canceláveis de inferência com HTTP falso", [sys.executable, "tests/test_draft_jobs.py"]),
@@ -82,7 +83,7 @@ PARTS = (
     ("HTTP: Sessions, recuperação e descoberta local", ("core-6",)),
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation")),
-    ("CLI/combo declarativo, Ollama falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "chat", "drafts", "draft_jobs")),
+    ("CLI/combo declarativo, Ollama falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "chat", "drafts", "draft_jobs")),
     ("Integração, desktop falso, compilação e UI", ("integration", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 

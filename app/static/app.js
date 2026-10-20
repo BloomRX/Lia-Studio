@@ -1316,13 +1316,18 @@ async function wireConfig(pid, data) {
   };
 }
 
-/* ----- combos declarados (leitura local, nenhum gateway ou executor) ----- */
+/* ----- combos: declaração local + metadados opt-in, nunca executor ----- */
 function comboDeclarationPanel(payload) {
   const items = payload.combos || [];
-  const cards = items.map(c => `<div class="card">
+  const cards = items.map((c, i) => `<div class="card">
     <h3>${esc(c.gateway_alias)} · ${esc(c.mode)}</h3>
     <p>Declarado há ${esc(c.age_days)} dias (${esc(c.declared_at)}). Última comparação bem-sucedida: ${esc(c.last_success_at)}.</p>
-    <p>Estado: <b>NÃO CONFERIDO nesta visita</b>. Revisão: <code>${esc(c.revision)}</code>.</p>
+    <p>Canário: <b>${c.canary_status === "stale" ? "DESATUALIZADO — revise a declaração" :
+      c.canary_status === "unavailable" ? "NÃO FOI POSSÍVEL CONFERIR" :
+      c.canary_status === "unchanged_canary" ? "SEM ALTERAÇÃO NO CANÁRIO (não prova composição ou custo)" :
+      "NÃO CONFERIDO"}</b>${c.last_checked_at ? ` em ${esc(c.last_checked_at)}` : ""}.
+      Revisão: <code>${esc(c.revision)}</code>.
+      ${c.canary_status === "stale" && c.latest_probe_status === "unavailable" ? "Última consulta falhou; alerta de mudança anterior permanece." : ""}</p>
     <p>Membros declarados: ${c.members.map(m => esc(m.model) + " (" + esc(m.cost_class) + ")").join(", ")}.
       ${c.judge ? `Juiz adicional: ${esc(c.judge.model)} (${esc(c.judge.cost_class)}).` : ""}</p>
     <p>Estimativa declarada: ${c.declared_estimate_usd === null ? "indisponível (valor incompleto)" : esc(c.declared_estimate_usd) + " USD"}.
@@ -1333,16 +1338,29 @@ function comboDeclarationPanel(payload) {
       última conferência bem-sucedida: ${esc(c.last_unavailable_decision.last_success_at)};
       custo potencial reconhecido: ${c.last_unavailable_decision.potential_cost_acknowledged ? "sim" : "não (somente classe local declarada)"}.</p>` : ""}
     ${c.clock_warning ? "<p>Relógio local anterior à declaração: revise a data.</p>" : ""}
+    <div class="actions"><button type="button" class="ghost" onclick="editCombo(${i})">Revisar declaração</button>
+      <button type="button" class="ghost" onclick="checkCombo(${i})">Conferir /v1/models (opt-in)</button></div>
   </div>`).join("");
   return `<div class="card"><h2>Combos do gateway — declarações locais</h2>
     <p><b>Composição declarada pelo Dev, NÃO verificada no gateway.</b> Nenhum combo pode executar Task nesta versão.
-    O endpoint /v1/models não foi consultado nesta visita. Comparação igual não prova que os membros continuam iguais.</p>
+    A leitura desta tela não consulta /v1/models. Comparação igual não prova que os membros continuam iguais.</p>
     <p><b>Limites do canário:</b> trocar membros por outros de mesma capacidade e janela pode passar despercebido.
     A cota free_quota pode acabar ou passar a cobrar sem mudar capacidade ou janela. Canário verde não confirma custo zero.</p>
-    <p>Se /v1/models estiver indisponível no futuro, será uma pergunta ao Dev por tentativa, com custo potencial
-    e última conferência visíveis; não será tratado como igualdade. Mudança detectada exigirá nova declaração.
-    Nenhuma decisão nesta tela autoriza Agent Runtime.</p>
-    ${cards || "<p>Nenhuma declaração local. A conexão do gateway e a edição de combos ainda não estão disponíveis.</p>"}
+    <p>Se /v1/models estiver indisponível, a conferência ficará indisponível, não "igual".
+    Uma futura tentativa de Agent exigirá pergunta específica ao Dev; não existe execução nem aprovação de tentativa nesta tela.
+    Mudança detectada exige redeclaração. Nenhuma decisão aqui autoriza Agent Runtime.</p>
+    ${cards || "<p>Nenhuma declaração local. Você pode registrar uma após conferir metadados do tier no gateway local.</p>"}
+    <h3>Declarar ou revisar composição</h3>
+    <p>Formato JSON restrito: gateway_alias (ID do tier), mode (fallback, round-robin ou fusion),
+       members na ordem declarada com model, cost_class e estimate_usd (texto decimal ou null).
+       Fusion exige judge com os mesmos três campos. Não inclua chaves, prompts nem dados pessoais.
+       Confirme que 127.0.0.1:20128 é o gateway de sua confiança: o Studio enviará a ele
+       SOMENTE a credencial já disponível no ambiente para obter metadados quando você confirmar; em preview remoto
+       o localhost é o do servidor, não o seu PC. Se não houver chave existente no ambiente do Studio, não salvará.</p>
+    <label for="combo-json">Declaração JSON (sem credenciais)</label>
+    <textarea id="combo-json" spellcheck="false" placeholder='{"gateway_alias":"meu-tier","mode":"fallback","members":[{"model":"modelo-a","cost_class":"free_quota","estimate_usd":null}]}'></textarea>
+    <button type="button" id="combo-save" onclick="saveCombo()">Prévia, confirmação e fotografia local</button>
+    <div id="combo-result" role="status" aria-live="polite" class="muted"></div>
   </div>`;
 }
 
@@ -1365,7 +1383,7 @@ async function renderGlobalConfig() {
       <li>${esc(c.note)}</li>
     </ul></div>`).join("");
   view.innerHTML = `<h1>Configurações — provedores de IA</h1>
-    <div class="banner warn">A execução de tarefas continua <b>simulada</b>. Nenhuma chave é armazenada, nenhum modelo é iniciado e nenhuma chamada paga é feita. O diagnóstico opcional abaixo apenas consulta um serviço no computador que executa o Studio.</div>
+    <div class="banner warn">A execução de tarefas continua <b>simulada</b>. Nenhuma chave é armazenada, nenhum modelo é iniciado por combos nem há consulta automática. A consulta opt-in abaixo envia a credencial já existente apenas ao gateway LOCAL para obter metadados, sem inferência; isso não comprova custo zero.</div>
     <div class="card"><h3>Modo de IA</h3>
       <select id="mode-sel">${["offline","local","cloud","combined"].map(m=>`<option ${m===settings.mode?"selected":""}>${m}</option>`).join("")}</select>
       <p class="muted">offline (padrão, sem inferência) · local (Ollama, guia) · cloud (Gemini/OpenRouter, guia) · combined (ambas, com cuidado de não duplicar dados).</p>
@@ -1379,6 +1397,58 @@ async function renderGlobalConfig() {
     ${comboDeclarationPanel(comboDeclarations)}
     <h2>Catálogo (não conectado)</h2>
     <div class="grid">${cat}</div>`;
+  window.editCombo = function (index) {
+    const c = comboDeclarations.combos[index];
+    if (!c) return;
+    const data = {gateway_alias:c.gateway_alias, mode:c.mode, members:c.members};
+    if (c.mode === "fusion") data.judge = c.judge;
+    const field = document.getElementById("combo-json");
+    field.value = JSON.stringify(data, null, 2);
+    field.focus();
+  };
+  window.checkCombo = async function (index) {
+    const c = comboDeclarations.combos[index];
+    if (!c || !confirm(`Consultar metadados de ${c.gateway_alias} em 127.0.0.1:20128? Confirme que o serviço local é confiável: receberá sua credencial existente. Não executa modelo.`)) return;
+    try {
+      const result = await api("POST", "/api/combos/check", {tier_id:c.gateway_alias, confirm:true});
+      await renderGlobalConfig();
+      const output = document.getElementById("combo-result");
+      if (output) output.textContent = result.status === "stale" ?
+        (result.latest_probe_status === "unavailable" ? "Consulta indisponível; alteração anterior continua desatualizada. Revise e declare novamente." :
+          "Alteração detectada: revise e declare novamente.") :
+        result.status === "unavailable" ? "Não foi possível conferir. Não trate o último resultado como atual." :
+        "Canário sem alteração; composição, cota e custo continuam NÃO verificados.";
+    } catch (e) {
+      const output = document.getElementById("combo-result");
+      if (output) output.textContent = "Não foi possível consultar o tier: " + e.message;
+    }
+  };
+  window.saveCombo = async function () {
+    const field = document.getElementById("combo-json");
+    const output = document.getElementById("combo-result");
+    const button = document.getElementById("combo-save");
+    if (!field || !button || !output) return;
+    button.disabled = true;
+    try {
+      const declaration = JSON.parse(field.value);
+      const summary = await api("POST", "/api/combos/preview", {declaration});
+      const targets = summary.members.map(m => `${m.model} (${m.cost_class})`).join(", ");
+      const judge = summary.judge ? `; juiz adicional: ${summary.judge.model} (${summary.judge.cost_class})` : "";
+      const total = summary.declared_estimate_usd === null ? "INCOMPLETO" : summary.declared_estimate_usd + " USD";
+      if (!confirm(`Declaração NÃO verificada de ${summary.gateway_alias} (${summary.mode}): ${targets}${judge}.\nEstimativa declarada: ${total}, NÃO é fatura/teto.\nConfirme que o serviço em 127.0.0.1:20128 é seu gateway confiável: receberá a credencial existente para consulta de /v1/models. Gravar declaração?`)) return;
+      const cost = summary.declared_potential_external_cost;
+      if (cost && !confirm("free_quota pode acabar; membros/juiz podem cobrar. Reconhece o risco de custo POTENCIAL? Isso NÃO autoriza execução.")) return;
+      const old = comboDeclarations.combos.find(c => c.gateway_alias === summary.gateway_alias);
+      await api("POST", "/api/combos/declarations", {
+        declaration, expected_revision:old ? old.canary_revision : null,
+        confirm:true, allow_potential_cost:cost,
+      });
+      await renderGlobalConfig();
+      const updated = document.getElementById("combo-result");
+      if (updated) updated.textContent = "Declaração salva com fotografia de metadados; Agent Runtime permanece desligado.";
+    } catch (e) { output.textContent = "Declaração NÃO salva: " + e.message; }
+    finally { button.disabled = false; }
+  };
   window.probeOllama = async function () {
     const button = document.getElementById("ollama-probe-button");
     const result = document.getElementById("ollama-probe-result");
