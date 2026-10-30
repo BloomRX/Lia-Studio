@@ -9,5 +9,5 @@
 - Para testes automatizados: `python verify_alpha.py --part N`, **uma parte por chamada**, nunca em paralelo. Testes Windows e do gateway real pertencem ao Dev; sem executá-los, marque NÃO EXECUTADO.
 
 Consulte `docs/LEIA-ME-SESSAO.md` e `docs/GUIA-LIA-STUDIO.md` quando iniciar uma sessão ou planejar mudanças.
-Consulte `docs/PADRAO-DA-MARCA.md` quando decidir linguagem, apresentação ou identidade visual.
+Consulte `docs/BRAND-STANDARDS.md` para princípios de marca compartilhados; `docs/UI-UX-DESIGN-SYSTEM-LIA-STUDIO.md` para identidade visual e experiência do Studio. `docs/PADRAO-DA-MARCA.md` é uma referência específica de distribuição/armazenamento desktop, não o design system.
 Consulte `docs/GLOSSARIO.md` quando nomear conceitos, arquivos ou interfaces.

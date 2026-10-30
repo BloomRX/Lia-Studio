@@ -14,7 +14,9 @@ LiaStudioProjects/
 .arena/
 
 # Junction local opcional do Claude Code -> .agents/skills; nunca versionar espelho/configuração local.
-.claude/
+.claude/skills/
+.claude/worktrees/
+.claude/settings.local.json
 
 # Build opcional da shell desktop (não versionar binários nem venv)
 .venv/
