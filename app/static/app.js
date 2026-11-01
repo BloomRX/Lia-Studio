@@ -252,6 +252,7 @@ const SECTIONS = [
   ["plan", "Plano"],
   ["handoff", "Handoff"],
   ["execute", "Execução"],
+  ["assets", "Assets"],
   ["qa", "QA / Playtest"],
   ["evidence", "Evidências"],
   ["release", "Release"],
@@ -297,7 +298,7 @@ async function renderProject(pid, section, visualStage) {
   if (section !== "stage" && !SECTIONS.some(([name]) => name === section)) section = "stage";
   const activeSections = ({preparation: ["bootstrap", "docs", "decisions", "plan"],
     mvp: ["plan", "execute", "qa", "evidence"],
-    production: ["plan", "execute", "docs", "qa"],
+    production: ["plan", "execute", "assets", "qa"],
     delivery: ["qa", "evidence", "release", "handoff"]})[selectedStage];
   const left = `<aside class="context-panel" aria-label="Contexto do projeto">
     <div class="panel-top"><span class="panel-mini">CONTEXTO</span><button id="toggle-left" class="icon-button" aria-expanded="${!PANEL_PREFS.left}" aria-label="${PANEL_PREFS.left ? "Expandir" : "Recolher"} painel de contexto" title="Recolher / expandir contexto" onclick="togglePanel('left')">≡</button></div>
@@ -327,6 +328,7 @@ async function renderProject(pid, section, visualStage) {
     catch (e) { data.slice_error = e.message; }
     content = projectQa(pid, data);
   }
+  else if (section === "assets") content = await projectAssets(pid, data);
   else if (section === "evidence") content = await projectEvidence(pid, data);
   else if (section === "release") content = await projectRelease(pid, data);
   else if (section === "config") content = await projectConfig(pid, data);
@@ -370,6 +372,7 @@ async function renderProject(pid, section, visualStage) {
   if (section === "handoff") wireHandoff(pid, data.modules, data.resume?.handoff);
   if (section === "execute") wireExecute(pid, data.modules);
   if (section === "qa") wireQa(pid, data.slice_review);
+  if (section === "assets") wireAssets(pid, data);
   if (section === "evidence") wireEvidence(pid);
   if (section === "release") wireRelease(pid, data.release);
   if (section === "config") wireConfig(pid, data);
@@ -441,7 +444,7 @@ function renderStageContext(pid, stage, data) {
               ["Evidências", "Vincule arquivos existentes; integridade não prova gameplay.", "evidence", "REGISTRAR"]]},
     production: { kicker: "03 / PRODUÇÃO", question: "Como evoluir sem perder o rumo?",
       intro: "Desenvolva sistemas e conteúdo em ciclos. Assets definitivos, game feel, UX e balance vêm depois do núcleo validado.",
-      cards: [["Sistemas e assets", "Organize entregáveis e dependências reais no plano.", "plan", "ORGANIZAR"],
+      cards: [["Sistemas e assets", "Registre origem e integridade dos arquivos locais antes de integrar na engine.", "assets", "CATALOGAR"],
               ["Implementação", "Prévia e Session simulada; runtime de código não conectado.", "execute", "SIMULADO"],
               ["Documentação", "Acompanhe revisões de GDD e escopo.", "docs", "ATUALIZAR"],
               ["Playtest contínuo", "Verifique, colete feedback e itere.", "qa", "ITERAR"]]},
@@ -1165,6 +1168,94 @@ async function wireQa(pid, review) {
       renderProject(pid, "qa");
     } catch (e) { toast("Não foi possível registrar QA: " + e.message); }
   };
+}
+
+/* ----- assets: catálogo local, sem upload, licença ou engine verificados ----- */
+async function projectAssets(pid, data) {
+  let records;
+  try { records = (await api("GET", `/api/projects/${pid}/assets`)).assets; }
+  catch(e) { return `<h1>Assets</h1><div class="banner danger">Catálogo indisponível: ${esc(e.message)}. Revise em Integridade; nada foi alterado.</div>`; }
+  data._assets = records;
+  const targets = (data.modules||[]).flatMap(m => [
+    {ref:`module:${m.id}`, label:`Módulo ${m.name}`},
+    ...(m.tasks||[]).map(t => ({ref:`task:${t.id}`, label:`Tarefa ${t.name}`})),
+  ]);
+  const rows = records.length ? `<div class="table-scroll"><table><thead><tr><th>Arquivo</th><th>Tipo / alvo</th><th>Origem / licença declaradas</th><th>Integridade</th><th>Revisar</th></tr></thead><tbody>${records.map((r,i)=>
+    `<tr><td><code>${esc(r.path)}</code><br><small>${esc(r.bytes)} bytes · SHA-256 ${esc(r.sha256)}</small></td>
+    <td>${esc(r.category)}<br><small>${esc(r.target_ref || "sem alvo")}</small></td>
+    <td>${esc(r.source_kind)} · ${esc(r.source_ref || "origem não declarada")}<br><small>${esc(r.license_note || "licença pendente")}</small></td>
+    <td>${esc(r.integrity)} · licença/engine NÃO verificadas</td>
+    <td><button type="button" class="ghost small" data-asset-edit="${i}">Editar metadados</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Nenhum asset catalogado. Informe o caminho de um arquivo de mídia já presente na pasta do projeto.</div>`;
+  return `<h1>Assets do projeto</h1>
+    <div class="banner warn">Catálogo local, não upload: informe apenas arquivos existentes no projeto (até 50 MB). Origem e licença são declarações suas, não validação jurídica. Um hash íntegro não prova integração na engine, QA, qualidade ou permissão de uso. Nenhum arquivo é enviado ou publicado.</div>
+    ${rows}
+    <div class="card"><h3 id="asset-form-title">Registrar arquivo local</h3>
+      <label for="asset-path">Caminho relativo ao projeto</label><input id="asset-path" placeholder="arte/personagem.png" maxlength="512" />
+      <div class="row"><div><label for="asset-type">Categoria declarada</label><select id="asset-type"><option value="image">Imagem</option><option value="audio">Áudio</option><option value="model_3d">Modelo 3D</option><option value="video">Vídeo</option><option value="other">Outro asset de mídia</option></select></div>
+      <div><label for="asset-source">Origem declarada</label><select id="asset-source"><option value="unknown">Ainda não informada</option><option value="own">Criado por mim</option><option value="third_party">Terceiros</option></select></div></div>
+      <label for="asset-source-ref">Referência da origem (obrigatória para terceiros)</label><input id="asset-source-ref" maxlength="300" placeholder="Autor, fonte ou contrato — sem dados privados" />
+      <label for="asset-license">Licença / direitos declarados (não verificados)</label><input id="asset-license" maxlength="300" placeholder="Pendente de revisão" />
+      <label for="asset-target">Vínculo opcional</label><select id="asset-target"><option value="">Sem vínculo</option>${targets.map(t=>`<option value="${esc(t.ref)}">${esc(t.label)}</option>`).join("")}</select>
+      <label for="asset-note">Nota para a equipe</label><textarea id="asset-note" maxlength="600"></textarea>
+      <div class="actions"><button type="button" id="asset-save">Registrar (sem importar)</button><button type="button" id="asset-cancel" class="ghost" hidden>Cancelar edição</button></div>
+      <p id="asset-status" role="status" aria-live="polite" class="muted"></p>
+    </div>`;
+}
+
+function wireAssets(pid, data) {
+  const get = id => document.getElementById(id);
+  if (!get("asset-save")) return; // erro de leitura do catálogo: só mostrar banner, sem formulário
+  const records = data._assets || [];
+  // A renderização carrega os registros no próprio workspace, sem confiar no DOM.
+  let selected = null;
+  const reset = () => {
+    selected = null;
+    for (const id of ["asset-path","asset-source-ref","asset-license","asset-note"]) get(id).value = "";
+    get("asset-path").disabled = false;
+    get("asset-type").value = "image";
+    get("asset-source").value = "unknown";
+    get("asset-target").value = "";
+    get("asset-form-title").textContent = "Registrar arquivo local";
+    get("asset-save").textContent = "Registrar (sem importar)";
+    get("asset-cancel").hidden = true;
+  };
+  document.querySelectorAll("[data-asset-edit]").forEach(button => button.addEventListener("click", () => {
+    const record = records[Number(button.dataset.assetEdit)];
+    if (!record) return;
+    selected = record;
+    get("asset-path").value = record.path;
+    get("asset-path").disabled = true;
+    get("asset-type").value = record.category;
+    get("asset-source").value = record.source_kind;
+    get("asset-source-ref").value = record.source_ref;
+    get("asset-license").value = record.license_note;
+    get("asset-target").value = record.target_ref;
+    get("asset-note").value = record.note;
+    get("asset-form-title").textContent = "Revisar metadados (não altera arquivo)";
+    get("asset-save").textContent = "Salvar metadados";
+    get("asset-cancel").hidden = false;
+    get("asset-path").focus();
+  }));
+  get("asset-cancel").addEventListener("click", reset);
+  get("asset-save").addEventListener("click", async () => {
+    const body = {path:get("asset-path").value.trim(),category:get("asset-type").value,
+      source_kind:get("asset-source").value,source_ref:get("asset-source-ref").value.trim(),
+      license_note:get("asset-license").value.trim(),target_ref:get("asset-target").value,
+      note:get("asset-note").value.trim()};
+    if (!body.path) return (get("asset-status").textContent = "Informe o caminho do arquivo.");
+    if (!confirm(selected ? "Salvar somente os metadados declarados? O arquivo não será alterado." : "Catalogar este arquivo existente? O Studio não valida direitos, engine ou QA.")) return;
+    const button = get("asset-save");
+    button.disabled = true;
+    try {
+      if (selected) {
+        const {path, ...metadata} = body;
+        await api("PUT", `/api/projects/${pid}/assets/${selected.id}`,
+          {...metadata, expected_revision:selected.metadata_revision, confirm:true});
+      } else await api("POST", `/api/projects/${pid}/assets`, body);
+      renderProject(pid, "assets");
+    } catch(e) { get("asset-status").textContent = "Não foi possível salvar: " + e.message; }
+    finally { button.disabled = false; }
+  });
 }
 
 /* ----- evidence: arquivos locais, sem executar testes ----- */

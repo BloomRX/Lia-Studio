@@ -610,6 +610,7 @@ assert.equal(reloads, 1);
   assert.match(view.innerHTML, /Como evoluir sem perder o rumo/);
   assert.match(view.innerHTML, /O estágio salvo continua/);
   assert.match(view.innerHTML, /href="#\/project\/project-1\/qa\/production"/);
+  assert.match(view.innerHTML, /href="#\/project\/project-1\/assets\/production"/);
   assert.equal(context.document.body.dataset.space, 'project');
   await context.renderProject('project-1', 'qa', 'delivery');
   assert.match(view.innerHTML, /Contexto: Finalização/);
@@ -644,5 +645,68 @@ assert.equal(reloads, 1);
   await context.window.copySelectedSkill();
   assert.equal(pageCalls.at(-1).options.method, 'POST');
   assert.equal(context.location.hash, '#/skills/lia-user-abcdef123456/edit');
+  // Assets são workspace do projeto, não upload nem prova de licença/engine.
+  const assetRequests = [];
+  const asset = {id:'abcdef123456',path:'arte/<img src=x onerror=alert(1)>.png',
+    category:'image',source_kind:'unknown',source_ref:'<script>alert(1)</script>',
+    license_note:'a revisar',target_ref:'',note:'',bytes:42,sha256:'a'.repeat(64),
+    integrity:'unavailable',metadata_revision:'b'.repeat(64)};
+  context.fetch = async (url, options) => {
+    assetRequests.push({url,options});
+    return {ok:true,json:async()=>({assets:[asset]})};
+  };
+  const assetData = {modules:[]};
+  const assetHtml = await context.projectAssets('project-1',assetData);
+  assert.equal(assetRequests.at(-1).url,'/api/projects/project-1/assets');
+  assert.match(assetHtml,/Assets do projeto/);
+  assert.match(assetHtml,/licença\/engine NÃO verificadas/);
+  assert.match(assetHtml,/&lt;img/);
+  assert.doesNotMatch(assetHtml,/<img src=x/);
+  assert.doesNotMatch(assetHtml,/<script>/);
+  assert.equal(assetData._assets[0].id,asset.id);
+  const assetActions = {};
+  const assetFields = Object.fromEntries([
+    'asset-path','asset-type','asset-source','asset-source-ref','asset-license',
+    'asset-target','asset-note','asset-form-title','asset-status','asset-save','asset-cancel'
+  ].map(id=>[id,{value:'',textContent:'',hidden:false,disabled:false,
+               addEventListener:(_,fn)=>assetActions[id]=fn,focus(){}}]));
+  const assetEditButton = {dataset:{assetEdit:'0'},addEventListener:(_,fn)=>assetActions.edit=fn};
+  context.document.querySelectorAll=selector=>selector==='[data-asset-edit]'?[assetEditButton]:[];
+  context.document.getElementById=id=>assetFields[id];
+  context.wireAssets('project-1',assetData);
+  assetActions.edit();
+  assert.equal(assetFields['asset-path'].disabled,true);
+  assert.equal(assetFields['asset-path'].value,asset.path);
+  context.confirm=()=>false;
+  const beforeAssetWrites=assetRequests.length;
+  await assetActions['asset-save']();
+  assert.equal(assetRequests.length,beforeAssetWrites);
+  assetActions['asset-cancel']();
+  assert.equal(assetFields['asset-path'].disabled,false);
+  const originalProjectRender = context.renderProject;
+  context.renderProject = () => {};
+  context.confirm = () => true;
+  context.fetch = async (url, options) => {
+    assetRequests.push({url,options});
+    return {ok:true,json:async()=>({id:asset.id})};
+  };
+  assetFields['asset-path'].value='arte/personagem.png';
+  assetFields['asset-type'].value='image';
+  assetFields['asset-source'].value='own';
+  assetFields['asset-source-ref'].value='feita por mim';
+  await assetActions['asset-save']();
+  assert.equal(assetRequests.at(-1).url,'/api/projects/project-1/assets');
+  assert.equal(assetRequests.at(-1).options.method,'POST');
+  assert.equal(JSON.parse(assetRequests.at(-1).options.body).path,'arte/personagem.png');
+  assetActions.edit();
+  assetFields['asset-license'].value='pendente';
+  await assetActions['asset-save']();
+  assert.equal(assetRequests.at(-1).url,`/api/projects/project-1/assets/${asset.id}`);
+  assert.equal(assetRequests.at(-1).options.method,'PUT');
+  const sentAsset = JSON.parse(assetRequests.at(-1).options.body);
+  assert.equal(sentAsset.expected_revision, asset.metadata_revision);
+  assert.equal(sentAsset.path,undefined); // edição não altera arquivo ou hash
+  context.renderProject=originalProjectRender;
+
   console.log('UI regression: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });

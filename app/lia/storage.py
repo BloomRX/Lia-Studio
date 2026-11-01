@@ -421,6 +421,9 @@ class Storage:
         if path.name in ("runtime_policy.json", "runtime_policy.json.bak"):
             from . import runtime_policy
             runtime_policy.validate_global(data)
+        if path.name in ("assets.json", "assets.json.bak"):
+            from . import assets
+            assets.validate_entries(data)
         if path.name in ("evidence.json", "evidence.json.bak"):
             from . import evidence
             evidence.validate_entries(data)

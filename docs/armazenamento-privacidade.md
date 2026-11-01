@@ -87,6 +87,16 @@
 
 ## Privacidade
 - Nenhum dado de projeto sai da máquina por padrão.
+- `assets.json` é um catálogo opcional de **metadados** dos arquivos de mídia já
+  existentes dentro do projeto (até 50 MB por arquivo): caminho relativo, SHA-256,
+  tamanho, categoria, alvo, origem/licença/nota **declarados pelo usuário** e data.
+  Cadastro não copia, envia, importa nem serve os bytes. Integridade é recalculada
+  na leitura e pode ser `intact`, `changed` ou `unavailable`; jamais prova direito
+  de uso, aprovação visual, importação na engine ou gameplay. Para mudar metadados,
+  a API exige revisão atual e confirmação; arquivo e hash anteriores são imutáveis
+  no registro. Dados privados na origem/nota permanecem no JSON e podem ser
+  expostos pela API local ou exportados junto com o projeto: revise antes de salvar
+  ou compartilhar. Projeto arquivado bloqueia cadastro e edição.
 - `evidence.json` é registro local de SHA-256/ID/arquivo relativo/QA opcional. O
   registro só lê arquivos de até 50 MB dentro do projeto, recusando links simbólicos;
   a API não serve os bytes. Campos persistidos inesperados (inclusive uma alegação

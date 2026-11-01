@@ -8,6 +8,7 @@
 | 1 · tarefas, dependências, permissões, plano e handoff | **IMPLEMENTADO / AUTOMATED-PASS** (offline) | Contratos e simulação; uma Task não é executada pelo Agent. |
 | 2 · MVP jogável e ciclo de execução em engine | **BLOCKED** | Integrar Runtime sob isolamento/budget e executar um jogo real para medir gameplay; só diagnóstico de binário e parser estão presentes. |
 | 3 · produção/QA e evidência validada | **BLOCKED** | Screenshots, jogo rodando, testes e revisão humana de cada fatia; nenhuma simulação promove QA. |
+| Catálogo de assets da Produção | **IMPLEMENTADO / AUTOMATED-PASS** (Linux, arquivos de teste) | Registro de mídia local com origem/licença declaradas, hash e revisão; sem importação, QA visual, validação jurídica ou engine. |
 | 4 · build, distribuição Windows, publicação | **BLOCKED / NOT-TESTED** | Build e instalador em Windows, testes de instalação/atualização/desinstalação, licenças e gate humano antes de release. |
 | Conexão de IA e catálogo | **IMPLEMENTADO / AUTOMATED-PASS** (testes falsos) | Endereço configurável HTTPS ou HTTP loopback; chave vinculada ao endereço no cofre Windows; revogação; leitura opt-in de `/v1/models`, sem proxy/redirect; tipo declarado por `owned_by`, sem aprovação. Cofre, gateway e compatibilidade Windows **NOT-TESTED**. |
 
@@ -20,6 +21,6 @@
 
 ## Verificação reproduzível
 
-Executar **separadamente, uma parte por chamada**, `python verify_alpha.py --part 1` até `--part 10`. São testes offline e mocks; a parte 10 inclui sintaxe JS e regressão de UI sob Node. No Windows, a primeira verificação sem instalar dependências é **uma linha PowerShell**, no checkout atualizado: `py -3 verify_alpha.py --part 9`. Isso não prova o cofre; depois, **somente na máquina do usuário e com chave própria**, abrir o Studio em loopback, salvar, listar e revogar conexão, observar cofre do Windows e verificar que nenhum segredo foi enviado a outro host. O usuário decide endereço, custo, isolamento e retenção antes de qualquer teste real de Agent. Não executar serviço pago nem instalar dependências sem aprovação.
+Executar **separadamente, uma parte por chamada**, `python verify_alpha.py --part 1` até `--part 10`. São testes offline e mocks; a parte 10 inclui catálogo de assets, API local, sintaxe JS e regressão de UI sob Node. No Windows, a primeira verificação sem instalar dependências é **uma linha PowerShell**, no checkout atualizado: `py -3 verify_alpha.py --part 9`. Isso não prova o cofre; depois, **somente na máquina do usuário e com chave própria**, abrir o Studio em loopback, salvar, listar e revogar conexão, observar cofre do Windows e verificar que nenhum segredo foi enviado a outro host. O usuário decide endereço, custo, isolamento e retenção antes de qualquer teste real de Agent. Não executar serviço pago nem instalar dependências sem aprovação.
 
 **Conclusão:** houve incremento verificável no Alpha; o aplicativo **não está literalmente completo**. As linhas BLOCKED exigem implementação, decisões e evidência de runtime real; não podem ser promovidas por testes falsos ou por documentação.
