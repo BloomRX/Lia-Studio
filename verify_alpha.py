@@ -45,7 +45,7 @@ CORE_PARTS = (
      "TestHttpApi.test_corrupt_index_is_visible_and_recoverable_via_api",
      "TestHttpApi.test_export_api_writes_snapshot_without_touching_source",
      "TestHttpApi.test_storage_recovery_api_requires_confirmation",
-     "TestHttpApi.test_skills_api_and_path_validation", "TestOllamaDiscovery"),
+     "TestHttpApi.test_skills_api_and_path_validation", "TestLocalModelDiscovery"),
 )
 
 # Mesmas chaves na suíte completa e nos blocos: nenhuma dependência de terceiros.
@@ -61,7 +61,8 @@ CHECKS = {
     "combo_policy": ("Prévia de combos declarados, sem gateway ou execução", [sys.executable, "tests/test_combo_policy.py"]),
     "combo_canary": ("Canário offline com resposta falsa e registros locais", [sys.executable, "tests/test_combo_canary.py"]),
     "gateway_models": ("Metadados do gateway somente com resposta falsa", [sys.executable, "tests/test_gateway_models.py"]),
-    "chat": ("Chat Ollama opt-in com serviço falso", [sys.executable, "tests/test_ollama_chat.py"]),
+    "legacy_ids": ("Compatibilidade de IDs sem ativar Runtime", [sys.executable, "tests/test_legacy_ids.py"]),
+    "chat": ("Chat serviço local opt-in com serviço falso", [sys.executable, "tests/test_local_model_chat.py"]),
     "drafts": ("Edição de código com diff, aceite e backup", [sys.executable, "tests/test_code_drafts.py"]),
     "draft_jobs": ("Jobs canceláveis de inferência com HTTP falso", [sys.executable, "tests/test_draft_jobs.py"]),
     "integration": ("Fluxo HTTP integrado sem promover gates", [sys.executable, "tests/test_integrated_flow.py"]),
@@ -83,7 +84,7 @@ PARTS = (
     ("HTTP: Sessions, recuperação e descoberta local", ("core-6",)),
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation")),
-    ("CLI/combo declarativo, Ollama falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "chat", "drafts", "draft_jobs")),
+    ("CLI/combo declarativo, serviço local falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "legacy_ids", "chat", "drafts", "draft_jobs")),
     ("Integração, desktop falso, compilação e UI", ("integration", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 

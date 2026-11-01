@@ -347,7 +347,7 @@ async function renderProject(pid, section, visualStage) {
       <div class="lia-separator"></div><span class="nav-group-title">FEEDBACK / PLAYTEST</span>
       <p>Registre verificações e feedback manual em QA. Não há Agent nem Chat conectado nesta versão.</p>
       <a class="quick-link" href="#/project/${esc(pid)}/qa/${selectedStage}">Abrir QA / Playtest →</a>
-      <div class="lia-chat" aria-label="Chat opcional com Ollama"><strong>Conversa opcional com Ollama</strong>
+      <div class="lia-chat" aria-label="Chat opcional com serviço local"><strong>Conversa opcional com serviço local</strong>
         <p class="muted">Apenas sua mensagem é enviada ao modelo escolhido. Um modelo anunciado pode usar nuvem; confirme antes de cada envio. Resposta não executa tarefas.</p>
         <button type="button" class="ghost small" id="lia-chat-probe">Buscar modelos disponíveis</button>
         <label for="lia-chat-model">Modelo</label><select id="lia-chat-model"><option value="">Consulte a lista primeiro</option></select>
@@ -389,20 +389,20 @@ function wireChat() {
     select.replaceChildren();
     select.add(new Option("Consulte a lista primeiro", ""));
     try {
-      const result = await api("POST", "/api/providers/local-ollama/probe", {confirm: true});
+      const result = await api("POST", "/api/providers/local-model/probe", {confirm: true});
       (result.models || []).forEach(model => select.add(new Option(model, model)));
       status.textContent = result.message;
-    } catch (e) { status.textContent = "Não foi possível consultar Ollama: " + e.message; }
+    } catch (e) { status.textContent = "Não foi possível consultar serviço local: " + e.message; }
     finally { probe.disabled = false; }
   });
   send.addEventListener("click", async () => {
     if (!select.value || !prompt.value.trim()) return toast("Selecione um modelo e escreva uma mensagem.");
-    if (!confirm("Enviar apenas esta mensagem ao modelo escolhido? Modelos Ollama podem usar nuvem e ter custo conforme sua configuração. Nenhuma Task será executada.")) return;
+    if (!confirm("Enviar apenas esta mensagem ao modelo escolhido? Modelos serviço local podem usar nuvem e ter custo conforme sua configuração. Nenhuma Task será executada.")) return;
     send.disabled = true;
     answer.textContent = "";
     status.textContent = "Aguardando resposta do modelo selecionado…";
     try {
-      const result = await api("POST", "/api/providers/local-ollama/chat",
+      const result = await api("POST", "/api/providers/local-model/chat",
                                {model: select.value, prompt: prompt.value, confirm: true});
       answer.textContent = result.answer; // resposta não confiável; nunca HTML
       status.textContent = result.warning;
@@ -868,17 +868,17 @@ function projectExecute(pid, data) {
   const changesHtml = changes.length ? `<ul class="clean">${changes.map(c =>
     `<li><code>${esc(c.id)}</code> · Task ${esc(c.task_id)} · ${esc(c.path)} · arquivo atual: ${esc(c.source_integrity)} ${c.skill_id ? `· Skill escolhida: ${esc(c.skill_id)}` : ""} · ${c.backup_path ? `backup: ${esc(c.backup_path)}` : "criação inicial (sem arquivo anterior para backup)"} · jogo NÃO VERIFICADO</li>`).join("")}</ul>` : `<p class="muted">Nenhuma edição assistida registrada.</p>`;
   return `<h1>Execução e validação local</h1>
-    <div class="banner warn"><b>Simulador:</b> “Aprovar e simular” não escreve código. <b>Edição assistida:</b> modelo Ollama opcional propõe UM arquivo Python para revisão; somente confirmação aplica a mudança e salva backup. Isso NÃO executa o jogo ou aprova a Task. “Verificar sintaxe” inicia apenas um parser local.</div>
+    <div class="banner warn"><b>Simulador:</b> “Aprovar e simular” não escreve código. <b>Edição assistida:</b> modelo serviço local opcional propõe UM arquivo Python para revisão; somente confirmação aplica a mudança e salva backup. Isso NÃO executa o jogo ou aprova a Task. “Verificar sintaxe” inicia apenas um parser local.</div>
     ${caps.length ? `<div class="card"><details><summary>Negações gerais do projeto (operações reais)</summary>
       <p class="muted">Uma negação geral bloqueia todas as Tasks mesmo com grant. Remover negação não cria novos grants. Skills e texto de Task não têm autoridade.</p>
       ${caps.map(([cap,label]) => `<div class="policy-cap">${esc(label)} · ${policy.project.deny.includes(cap) ? "NEGADA no projeto" : "sem negação geral"}
         <button type="button" class="ghost small" data-project-policy-cap="${esc(cap)}" data-project-policy-action="${policy.project.deny.includes(cap) ? "remove_deny" : "deny"}" data-policy-revision="${esc(policy.revision)}">${policy.project.deny.includes(cap) ? "Remover negação geral" : "Negar no projeto"}</button></div>`).join("")}</details></div>` : ""}
-    <div class="card"><h3>Modelo para rascunho de código (opcional)</h3><button type="button" id="draft-probe" class="ghost">Buscar modelos Ollama</button>
+    <div class="card"><h3>Modelo para rascunho de código (opcional)</h3><button type="button" id="draft-probe" class="ghost">Buscar modelos serviço local</button>
       <select id="draft-model"><option value="">Consulte modelos primeiro</option></select>
       <button type="button" id="draft-skill-probe" class="ghost">Listar Skills (somente metadados)</button>
       <select id="draft-skill"><option value="">Sem Skill (padrão)</option></select>
       <p class="muted">Skill opcional: conteúdo de até 2400 caracteres será lido somente ao pedir rascunho e enviado ao modelo após confirmação. Instruções de Skill não concedem acesso a Tools.</p>
-      <p id="draft-status" class="muted" role="status">Objetivo e fonte do arquivo escolhido podem sair do PC conforme o modelo Ollama. Você confirma antes de cada pedido.</p></div>
+      <p id="draft-status" class="muted" role="status">Objetivo e fonte do arquivo escolhido podem sair do PC conforme o modelo serviço local. Você confirma antes de cada pedido.</p></div>
     ${html}
     <div class="card"><h2>Jobs de modelo (inferência cancelável, sem executar código)</h2>${jobsHtml}</div>
     <div class="card"><h2>Sessions de edição assistida (arquivos não validados)</h2>${changesHtml}</div>
@@ -915,7 +915,7 @@ async function loadDraftJob(pid, jobId, tid, poll = false, tries = 0) {
 async function wireExecute(pid) {
   document.querySelectorAll("[data-policy-task]").forEach(button => button.addEventListener("click", async () => {
     const {policyTask,policyModule,policyCap,policyAction,policyRevision} = button.dataset;
-    if (!confirm(`${policyAction === "allow" ? "CONCEDER" : policyAction === "deny" ? "NEGAR" : "ALTERAR"} ${policyCap} nesta Task? Grants não liberam automaticamente ação, gasto ou jogo; modelo Ollama pode usar nuvem/custo.`)) return;
+    if (!confirm(`${policyAction === "allow" ? "CONCEDER" : policyAction === "deny" ? "NEGAR" : "ALTERAR"} ${policyCap} nesta Task? Grants não liberam automaticamente ação, gasto ou jogo; modelo serviço local pode usar nuvem/custo.`)) return;
     button.disabled = true;
     try {
       await api("POST", `/api/projects/${pid}/tasks/${policyModule}/${policyTask}/runtime-policy`,
@@ -973,10 +973,10 @@ async function wireExecute(pid) {
     const model = document.getElementById("draft-model");
     model.replaceChildren(); model.add(new Option("Consulte modelos primeiro", ""));
     try {
-      const result = await api("POST", "/api/providers/local-ollama/probe", {confirm: true});
+      const result = await api("POST", "/api/providers/local-model/probe", {confirm: true});
       (result.models || []).forEach(name => model.add(new Option(name, name)));
       document.getElementById("draft-status").textContent = result.message;
-    } catch (e) { document.getElementById("draft-status").textContent = "Ollama indisponível: " + e.message; }
+    } catch (e) { document.getElementById("draft-status").textContent = "serviço local indisponível: " + e.message; }
     finally { probe.disabled = false; }
   });
   const skillProbe = document.getElementById("draft-skill-probe");
@@ -1020,7 +1020,7 @@ async function wireExecute(pid) {
   }));
   document.querySelectorAll("[data-draft-task]").forEach(button => button.addEventListener("click", async () => {
     const model = document.getElementById("draft-model").value;
-    if (!model) return toast("Selecione um modelo Ollama após consultar a lista.");
+    if (!model) return toast("Selecione um modelo serviço local após consultar a lista.");
     const selectedSkill = document.getElementById("draft-skill")?.value || "";
     if (!confirm(`Enviar objetivo da Task, conteúdo deste arquivo${selectedSkill ? " e conteúdo da Skill escolhida" : ""} ao modelo? Ele pode operar na nuvem/cobrar conforme configuração. Skill não concede permissões. Nenhuma mudança será aplicada sem revisar o diff.`)) return;
     const tid = button.dataset.draftTask;
@@ -1354,9 +1354,7 @@ function comboDeclarationPanel(payload) {
     <p>Formato JSON restrito: gateway_alias (ID do tier), mode (fallback, round-robin ou fusion),
        members na ordem declarada com model, cost_class e estimate_usd (texto decimal ou null).
        Fusion exige judge com os mesmos três campos. Não inclua chaves, prompts nem dados pessoais.
-       Confirme que 127.0.0.1:20128 é o gateway de sua confiança: o Studio enviará a ele
-       SOMENTE a credencial já disponível no ambiente para obter metadados quando você confirmar; em preview remoto
-       o localhost é o do servidor, não o seu PC. Se não houver chave existente no ambiente do Studio, não salvará.</p>
+       Configure antes o endereço HTTPS ou loopback confiável; a consulta opt-in envia a chave do cofre a esse serviço. Em preview remoto, o localhost é o servidor, não o seu PC.</p>
     <label for="combo-json">Declaração JSON (sem credenciais)</label>
     <textarea id="combo-json" spellcheck="false" placeholder='{"gateway_alias":"meu-tier","mode":"fallback","members":[{"model":"modelo-a","cost_class":"free_quota","estimate_usd":null}]}'></textarea>
     <button type="button" id="combo-save" onclick="saveCombo()">Prévia, confirmação e fotografia local</button>
@@ -1366,11 +1364,12 @@ function comboDeclarationPanel(payload) {
 
 /* ----- global config ----- */
 async function renderGlobalConfig() {
-  let settings, catalog, comboDeclarations;
+  let settings, catalog, comboDeclarations, gateway;
   try {
     settings = await api("GET", "/api/providers/settings");
     catalog = (await api("GET", "/api/providers")).catalog;
     comboDeclarations = await api("GET", "/api/combos/declarations");
+    gateway = await api("GET", "/api/gateway/connection");
   } catch (e) { view.innerHTML = `<div class="banner danger">Erro: ${esc(e.message)}</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
   const cat = catalog.map(c => `<div class="card">
     <h3>${esc(c.name)} ${pill(c.kind)}</h3>
@@ -1383,20 +1382,75 @@ async function renderGlobalConfig() {
       <li>${esc(c.note)}</li>
     </ul></div>`).join("");
   view.innerHTML = `<h1>Configurações — provedores de IA</h1>
-    <div class="banner warn">A execução de tarefas continua <b>simulada</b>. Nenhuma chave é armazenada, nenhum modelo é iniciado por combos nem há consulta automática. A consulta opt-in abaixo envia a credencial já existente apenas ao gateway LOCAL para obter metadados, sem inferência; isso não comprova custo zero.</div>
+    <div class="banner warn">A execução de tarefas continua <b>simulada</b>. Chave somente no cofre do sistema operacional (se disponível), nunca no JSON. Consultas opt-in enviam a chave ao endereço escolhido apenas para obter metadados, sem inferência. Nenhum modelo está aprovado; custo e Tools não foram verificados.</div>
     <div class="card"><h3>Modo de IA</h3>
       <select id="mode-sel">${["offline","local","cloud","combined"].map(m=>`<option ${m===settings.mode?"selected":""}>${m}</option>`).join("")}</select>
-      <p class="muted">offline (padrão, sem inferência) · local (Ollama, guia) · cloud (Gemini/OpenRouter, guia) · combined (ambas, com cuidado de não duplicar dados).</p>
+      <p class="muted">offline (padrão, sem inferência) · local (serviço instalado, diagnóstico) · cloud (rota escolhida, guia) · combined (ambas, com cuidado de não duplicar dados).</p>
       <div class="row" style="margin-top:10px"><button onclick="saveMode()">Salvar modo</button></div>
     </div>
-    <div class="card"><h3>Diagnóstico manual: Ollama neste computador</h3>
+    <div class="card"><h3>Diagnóstico manual: serviço local neste computador</h3>
       <p>Consulta apenas a lista anunciada por <code>127.0.0.1:11434</code> no computador que executa o Studio. Em um preview remoto, não consulta o seu PC. Não envia documentos, não executa modelo e não ativa IA. Alguns modelos anunciados podem usar nuvem; a lista não comprova custo nem funcionamento.</p>
-      <button id="ollama-probe-button" class="ghost" onclick="probeOllama()">Verificar Ollama local (somente leitura)</button>
-      <div id="ollama-probe-result" class="muted" role="status" aria-live="polite"></div>
+      <button id="local_model-probe-button" class="ghost" onclick="probeLocalModel()">Verificar serviço local (somente leitura)</button>
+      <div id="local_model-probe-result" class="muted" role="status" aria-live="polite"></div>
+    </div>
+    <div class="card"><h3>Conexão de IA (metadados, não execução)</h3>
+      <p>O endereço é salvo neste computador. Chave: ${gateway.has_key ? "presente no cofre" : "ausente"};
+      cofre: ${gateway.vault_available ? "disponível" : "indisponível neste sistema"}.
+      Apenas HTTPS ou HTTP em loopback. Em preview remoto, não use uma chave pessoal: o servidor não é o seu PC.
+      Trocar endereço exige uma nova chave. Nenhuma consulta automática, fallback ou custo autorizado.</p>
+      <label for="gateway-address">Endereço base</label>
+      <input id="gateway-address" type="url" autocomplete="off" value="${esc(gateway.address)}" placeholder="https://servidor.example" />
+      <label for="gateway-key">Chave (nunca exibida após salvar)</label>
+      <input id="gateway-key" type="password" autocomplete="new-password" value="" />
+      <div class="actions"><button type="button" onclick="saveGateway()">Salvar no cofre</button>
+      <button type="button" class="ghost" onclick="loadGatewayModels()">Consultar /v1/models (opt-in)</button>
+      <button type="button" class="ghost" onclick="revokeGateway()">Revogar conexão</button></div>
+      <div id="gateway-result" role="status" aria-live="polite"></div>
     </div>
     ${comboDeclarationPanel(comboDeclarations)}
     <h2>Catálogo (não conectado)</h2>
     <div class="grid">${cat}</div>`;
+  window.saveGateway = async function () {
+    const address = document.getElementById("gateway-address").value.trim();
+    const keyField = document.getElementById("gateway-key");
+    const output = document.getElementById("gateway-result");
+    if (!address || !keyField.value) return (output.textContent = "Informe endereço e chave.");
+    if (!confirm(`Salvar conexão com ${address}? O endereço ficará neste computador e a chave no cofre do Windows. Esta ação não executa modelo.`)) return;
+    try {
+      gateway = await api("PUT", "/api/gateway/connection", {address, key:keyField.value, confirm:true});
+      keyField.value = "";
+      output.textContent = "Conexão salva; nenhuma inferência ativada.";
+    } catch (e) { output.textContent = e.message; }
+    finally { keyField.value = ""; }
+  };
+  window.revokeGateway = async function () {
+    const output = document.getElementById("gateway-result");
+    if (!confirm("Revogar a conexão? A chave será excluída do cofre e o endereço apagado. Declarações locais não serão apagadas.")) return;
+    try {
+      gateway = await api("DELETE", "/api/gateway/connection", {confirm:true});
+      document.getElementById("gateway-address").value = "";
+      document.getElementById("gateway-key").value = "";
+      output.textContent = "Conexão revogada. Nenhuma consulta disponível.";
+    } catch (e) { output.textContent = e.message; }
+  };
+  window.loadGatewayModels = async function () {
+    const output = document.getElementById("gateway-result");
+    if (!gateway.address || !confirm(`Consultar ${gateway.address}/v1/models? O serviço escolhido receberá sua chave. Não executa modelo.`)) return;
+    try {
+      const result = await api("POST", "/api/gateway/models", {confirm:true});
+      output.replaceChildren();
+      const intro = document.createElement("p");
+      intro.textContent = result.warning;
+      output.append(intro);
+      const list = document.createElement("ul");
+      for (const m of result.models) {
+        const item = document.createElement("li");
+        item.textContent = `${m.id}: ${m.kind === "fallback_chain" ? "cadeia de fallback" : m.kind === "single_model" ? "modelo único declarado" : "tipo desconhecido"} — Tools não testadas, não aprovado`;
+        list.append(item);
+      }
+      output.append(list);
+    } catch (e) { output.textContent = e.message; }
+  };
   window.editCombo = function (index) {
     const c = comboDeclarations.combos[index];
     if (!c) return;
@@ -1408,7 +1462,7 @@ async function renderGlobalConfig() {
   };
   window.checkCombo = async function (index) {
     const c = comboDeclarations.combos[index];
-    if (!c || !confirm(`Consultar metadados de ${c.gateway_alias} em 127.0.0.1:20128? Confirme que o serviço local é confiável: receberá sua credencial existente. Não executa modelo.`)) return;
+    if (!c || !confirm(`Consultar metadados de ${c.gateway_alias} no endereço configurado? Confirme que o serviço é confiável: receberá sua chave do cofre. Não executa modelo.`)) return;
     try {
       const result = await api("POST", "/api/combos/check", {tier_id:c.gateway_alias, confirm:true});
       await renderGlobalConfig();
@@ -1435,7 +1489,7 @@ async function renderGlobalConfig() {
       const targets = summary.members.map(m => `${m.model} (${m.cost_class})`).join(", ");
       const judge = summary.judge ? `; juiz adicional: ${summary.judge.model} (${summary.judge.cost_class})` : "";
       const total = summary.declared_estimate_usd === null ? "INCOMPLETO" : summary.declared_estimate_usd + " USD";
-      if (!confirm(`Declaração NÃO verificada de ${summary.gateway_alias} (${summary.mode}): ${targets}${judge}.\nEstimativa declarada: ${total}, NÃO é fatura/teto.\nConfirme que o serviço em 127.0.0.1:20128 é seu gateway confiável: receberá a credencial existente para consulta de /v1/models. Gravar declaração?`)) return;
+      if (!confirm(`Declaração NÃO verificada de ${summary.gateway_alias} (${summary.mode}): ${targets}${judge}.\nEstimativa declarada: ${total}, NÃO é fatura/teto.\nConfirme que o serviço configurado é confiável: receberá sua chave do cofre para consulta de /v1/models. Gravar declaração?`)) return;
       const cost = summary.declared_potential_external_cost;
       if (cost && !confirm("free_quota pode acabar; membros/juiz podem cobrar. Reconhece o risco de custo POTENCIAL? Isso NÃO autoriza execução.")) return;
       const old = comboDeclarations.combos.find(c => c.gateway_alias === summary.gateway_alias);
@@ -1449,13 +1503,13 @@ async function renderGlobalConfig() {
     } catch (e) { output.textContent = "Declaração NÃO salva: " + e.message; }
     finally { button.disabled = false; }
   };
-  window.probeOllama = async function () {
-    const button = document.getElementById("ollama-probe-button");
-    const result = document.getElementById("ollama-probe-result");
+  window.probeLocalModel = async function () {
+    const button = document.getElementById("local_model-probe-button");
+    const result = document.getElementById("local_model-probe-result");
     button.disabled = true;
     result.textContent = "Consultando somente o serviço local…";
     try {
-      const data = await api("POST", "/api/providers/local-ollama/probe", { confirm: true });
+      const data = await api("POST", "/api/providers/local-model/probe", { confirm: true });
       if (data.status === "detected") {
         result.innerHTML = `<p>${esc(data.message)}</p>${data.models.length
           ? `<ul>${data.models.map(name => `<li>${esc(name)}</li>`).join("")}</ul>`

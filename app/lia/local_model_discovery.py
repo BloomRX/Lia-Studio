@@ -1,4 +1,4 @@
-"""Diagnóstico opt-in do Ollama no loopback; não é um executor nem conecta IA.
+"""Diagnóstico opt-in do serviço local no loopback; não é um executor nem conecta IA.
 
 Nenhum documento, prompt, credencial ou modelo é enviado. Somente GET /api/tags,
 sem proxies, redirects, persistência, downloads ou inferência.
@@ -12,7 +12,7 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 
 from .storage import StorageError
 
-OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
+LOCAL_MODEL_TAGS_URL = "http://127.0.0.1:11434/api/tags"
 MAX_BYTES = 128 * 1024
 MAX_MODELS = 100
 TIMEOUT_SECONDS = 2
@@ -28,17 +28,17 @@ def _response(status: str, models: list[str], message: str) -> dict:
             "connected": False, "inference_enabled": False, "message": message}
 
 
-def probe_local_ollama(confirmed: bool) -> dict:
+def probe_local_model(confirmed: bool) -> dict:
     """Consultar somente o servidor no loopback após ação explícita do Dev.
 
     O endereço não é entrada do cliente. Uma resposta válida não prova que um
     modelo é local ou gratuito e nunca altera as configurações do Studio.
     """
     if confirmed is not True:
-        raise StorageError("confirme explicitamente o diagnóstico local do Ollama")
+        raise StorageError("confirme explicitamente o diagnóstico local do serviço local")
 
     opener = build_opener(ProxyHandler({}), _NoRedirect())
-    request = Request(OLLAMA_TAGS_URL, headers={"Accept": "application/json"}, method="GET")
+    request = Request(LOCAL_MODEL_TAGS_URL, headers={"Accept": "application/json"}, method="GET")
     try:
         with opener.open(request, timeout=TIMEOUT_SECONDS) as response:
             raw = response.read(MAX_BYTES + 1)
@@ -61,6 +61,6 @@ def probe_local_ollama(confirmed: bool) -> dict:
     except (HTTPError, URLError, HTTPException, TimeoutError, OSError, ValueError, UnicodeError):
         # Não devolver o erro do serviço remoto, URL de redirect nem corpo bruto.
         return _response("unavailable", [],
-                         "Não foi possível ler a lista local do Ollama. Confira se o serviço está ativo neste computador.")
+                         "Não foi possível ler a lista local do serviço local. Confira se o serviço está ativo neste computador.")
     return _response("detected", names,
-                     "Ollama respondeu no loopback. Modelos anunciados não comprovam execução local nem uso gratuito.")
+                     "serviço local respondeu no loopback. Modelos anunciados não comprovam execução local nem uso gratuito.")

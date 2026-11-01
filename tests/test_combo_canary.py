@@ -114,6 +114,8 @@ class TestComboCanary(unittest.TestCase):
         record = combo_canary.save_declaration(self.store, self.data, self.response,
                                                 "2026-09-15T10:00:00Z", None, True)
         handler = object.__new__(Handler)
+        from types import SimpleNamespace
+        handler.server = SimpleNamespace(server_address=("127.0.0.1", 0))
         handler.path = "/api/combos/declarations"
         handler.command = "GET"
         handler._body = {}
@@ -149,6 +151,8 @@ class TestComboCanary(unittest.TestCase):
     def test_api_requires_preview_cost_ack_and_server_observation_only(self):
         from app.server import Handler
         handler = object.__new__(Handler)
+        from types import SimpleNamespace
+        handler.server = SimpleNamespace(server_address=("127.0.0.1", 0))
         handler.path = "/api/combos/preview"
         handler.command = "POST"
         handler._body = {"declaration":self.data}
@@ -180,6 +184,8 @@ class TestComboCanary(unittest.TestCase):
         combo_canary.save_declaration(self.store, self.data, self.response,
                                        "2026-09-15T10:00:00Z", None, True)
         handler = object.__new__(Handler)
+        from types import SimpleNamespace
+        handler.server = SimpleNamespace(server_address=("127.0.0.1", 0))
         handler.path = "/api/combos/check"
         handler.command = "POST"
         handler._body = {"tier_id":"meu-tier", "confirm":True}

@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 INDEX_FILE = "lia_index.json"
 INDEX_VERSION = 2
 SCHEMA_VERSION = 2
-GLOBAL_FILES = {"lia_settings.json", "runtime_policy.json", "combo_declarations.json"}
+GLOBAL_FILES = {"lia_settings.json", "runtime_policy.json", "combo_declarations.json", "gateway_connection.json"}
 
 # Documentos em Markdown (editáveis pelo Dev) e dados estruturados (JSON).
 MARKDOWN_DOCS = [

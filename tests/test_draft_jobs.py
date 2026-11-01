@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.lia import (code_drafts, draft_jobs, handoff, planning, runtime_policy,
                      storage, validation_sessions)
-from app.lia import ollama_chat, ollama_discovery
+from app.lia import local_model_chat, local_model_discovery
 
 
 class TestDraftJobs(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestDraftJobs(unittest.TestCase):
         self.original = "def loop():\n    return 1\n"
         self.changed = "def loop():\n    return 2\n"
         self.path.write_text(self.original)
-        for cap in ("project.python.read", "project.python.write", "model.ollama.infer"):
+        for cap in ("project.python.read", "project.python.write", "model.local.infer"):
             revision = runtime_policy.snapshot(self.store, self.pid)["revision"]
             runtime_policy.change_task(self.store, self.pid, self.mid, self.tid, cap,
                                        "allow", revision, True)
@@ -49,7 +49,7 @@ class TestDraftJobs(unittest.TestCase):
         self.fail("worker não encerrou dentro do tempo de teste")
 
     def test_ready_requires_review_and_does_not_approve_task(self):
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer":self.changed}):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer":self.changed}):
             started = self.start()
             ready = self.wait_terminal(started["id"])
         self.assertEqual(ready["display_state"], "ready")
@@ -74,7 +74,7 @@ class TestDraftJobs(unittest.TestCase):
     def test_handoff_tracks_real_limited_operations_without_claiming_gameplay(self):
         initial = handoff.preview(self.store, self.pid, self.mid, self.tid)
         handoff.save(self.store, self.pid, self.mid, self.tid, initial["digest"], confirm=True)
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer":self.changed}):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer":self.changed}):
             jid = self.start()["id"]
             ready = self.wait_terminal(jid)
         self.assertTrue(handoff.get_saved(self.store, self.pid)["stale"])
@@ -108,7 +108,7 @@ class TestDraftJobs(unittest.TestCase):
             handle.event.wait(3)
             handle.check()
             return {"answer":self.changed}
-        with patch.object(code_drafts.ollama_chat, "chat", side_effect=hold) as chat:
+        with patch.object(code_drafts.local_model_chat, "chat", side_effect=hold) as chat:
             first = self.start()
             self.assertTrue(waiting.wait(2))
             with self.assertRaises(storage.StorageError):
@@ -124,12 +124,12 @@ class TestDraftJobs(unittest.TestCase):
         self.assertEqual(self.path.read_text(), self.original)
 
     def test_timeout_failure_and_restart_do_not_retry(self):
-        with patch.object(code_drafts.ollama_chat, "chat", side_effect=ollama_chat.ChatTimedOut("secret")):
+        with patch.object(code_drafts.local_model_chat, "chat", side_effect=local_model_chat.ChatTimedOut("secret")):
             first = self.start()
             timeout = self.wait_terminal(first["id"])
         self.assertEqual((timeout["state"], timeout["result_code"]), ("timed_out", "timeout"))
         self.assertNotIn("secret", json.dumps(timeout))
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": self.changed}):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": self.changed}):
             second = self.start()
             self.wait_terminal(second["id"])
         with draft_jobs._lock:
@@ -151,14 +151,14 @@ class TestDraftJobs(unittest.TestCase):
             history.symlink_to(outside)
         except (OSError, NotImplementedError):
             self.skipTest("symlink indisponível no SO")
-        with patch.object(code_drafts.ollama_chat, "chat") as chat:
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
             with self.assertRaises(storage.StorageError):
                 self.start()
             chat.assert_not_called()
         self.assertEqual(outside.read_text(), "protected")
 
     def test_corrupt_job_history_recover_without_promoting(self):
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer":self.changed}):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer":self.changed}):
             job = self.start()
             self.wait_terminal(job["id"])
         path = self.store.project_path(self.pid) / draft_jobs.NAME
@@ -205,8 +205,8 @@ class TestDraftJobs(unittest.TestCase):
         worker.start()
         base = f"http://127.0.0.1:{model.server_address[1]}"
         with patch.object(server, "storage", self.store), \
-             patch.object(ollama_discovery, "OLLAMA_TAGS_URL", base + "/api/tags"), \
-             patch.object(ollama_chat, "CHAT_URL", base + "/api/chat"):
+             patch.object(local_model_discovery, "LOCAL_MODEL_TAGS_URL", base + "/api/tags"), \
+             patch.object(local_model_chat, "CHAT_URL", base + "/api/chat"):
             app = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
             service = threading.Thread(target=app.serve_forever, daemon=True)
             service.start()
@@ -231,7 +231,7 @@ class TestDraftJobs(unittest.TestCase):
     def test_http_job_poll_review_apply_and_cancel_denial(self):
         from app import server
         with patch.object(server, "storage", self.store), patch.object(
-                code_drafts.ollama_chat, "chat", return_value={"answer":self.changed}):
+                code_drafts.local_model_chat, "chat", return_value={"answer":self.changed}):
             http = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
             thread = threading.Thread(target=http.serve_forever, daemon=True)
             thread.start()

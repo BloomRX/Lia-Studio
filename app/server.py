@@ -1,7 +1,7 @@
 """Servidor HTTP da Lia Studio (stdlib puro, sem dependências de terceiros).
 
 Serve a interface (SPA em app/static) e a API JSON em /api. Por padrão não faz
-chamadas de rede; o diagnóstico opcional de Ollama consulta somente o loopback
+chamadas de rede; o diagnóstico opcional de serviço local consulta somente o loopback
 a pedido do Dev, sem inferência. Pode ser empacotado para Windows no futuro,
 ou simplesmente executado com `python run.py`.
 """
@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, handoff, gateway_models, ollama_chat, ollama_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -334,6 +334,9 @@ class Handler(BaseHTTPRequestHandler):
         method = self.command
 
         body = self._body
+        # API histórica permanece como alias, sem expor marca/ID antigo no código da UI.
+        if len(parts) == 4 and parts[:2] == ["api", "providers"]:
+            parts[2] = legacy_ids.canonical(parts[2])
         try:
             if parts == ["api", "health"]:
                 return {"ok": True, "app": "Lia Studio", "offline": True}, 200
@@ -374,6 +377,34 @@ class Handler(BaseHTTPRequestHandler):
                 if set(body) != {"command", "path", "confirm"}:
                     raise StorageError("envie binário selecionado e confirmação")
                 return engine_probe.version(body["command"], body["path"], body["confirm"]), 200
+            if (parts[:2] == ["api", "gateway"] or
+                (parts[:2] == ["api", "combos"] and parts[2:] in
+                 (["declarations"], ["check"]))):
+                if self.server.server_address[0] not in ("127.0.0.1", "::1", "localhost"):
+                    # Prévia em rede nunca expõe configuração/segredo nem consulta remoto.
+                    if parts == ["api", "gateway", "connection"] and method == "GET":
+                        return {"address":"", "has_key":False,"vault_available":False,
+                                "runtime_enabled":False}, 200
+                    if parts == ["api", "combos", "declarations"] and method == "GET":
+                        pass  # leitura de declarações não acessa o cofre/gateway
+                    else:
+                        raise StorageError("conexão de IA requer servidor em loopback")
+            if parts == ["api", "gateway", "connection"] and method == "GET":
+                return gateway_models.public_config(storage), 200
+            if parts == ["api", "gateway", "connection"] and method == "PUT":
+                if self.server.server_address[0] not in ("127.0.0.1", "::1", "localhost"):
+                    raise StorageError("salvar segredo exige servidor em loopback")
+                if set(body) != {"address", "key", "confirm"}:
+                    raise StorageError("endereço, chave e confirmação obrigatórios")
+                return gateway_models.configure(storage, body["address"], body["key"], body["confirm"]), 200
+            if parts == ["api", "gateway", "connection"] and method == "DELETE":
+                if set(body) != {"confirm"}:
+                    raise StorageError("confirme a revogação")
+                return gateway_models.revoke(storage, body["confirm"]), 200
+            if parts == ["api", "gateway", "models"] and method == "POST":
+                if set(body) != {"confirm"}:
+                    raise StorageError("confirme a consulta")
+                return gateway_models.list_models(storage, body["confirm"]), 200
             if parts == ["api", "combos", "declarations"] and method == "GET":
                 return combo_canary.local_previews(storage, datetime.now(timezone.utc).isoformat()), 200
             if parts == ["api", "combos", "preview"] and method == "POST":
@@ -390,7 +421,7 @@ class Handler(BaseHTTPRequestHandler):
                 if (previous is None and body["expected_revision"] is not None) or (previous is not None and
                     body["expected_revision"] != previous["canary_revision"]):
                     raise StorageError("revisão anterior do combo incorreta; recarregue")
-                observed = gateway_models.inspect(declaration["gateway_alias"], confirmed=True)
+                observed = gateway_models.inspect(storage, declaration["gateway_alias"], confirmed=True)
                 if observed is None:
                     raise StorageError("metadados do tier indisponíveis/incompatíveis; declaração não salva")
                 combo_canary.save_declaration(storage, declaration, _tier_payload(observed),
@@ -403,7 +434,7 @@ class Handler(BaseHTTPRequestHandler):
                 if (type(body["tier_id"]) is not str or
                     body["tier_id"] not in combo_canary.load(storage)["records"]):
                     raise StorageError("tier não declarado")
-                observed = gateway_models.inspect(body["tier_id"], confirmed=True)
+                observed = gateway_models.inspect(storage, body["tier_id"], confirmed=True)
                 result = combo_canary.check_tier(storage, body["tier_id"],
                                                   _tier_payload(observed) if observed is not None else None,
                                                   datetime.now(timezone.utc).isoformat())
@@ -414,14 +445,14 @@ class Handler(BaseHTTPRequestHandler):
                 return providers.get_settings(storage), 200
             if parts == ["api", "providers", "settings"] and method == "PUT":
                 return providers.set_settings(storage, self._body), 200
-            if parts == ["api", "providers", "local-ollama", "probe"] and method == "POST":
+            if parts == ["api", "providers", "local-model", "probe"] and method == "POST":
                 if set(body) != {"confirm"}:
                     raise StorageError("envie somente a confirmação do diagnóstico local")
-                return ollama_discovery.probe_local_ollama(body["confirm"]), 200
-            if parts == ["api", "providers", "local-ollama", "chat"] and method == "POST":
+                return local_model_discovery.probe_local_model(body["confirm"]), 200
+            if parts == ["api", "providers", "local-model", "chat"] and method == "POST":
                 if set(body) != {"prompt", "model", "confirm"}:
                     raise StorageError("envie somente mensagem, modelo e confirmação")
-                return ollama_chat.chat(body["prompt"], body["model"], body["confirm"]), 200
+                return local_model_chat.chat(body["prompt"], body["model"], body["confirm"]), 200
             if parts == ["api", "example"] and method == "POST":
                 return create_example_project(), 201
             return None

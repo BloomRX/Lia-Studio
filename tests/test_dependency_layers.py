@@ -30,7 +30,7 @@ class TestDependencyLayers(unittest.TestCase):
                                  and name not in modules and name != "app"]
                 self.assertEqual(external, [])
 
-    def test_claude_instructions_are_short_literal_and_not_a_skill_copy(self):
+    def test_agent_instructions_are_short_literal_and_not_a_skill_copy(self):
         text = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
         self.assertLessEqual(len(text.encode("utf-8")), 2200)
         self.assertNotIn("@import", text)
@@ -52,9 +52,10 @@ class TestDependencyLayers(unittest.TestCase):
         self.assertIn("BSD-3-Clause", notice)
         self.assertIn("GPL-2.0-or-later", notice)
 
-    def test_claude_folder_ignored_and_descriptions_trigger_not_copy(self):
+    def test_agent_folder_ignored_and_descriptions_trigger_not_copy(self):
         ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
-        self.assertIn(".claude/", ignore)
+        self.assertIn(".claude/skills/", ignore)
+        self.assertNotIn(".claude/", ignore)
         self.assertIn("**/combo_declarations.json", ignore)
         self.assertIn("**/combo_declarations.json.bak", ignore)
         for name in ("lia-project-resume", "lia-module-planning", "lia-task-handoff"):

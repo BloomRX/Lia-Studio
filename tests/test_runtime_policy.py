@@ -22,7 +22,7 @@ class TestRuntimePolicy(unittest.TestCase):
         self.mid = planning.create_module(self.store, self.pid, {"name": "Game"})["id"]
         self.tid = planning.create_task(self.store, self.pid, self.mid, {
             "name": "Loop", "objective": "retornar 1", "files": ["game/loop.py"],
-            "permissions": ["model.ollama.infer"], "verify": "jogo"})["id"]
+            "permissions": ["model.local.infer"], "verify": "jogo"})["id"]
         self.path = self.store.project_path(self.pid) / "game" / "loop.py"
 
     def tearDown(self):
@@ -37,7 +37,7 @@ class TestRuntimePolicy(unittest.TestCase):
         with self.assertRaises(storage.StorageError):
             code_drafts.create_stub(self.store, self.pid, self.mid, self.tid, "game/loop.py", True)
         self.assertFalse(self.path.exists())
-        with patch.object(code_drafts.ollama_chat, "chat") as chat:
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
             with self.assertRaises(storage.StorageError):
                 code_drafts.preview(self.store, self.pid, self.mid, self.tid,
                                     "game/loop.py", "model", True)
@@ -54,8 +54,8 @@ class TestRuntimePolicy(unittest.TestCase):
         self.change("python.syntax.parse", "allow")
         parsed = validation_sessions.run_syntax_check(self.store, self.pid, self.mid, self.tid, "game/loop.py", True)
         self.assertEqual(parsed["result_code"], "syntax_ok")
-        self.change("model.ollama.infer", "allow")
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": "def loop():\n    return 1\n"}):
+        self.change("model.local.infer", "allow")
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": "def loop():\n    return 1\n"}):
             proposal = code_drafts.preview(self.store, self.pid, self.mid, self.tid,
                                            "game/loop.py", "model", True)
         self.change("project.python.write", "remove_allow")

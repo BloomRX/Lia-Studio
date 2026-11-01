@@ -24,19 +24,19 @@ class TestAgentCliTransport(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_fixed_cli_flags_do_not_include_write_or_permission_bypass(self):
-        cmd = agent_cli.claude_inspection_argv(sys.executable, "Analise somente este arquivo")
+        cmd = agent_cli.agent_inspection_argv(sys.executable, "Analise somente este arquivo")
         self.assertEqual(cmd[1:3], ["-p", "Analise somente este arquivo"])
         self.assertEqual(cmd[-5:], ["--output-format", "stream-json", "--verbose",
                                     "--allowedTools", "Read,Grep,Glob"])
         self.assertNotIn("--dangerously-skip-permissions", cmd)
         with self.assertRaises(agent_cli.TransportError):
-            agent_cli.claude_inspection_argv("claude", "x")
+            agent_cli.agent_inspection_argv("agent", "x")
 
     def test_parser_treats_cli_result_as_unverified_and_drops_payload(self):
         lines = [json.dumps({"type":"assistant", "message":{"content":"TOKEN_X"}}),
                  json.dumps({"type":"result", "session_id":"session-fake", "result":"TOKEN_Y",
                              "total_cost_usd":1234.5, "is_error":False})]
-        result = agent_cli.parse_claude_stream(("\n".join(lines) + "\n").encode(), 0)
+        result = agent_cli.parse_agent_stream(("\n".join(lines) + "\n").encode(), 0)
         self.assertEqual(result["status"], "process_finished_unverified")
         self.assertEqual(result["session_id"], "session-fake")
         self.assertEqual(result["event_count"], 2)
@@ -46,12 +46,12 @@ class TestAgentCliTransport(unittest.TestCase):
 
     def test_nonzero_exit_never_promotes_result_and_malformed_stream_fails(self):
         payload = b'{"type":"result","session_id":"fake","is_error":false}\n'
-        self.assertEqual(agent_cli.parse_claude_stream(payload, 9)["status"], "process_failed")
+        self.assertEqual(agent_cli.parse_agent_stream(payload, 9)["status"], "process_failed")
         for value in (b"not json\n", b'{"type":"assistant"}\n',
                       b'{"type":"result","session_id":"../other"}\n',
                       b'X' * (agent_cli.MAX_STDOUT + 1)):
             with self.subTest(size=len(value)), self.assertRaises(agent_cli.TransportError):
-                agent_cli.parse_claude_stream(value, 0)
+                agent_cli.parse_agent_stream(value, 0)
 
     def test_real_subprocess_transport_with_fake_jsonl_and_no_inherited_env(self):
         code = ("import json,os; print(json.dumps({'type':'result',"

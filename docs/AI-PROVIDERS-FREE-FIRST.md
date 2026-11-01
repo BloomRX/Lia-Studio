@@ -220,7 +220,9 @@ Runtime alternativo autorizado
 
 Porém, **fallback não deve significar cobrança inesperada**.
 
-Antes de migrar de uma opção gratuita/local para uma opção que possa gerar custo, o Studio deve respeitar a política de custo definida pelo usuário. Uma cota gratuita pode acabar; não tratar `free_quota` como custo garantidamente zero.
+Antes de migrar de uma opção gratuita/local para uma opção que possa gerar custo, o Studio deve respeitar a política de custo definida pelo usuário. Uma cota gratuita pode acabar; não tratar `free_quota` como custo garantidamente zero. **Uma cadeia de fallback vale seu pior membro:** qualquer destino pago ou desconhecido impede classificá-la como gratuita. Nunca avançar silenciosamente para outro membro.
+
+A conexão do Studio usa endereço escolhido e chave guardada em cofre seguro. Na listagem `/v1/models`, `owned_by: "combo"` indica cadeia de fallback; outro `owned_by` não vazio indica modelo único declarado, e ausência do campo deixa o tipo desconhecido. Isso é metadado, não prova de composição, custo ou aprovação. **Só aprovar modelo depois de ida-e-volta real de ferramenta**: pedido, chamada de Tool, resposta da Tool e continuação correta, em ambiente supervisionado. Um "oi" ou a lista de modelos não bastam.
 
 **Combos atrás de gateway (Decisão 39, retificada em 19/10/2026):** segundo o Dev, `/v1/models` não expõe membros e `/api/combos` exige sessão do dashboard. Não usar cookie/scraping, nem apresentar composição declarada pelo Dev como verificação do gateway. O contrato offline `app/lia/combo_policy.py` aceita alias, modo (`fallback`, `round-robin`, `fusion`) e membros declarados (modelo, classe `local`/`free_quota`/`paid`/`unknown`, estimativa USD em string decimal opcional) e devolve prévia com revisão; não salva configuração nem executa nada. A Decisão 41 descreve armazenamento local e tela somente leitura; o editor/consulta de metadados opt-in da Decisão 42 não ativa combo executável nem Agent Runtime.
 
@@ -229,9 +231,7 @@ Antes de migrar de uma opção gratuita/local para uma opção que possa gerar c
 - `fusion`: vários membros acionados **mais o juiz**; a prévia soma tudo, inclusive membros repetidos. Juiz sem estimativa = total indisponível.
 - Qualquer `free_quota`, `paid` ou `unknown` exige reconhecimento explícito de custo potencial (além da confirmação da revisão); mesmo uma estimativa declarada como zero não garante gratuidade. Se faltar preço para algum membro, a prévia não fornece total. Declaração e reconhecimento nunca são autorização de execução: antes de conectar Runtime, exigem-se permissões/grants, confirmação por ação, isolamento e teste real `claude -p` atrás do gateway no ambiente do Dev. Mudança do gateway após declaração pode passar despercebida; `--max-budget-usd` não é teto comprovado da fatura.
 
-O registro local (Decisão 41) guarda a composição e as estimativas **declaradas pelo Dev**, além de capacidades/janela normalizadas e data fora do Git; não observa preço/cota reais. Na tela, mesmo quando coincidem, mostrar que troca de membros equivalentes e esgotamento de `free_quota` podem passar despercebidos. Rede/tier indisponível vira pergunta ao Dev por tentativa, com decisão registrada e última comparação bem-sucedida visível; mudança detectada exige nova declaração. Nesta revisão a consulta de metadados é opt-in e restrita ao gateway no loopback
-do processo Studio, sem inferência; o gateway real do Dev e Agent Runtime não
-foram testados neste sandbox.
+O registro local (Decisão 41) guarda a composição e as estimativas **declaradas pelo Dev**, além de capacidades/janela normalizadas e data fora do Git; não observa preço/cota reais. Na tela, mesmo quando coincidem, mostrar que troca de membros equivalentes e esgotamento de `free_quota` podem passar despercebidos. Rede/tier indisponível vira pergunta ao Dev por tentativa, com decisão registrada e última comparação bem-sucedida visível; mudança detectada exige nova declaração. A consulta de metadados exige consentimento e endereço confiável configurado, sem inferência. O gateway real, o cofre Windows e Agent Runtime não foram testados neste sandbox.
 
 Exemplo:
 
@@ -385,7 +385,7 @@ Se o Studio futuramente coletar métricas de uso de providers, isso deve ser sep
 
 O usuário deve conseguir entender:
 
-- qual provider executou uma tarefa;
+- qual endereço/modelo foi selecionado; um gateway normalmente **não informa** qual fornecedor serviu a resposta. Se houver identificação (por exemplo `X-Routed-Via`), validar, registrar e mostrar como declaração do serviço; caso contrário, mostrar "não informado", sem inferir pelo ID;
 - qual runtime foi usado;
 - qual modelo foi selecionado quando disponível;
 - se a execução foi local ou remota;

@@ -29,7 +29,7 @@ class TransportError(Exception):
     """Erro fixo de protocolo/processo, sem ecoar dados do subprocesso."""
 
 
-def claude_inspection_argv(executable: str, prompt: str) -> List[str]:
+def agent_inspection_argv(executable: str, prompt: str) -> List[str]:
     """Somente candidato ao CLI, sem permissão de escrita garantida pelo SO."""
     if (type(executable) is not str or not executable or not Path(executable).is_absolute()
         or type(prompt) is not str or not 1 <= len(prompt) <= 4000
@@ -39,7 +39,7 @@ def claude_inspection_argv(executable: str, prompt: str) -> List[str]:
             "--verbose", "--allowedTools", "Read,Grep,Glob"]
 
 
-def parse_claude_stream(raw: bytes, exit_code: int) -> Dict[str, Any]:
+def parse_agent_stream(raw: bytes, exit_code: int) -> Dict[str, Any]:
     """Resumo de observações, não verdade/veredito do modelo ou teste de Task."""
     if type(raw) is not bytes or len(raw) > MAX_STDOUT or type(exit_code) is not int:
         raise TransportError("saída de CLI inválida ou grande demais")
@@ -138,7 +138,7 @@ def run_bounded(command: Sequence[str], *, cwd: Path, env: Mapping[str, str],
             thread.join(timeout=1)
         if too_large.is_set() or any(thread.is_alive() for thread in threads):
             raise TransportError("saída de CLI incompleta/grande demais")
-        return parse_claude_stream(bytes(buffers[0]), proc.returncode)
+        return parse_agent_stream(bytes(buffers[0]), proc.returncode)
     except OSError as exc:
         raise TransportError("não foi possível iniciar o CLI") from exc
     finally:

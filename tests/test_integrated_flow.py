@@ -25,7 +25,7 @@ class TestIntegratedFlow(unittest.TestCase):
                        "files":["game/loop.py"], "verify":"jogo jogável"})["id"]
             code = "def loop():\n    return 1\n"
             with patch.object(server, "storage", store), patch.object(
-                    server.code_drafts.ollama_chat, "chat", return_value={"answer": code}) as model:
+                    server.code_drafts.local_model_chat, "chat", return_value={"answer": code}) as model:
                 http = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
                 service = threading.Thread(target=http.serve_forever, daemon=True)
                 service.start()

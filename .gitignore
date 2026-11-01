@@ -23,3 +23,8 @@ LiaStudioProjects/
 build/
 dist/
 *.spec
+
+# Somente endereço; chave no cofre do usuário.
+**/gateway_connection.json
+**/gateway_connection.json.bak
+**/gateway_connection.json.corrupt-*

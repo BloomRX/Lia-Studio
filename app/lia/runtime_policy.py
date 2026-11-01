@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict
 
-from . import planning
+from . import legacy_ids, planning
 from .permissions import PermissionPolicy
 from .storage import Storage, StorageError
 from .tool_registry import ToolDescriptor, ToolRegistry, ToolState, preflight_tool
@@ -22,14 +22,14 @@ CAPABILITIES = {
     "project.python.read": "Ler o arquivo Python indicado na Task",
     "project.python.write": "Criar/alterar arquivo Python indicado na Task",
     "python.syntax.parse": "Iniciar parser sintático local (não executa jogo)",
-    "model.ollama.infer": "Enviar objetivo e fonte ao modelo Ollama escolhido (pode ter custo)",
+    "model.local.infer": "Enviar objetivo e fonte ao modelo serviço local escolhido (pode ter custo)",
 }
 KNOWN = frozenset(CAPABILITIES)
 TOOLS = ToolRegistry((
     ToolDescriptor("lia.python.read", "lia.core", frozenset({"project.python.read"})),
     ToolDescriptor("lia.python.write", "lia.core", frozenset({"project.python.write"}), requires_approval=True),
     ToolDescriptor("lia.python.parse", "lia.core", frozenset({"python.syntax.parse"}), requires_approval=True),
-    ToolDescriptor("lia.ollama.infer", "lia.ollama", frozenset({"model.ollama.infer"}),
+    ToolDescriptor("lia.local.infer", "lia.local_model", frozenset({"model.local.infer"}),
                    requires_approval=True, potentially_paid=True),
 ))
 TOOL_BY_CAP = {next(iter(item.capabilities)): item.tool_id for item in TOOLS.entries}
@@ -74,12 +74,32 @@ def validate_global(data: Any) -> None:
         validate_policy(record["policy"])
 
 
+def _canonical_ids(values: Any) -> Any:
+    if type(values) is list and all(type(x) is str for x in values):
+        return sorted(set(legacy_ids.canonical(x) for x in values))
+    return values  # a validação normal rejeita o registro malformado
+
+
 def _global(storage: Storage) -> Dict[str, Any]:
     raw = storage.read_structured_global(NAME)
     if raw == {}:  # ausente pode ser vazio; presente vazio é corrupção
         if (storage.projects_dir / NAME).exists():
             raise StorageError("política local de Runtime vazia/inválida")
         return {"projects": {}}
+    # Conversão em memória apenas de IDs conhecidos; nenhum grant novo é criado.
+    if type(raw) is dict and type(raw.get("projects")) is dict:
+        raw = {**raw, "projects": {
+            pid: ({**record, "policy": {
+                **record["policy"],
+                "project": {key: _canonical_ids(values)
+                            for key, values in record["policy"]["project"].items()},
+                "tasks": {tid: {key: _canonical_ids(values)
+                                for key, values in p.items()} if type(p) is dict else p
+                          for tid, p in record["policy"]["tasks"].items()},
+            }} if type(record) is dict and type(record.get("policy")) is dict
+                  and type(record["policy"].get("project")) is dict
+                  and type(record["policy"].get("tasks")) is dict else record)
+            for pid, record in raw["projects"].items()}}
     validate_global(raw)
     return raw
 
@@ -177,7 +197,7 @@ def require(storage: Storage, project_id: str, module_id: str, task_id: str,
     """Enforcement no ponto de uso de capacidade fixa, além do preflight.
 
     `connected` para Tools internas significa somente o código desta operação;
-    para Ollama a chamada real rechecaria disponibilidade/modelo posteriormente.
+    para serviço local a chamada real rechecaria disponibilidade/modelo posteriormente.
     Não substitui confirmação nem protege contra processo hostil no mesmo usuário.
     """
     if confirmed is not True or type(capability) is not str or capability not in KNOWN:

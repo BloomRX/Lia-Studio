@@ -1,4 +1,4 @@
-"""Chat com modelo Ollama escolhido pelo Dev; não é Agent nem executor de Tasks."""
+"""Chat com modelo serviço local escolhido pelo Dev; não é Agent nem executor de Tasks."""
 from __future__ import annotations
 
 import json
@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 from typing import Optional
 
-from . import ollama_discovery
+from . import local_model_discovery
 from .storage import StorageError
 
 CHAT_URL = "http://127.0.0.1:11434/api/chat"
@@ -103,12 +103,12 @@ def chat(prompt: str, model: str, confirm: bool, *, max_prompt: int = MAX_PROMPT
         raise StorageError("mensagem ou modelo inválido")
     if cancel is not None:
         cancel.check()
-    available = ollama_discovery.probe_local_ollama(True)
+    available = local_model_discovery.probe_local_model(True)
     if cancel is not None:
         cancel.check()
     if available["status"] != "detected" or model not in available["models"]:
-        raise StorageError("modelo indisponível no Ollama deste computador; consulte a lista novamente")
-    # Não anexar docs, Skills, logs ou histórico anterior. Ollama pode estar
+        raise StorageError("modelo indisponível no serviço local deste computador; consulte a lista novamente")
+    # Não anexar docs, Skills, logs ou histórico anterior. serviço local pode estar
     # configurado para modelo remoto; o Dev consente por mensagem na interface.
     payload = json.dumps({"model": model, "stream": False,
                           "options": {"num_predict": 384},
@@ -118,7 +118,7 @@ def chat(prompt: str, model: str, confirm: bool, *, max_prompt: int = MAX_PROMPT
                       headers={"Content-Type": "application/json", "Accept": "application/json"})
     try:
         if cancel is None:
-            opener = build_opener(ProxyHandler({}), ollama_discovery._NoRedirect())
+            opener = build_opener(ProxyHandler({}), local_model_discovery._NoRedirect())
             with opener.open(request, timeout=TIMEOUT_SECONDS) as response:
                 raw = response.read(MAX_RESPONSE + 1)
         else:
@@ -139,10 +139,10 @@ def chat(prompt: str, model: str, confirm: bool, *, max_prompt: int = MAX_PROMPT
         if isinstance(exc, (TimeoutError, socket.timeout)) or (
             isinstance(exc, URLError) and isinstance(exc.reason, (TimeoutError, socket.timeout))
         ):
-            raise ChatTimedOut("Ollama não respondeu no prazo; nenhum retry automático") from exc
-        raise StorageError("Ollama não concluiu a resposta; confira o modelo e tente novamente conscientemente") from exc
+            raise ChatTimedOut("serviço local não respondeu no prazo; nenhum retry automático") from exc
+        raise StorageError("serviço local não concluiu a resposta; confira o modelo e tente novamente conscientemente") from exc
     if cancel is not None:
         cancel.check()
-    return {"model": model, "answer": answer, "inference": "ollama_user_confirmed",
+    return {"model": model, "answer": answer, "inference": "local_model_user_confirmed",
             "task_executed": False, "validation_status": "not_verified",
             "warning": "Resposta textual; não alterou arquivos nem verificou o jogo."}

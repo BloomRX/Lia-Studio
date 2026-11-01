@@ -485,21 +485,23 @@ assert.equal(reloads, 1);
   const probeResult = {textContent: '', innerHTML: ''};
   const probeButton = {disabled: false};
   context.document.getElementById = id => ({view, toast,
-    'ollama-probe-button': probeButton, 'ollama-probe-result': probeResult})[id];
+    'local_model-probe-button': probeButton, 'local_model-probe-result': probeResult})[id];
   const configCalls = [];
   context.fetch = async (url, options) => {
     configCalls.push({url, options});
     return {ok: true, json: async () => url === '/api/providers/settings'
       ? {mode: 'offline'} : url === '/api/providers'
-        ? {catalog: []} : url === '/api/combos/declarations'
+        ? {catalog: []} : url === '/api/gateway/connection'
+        ? {address:'',has_key:false,vault_available:false} : url === '/api/combos/declarations'
           ? {combos: [], runtime_connected: false, gateway_checked: false}
-          : {status: 'detected', message: 'Ollama respondeu',
+          : {status: 'detected', message: 'serviço local respondeu',
           models: ['<img src=x onerror=alert(1)>'], connected: false}};
   };
   await context.renderGlobalConfig();
-  assert.match(view.innerHTML, /Verificar Ollama local/);
+  assert.match(view.innerHTML, /Verificar serviço local/);
+  assert.match(view.innerHTML, /Conexão de IA/);
   assert.deepEqual(configCalls.map(call => call.url),
-    ['/api/providers/settings', '/api/providers', '/api/combos/declarations']);
+    ['/api/providers/settings', '/api/providers', '/api/combos/declarations', '/api/gateway/connection']);
   assert.match(view.innerHTML, /cota free_quota pode acabar/);
   assert.match(view.innerHTML, /NÃO verificada no gateway/);
   const comboHtml = context.comboDeclarationPanel({combos:[{
@@ -516,8 +518,8 @@ assert.equal(reloads, 1);
   assert.match(comboHtml,/última conferência bem-sucedida/);
   assert.match(comboHtml,/&lt;img/);
   assert.doesNotMatch(comboHtml,/<img/);
-  await context.window.probeOllama();
-  assert.equal(configCalls.at(-1).url, '/api/providers/local-ollama/probe');
+  await context.window.probeLocalModel();
+  assert.equal(configCalls.at(-1).url, '/api/providers/local-model/probe');
   assert.equal(configCalls.at(-1).options.method, 'POST');
   assert.deepEqual(JSON.parse(configCalls.at(-1).options.body), {confirm: true});
   assert.match(probeResult.innerHTML, /&lt;img src=x onerror=alert\(1\)&gt;/);

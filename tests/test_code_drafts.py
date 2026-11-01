@@ -23,7 +23,7 @@ class TestCodeDrafts(unittest.TestCase):
         self.task = planning.create_task(self.store, self.pid, self.mod["id"], {
             "name": "Movimento", "objective": "Retornar valor ajustado no loop.",
             "files": ["game/loop.py"], "verify": "rodar o jogo"})
-        for cap in ("project.python.read", "project.python.write", "model.ollama.infer"):
+        for cap in ("project.python.read", "project.python.write", "model.local.infer"):
             revision = runtime_policy.snapshot(self.store, self.pid)["revision"]
             runtime_policy.change_task(self.store, self.pid, self.mod["id"], self.task["id"],
                                        cap, "allow", revision, True)
@@ -37,7 +37,7 @@ class TestCodeDrafts(unittest.TestCase):
         self.tmp.cleanup()
 
     def preview(self, **kwargs):
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}) as chat:
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}) as chat:
             result = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                          kwargs.get("path", "game/loop.py"), "mock-model",
                                          kwargs.get("confirm_send", True), kwargs.get("skill_id"))
@@ -47,7 +47,7 @@ class TestCodeDrafts(unittest.TestCase):
 
     def test_selected_skill_is_untrusted_context_and_revision_checked(self):
         selected = skills.create_skill(self.store, "# Dica\n\nMantenha o loop pequeno.\n")
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}) as chat:
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}) as chat:
             preview = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                           "game/loop.py", "mock-model", True, selected["id"])
             self.assertIn("SKILL NÃO CONFIÁVEL", chat.call_args.args[0])
@@ -57,7 +57,7 @@ class TestCodeDrafts(unittest.TestCase):
         with self.assertRaises(storage.StorageError):
             code_drafts.apply(self.store, self.pid, preview["proposal_id"], True)
         self.assertEqual(self.path.read_text(), self.original)
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}):
             new = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                       "game/loop.py", "mock-model", True, selected["id"])
         record = code_drafts.apply(self.store, self.pid, new["proposal_id"], True)
@@ -73,7 +73,7 @@ class TestCodeDrafts(unittest.TestCase):
         def mutate_then_answer(*args, **kwargs):
             skills.save_skill(self.store, selected["id"], "# Dica\n\nMudou.\n", selected["revision"])
             return {"answer": self.generated}
-        with patch.object(code_drafts.ollama_chat, "chat", side_effect=mutate_then_answer):
+        with patch.object(code_drafts.local_model_chat, "chat", side_effect=mutate_then_answer):
             with self.assertRaises(storage.StorageError):
                 code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                     "game/loop.py", "mock-model", True, selected["id"])
@@ -82,7 +82,7 @@ class TestCodeDrafts(unittest.TestCase):
 
     def test_invalid_or_oversized_skill_never_reaches_model(self):
         selected = skills.create_skill(self.store, "# Dica\n\n" + "A"*2500 + "\n")
-        with patch.object(code_drafts.ollama_chat, "chat") as chat:
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
             with self.assertRaises(storage.StorageError):
                 code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                     "game/loop.py", "mock-model", True, selected["id"])
@@ -106,7 +106,7 @@ class TestCodeDrafts(unittest.TestCase):
         self.assertEqual(self.path.read_bytes(), code_drafts.STUB)
         proposal = self.preview()
         edited = code_drafts.apply(self.store, self.pid, proposal["proposal_id"], True)
-        self.assertEqual(edited["runtime_id"], "ollama-draft")
+        self.assertEqual(edited["runtime_id"], "local-model-draft")
         self.assertEqual((self.store.project_path(self.pid) / edited["backup_path"]).read_bytes(), code_drafts.STUB)
         self.assertEqual(len(code_drafts.list_changes(self.store, self.pid)), 2)
         rev = runtime_policy.snapshot(self.store, self.pid)["revision"]
@@ -142,7 +142,7 @@ class TestCodeDrafts(unittest.TestCase):
         self.assertFalse(self.path.exists())
 
     def test_preview_requires_consent_and_only_apply_writes_backup(self):
-        with patch.object(code_drafts.ollama_chat, "chat") as chat:
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
             with self.assertRaises(storage.StorageError):
                 code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                     "game/loop.py", "mock-model", False)
@@ -158,7 +158,7 @@ class TestCodeDrafts(unittest.TestCase):
         self.assertEqual((self.store.project_path(self.pid) / applied["backup_path"]).read_text(), self.original)
         self.assertFalse(applied["verified_result"])
         self.assertEqual((applied["runtime_id"], applied["state"], applied["validation_status"]),
-                         ("ollama-draft", "file_changed", "not_run"))
+                         ("local-model-draft", "file_changed", "not_run"))
         self.assertEqual(code_drafts.list_changes(storage.Storage(Path(self.tmp.name)), self.pid)[0]["source_integrity"], "intact")
         self.path.write_text(self.generated + "# edição posterior\n", encoding="utf-8")
         self.assertEqual(code_drafts.list_changes(self.store, self.pid)[0]["source_integrity"], "changed")
@@ -183,11 +183,11 @@ class TestCodeDrafts(unittest.TestCase):
             code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
 
     def test_invalid_reply_unlisted_path_and_corrupt_history_fail_closed(self):
-        with patch.object(code_drafts.ollama_chat, "chat", return_value={"answer": "```python\nx\n```"}):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": "```python\nx\n```"}):
             with self.assertRaises(storage.StorageError):
                 code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                     "game/loop.py", "model", True)
-        with patch.object(code_drafts.ollama_chat, "chat") as chat:
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
             with self.assertRaises(storage.StorageError):
                 code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
                                     "../outside.py", "model", True)
@@ -240,7 +240,7 @@ class TestCodeDrafts(unittest.TestCase):
         from app import server
         selected = skills.create_skill(self.store, "# Curta\n\nRefine o loop.\n")
         with patch.object(server, "storage", self.store), patch.object(
-                code_drafts.ollama_chat, "chat", return_value={"answer": self.generated}):
+                code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}):
             api = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
             thread = threading.Thread(target=api.serve_forever, daemon=True)
             thread.start()

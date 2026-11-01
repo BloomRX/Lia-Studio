@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from . import ollama_chat, planning, runtime_policy, skills, validation_sessions
+from . import legacy_ids, local_model_chat, planning, runtime_policy, skills, validation_sessions
 from .storage import Storage, StorageError
 
 NAME = "code_changes.json"
@@ -50,19 +50,19 @@ def validate_entries(entries: Any, expected_project_id: Optional[str] = None) ->
                    for k in ("module_id", "task_id"))
             or not validation_sessions._safe_path(r["path"])
             or (r["runtime_id"], r["state"]) not in
-                (("ollama-draft", "file_changed"), ("user-stub", "file_created"))
+                (("local-model-draft", "file_changed"), ("user-stub", "file_created"))
             or r["validation_status"] != "not_run"
             or type(r["model"]) is not str or not 1 <= len(r["model"]) <= 200
             or any(type(r[k]) is not str or not _HASH.fullmatch(r[k])
                    for k in ("base_sha256", "new_sha256", "objective_sha256"))
             or (r["backup_path"] != (r["path"] + ".lia-backup-" + r["id"]
-                                      if r["runtime_id"] == "ollama-draft" else ""))
+                                      if r["runtime_id"] == "local-model-draft" else ""))
             or (r["runtime_id"] == "user-stub" and
                 (r["model"] != "none" or r["base_sha256"] != _digest(b"")))
             or (set(r) == FIELDS and (
                 (r["skill_id"] is None and r["skill_revision"] is not None)
                 or (r["skill_id"] is not None and (
-                    r["runtime_id"] != "ollama-draft" or type(r["skill_id"]) is not str
+                    r["runtime_id"] != "local-model-draft" or type(r["skill_id"]) is not str
                     or not skills.SKILL_ID.fullmatch(r["skill_id"])
                     or type(r["skill_revision"]) is not str
                     or not _HASH.fullmatch(r["skill_revision"])
@@ -82,6 +82,9 @@ def validate_entries(entries: Any, expected_project_id: Optional[str] = None) ->
 
 def _load_changes(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
     records = storage.read_structured(project_id, NAME)
+    if type(records) is list:
+        records = [{**r, "runtime_id": legacy_ids.canonical(r.get("runtime_id"))}
+                   if type(r) is dict else r for r in records]
     validate_entries(records, expected_project_id=project_id)
     return records
 
@@ -133,7 +136,7 @@ def _selected_skill(storage: Storage, skill_id: Optional[str]) -> Optional[Dict[
 
 def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
             path: str, model: str, confirm_send: bool,
-            skill_id: Optional[str] = None, *, cancel: Optional[ollama_chat.CancelHandle] = None,
+            skill_id: Optional[str] = None, *, cancel: Optional[local_model_chat.CancelHandle] = None,
             proposal_id: Optional[str] = None) -> Dict[str, Any]:
     if confirm_send is not True:
         raise StorageError("confirme o envio de objetivo e arquivo ao modelo escolhido")
@@ -143,7 +146,7 @@ def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
         cancel.check()
     with storage.stage_lock:
         runtime_policy.require(storage, project_id, module_id, task_id, "project.python.read", confirm_send)
-        runtime_policy.require(storage, project_id, module_id, task_id, "model.ollama.infer", confirm_send)
+        runtime_policy.require(storage, project_id, module_id, task_id, "model.local.infer", confirm_send)
         original, task = _snapshot(storage, project_id, module_id, task_id, path)
         goal = task.get("objective", "")
         if not isinstance(goal, str) or not goal.strip() or len(goal) > 250:
@@ -155,7 +158,7 @@ def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
         prompt = ("Escreva o arquivo Python COMPLETO para este objetivo. Responda somente código Python, "
                   "sem Markdown. O código será revisado, não executado.\nObjetivo: " + goal +
                   "\nArquivo atual:\n" + original.decode("utf-8") + context)
-    answer = ollama_chat.chat(prompt, model, True, max_prompt=6000,
+    answer = local_model_chat.chat(prompt, model, True, max_prompt=6000,
                               **({"cancel": cancel} if cancel is not None else {}))["answer"]
     if cancel is not None:
         cancel.check()
@@ -169,7 +172,7 @@ def preview(storage: Storage, project_id: str, module_id: str, task_id: str,
         raise StorageError("modelo não devolveu arquivo Python sintaticamente válido; nada foi escrito") from exc
     with storage.stage_lock:
         runtime_policy.require(storage, project_id, module_id, task_id, "project.python.read", True)
-        runtime_policy.require(storage, project_id, module_id, task_id, "model.ollama.infer", True)
+        runtime_policy.require(storage, project_id, module_id, task_id, "model.local.infer", True)
         current, task_now = _snapshot(storage, project_id, module_id, task_id, path)
         if _digest(current) != original_hash or task_now != task:
             raise StorageError("tarefa ou arquivo mudou durante a proposta; solicite nova prévia")
@@ -273,7 +276,7 @@ def apply(storage: Storage, project_id: str, proposal_id: str, confirmed: bool) 
                   "module_id": proposal["module_id"], "task_id": proposal["task_id"],
                   "path": proposal["path"], "model": proposal["model"],
                   "skill_id": proposal["skill_id"], "skill_revision": proposal["skill_revision"],
-                  "runtime_id": "ollama-draft", "state": "file_changed",
+                  "runtime_id": "local-model-draft", "state": "file_changed",
                   "validation_status": "not_run", "base_sha256": proposal["base"], "new_sha256": _digest(code.encode("utf-8")),
                   "objective_sha256": proposal["objective_sha256"],
                   "backup_path": backup_rel,

@@ -1376,7 +1376,7 @@ class TestProvidersEngines(Base):
             with self.assertRaises(storage.StorageError):
                 providers.set_settings(self.store, bad)
         self.assertFalse((self.store.projects_dir / providers.SETTINGS_FILE).exists())
-        settings = providers.set_settings(self.store, {"mode": "cloud", "active_provider": "cloud-gemini"})
+        settings = providers.set_settings(self.store, {"mode": "cloud", "active_provider": "cloud-route"})
         self.assertEqual(settings["mode"], "cloud")
         self.assertFalse(settings["keys_present"])
         self.assertFalse(providers.describe_runtime(self.store)["connected"])
@@ -2075,7 +2075,7 @@ class TestUserSkills(Base):
                 thread.join(5)
 
 
-class TestOllamaDiscovery(Base):
+class TestLocalModelDiscovery(Base):
     def setUp(self):
         super().setUp()
         import threading
@@ -2084,7 +2084,7 @@ class TestOllamaDiscovery(Base):
         self.reply = (200, b'{"models": []}', {})
         self.hits = []
         outer = self
-        class FakeOllama(BaseHTTPRequestHandler):
+        class FakeLocalModel(BaseHTTPRequestHandler):
             def log_message(self, *args):
                 pass
 
@@ -2098,7 +2098,7 @@ class TestOllamaDiscovery(Base):
                 self.end_headers()
                 self.wfile.write(data)
 
-        self.http = ThreadingHTTPServer(("127.0.0.1", 0), FakeOllama)
+        self.http = ThreadingHTTPServer(("127.0.0.1", 0), FakeLocalModel)
         thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         thread.start()
         self.addCleanup(thread.join, 5)
@@ -2107,19 +2107,19 @@ class TestOllamaDiscovery(Base):
         self.url = f"http://127.0.0.1:{self.http.server_address[1]}/api/tags"
 
     def test_opt_in_bounded_read_only_and_no_persistence(self):
-        from app.lia import ollama_discovery as probe
+        from app.lia import local_model_discovery as probe
         self.assertEqual(self.hits, [])
         for invalid in (False, None, 1, "true"):
             with self.subTest(invalid=invalid), self.assertRaises(storage.StorageError):
-                probe.probe_local_ollama(invalid)
+                probe.probe_local_model(invalid)
         self.assertEqual(self.hits, [])
         raw = {"models": [{"name": "modelo-local:7b", "digest": "privado"},
                           {"name": "modelo-local:7b"}], "secret": "não expor"}
         self.reply = (200, json.dumps(raw).encode("utf-8"), {})
-        with patch.object(probe, "OLLAMA_TAGS_URL", self.url):
+        with patch.object(probe, "LOCAL_MODEL_TAGS_URL", self.url):
             with patch.dict(os.environ, {"http_proxy": "http://127.0.0.1:9",
                                          "HTTP_PROXY": "http://127.0.0.1:9"}):
-                result = probe.probe_local_ollama(True)
+                result = probe.probe_local_model(True)
         self.assertEqual(self.hits, ["/api/tags"])
         self.assertEqual(result["status"], "detected")
         self.assertEqual(result["models"], ["modelo-local:7b"])
@@ -2129,8 +2129,8 @@ class TestOllamaDiscovery(Base):
         self.assertFalse((self.store.projects_dir / "lia_settings.json").exists())
 
     def test_unavailable_invalid_oversize_and_redirect_do_not_expose_details(self):
-        from app.lia import ollama_discovery as probe
-        with patch.object(probe, "OLLAMA_TAGS_URL", self.url):
+        from app.lia import local_model_discovery as probe
+        with patch.object(probe, "LOCAL_MODEL_TAGS_URL", self.url):
             for reply in ((200, b'{"models": ["not a model"]}', {}),
                           (200, b'{"models": "wrong"}', {}),
                           (200, json.dumps({"models": [{"name": "m"}] * (probe.MAX_MODELS + 1)}).encode(), {}),
@@ -2139,7 +2139,7 @@ class TestOllamaDiscovery(Base):
                           (302, b'', {"Location": "https://external.example/secret"})):
                 with self.subTest(status=reply[0], length=len(reply[1])):
                     self.reply = reply
-                    result = probe.probe_local_ollama(True)
+                    result = probe.probe_local_model(True)
                     self.assertEqual(result["status"], "unavailable")
                     self.assertEqual(result["models"], [])
                     self.assertNotIn("secret", str(result))
@@ -2149,7 +2149,7 @@ class TestOllamaDiscovery(Base):
     def test_http_endpoint_requires_explicit_confirmation_and_same_origin(self):
         from urllib.error import HTTPError
         from urllib.request import Request, urlopen
-        from app.lia import ollama_discovery as probe
+        from app.lia import local_model_discovery as probe
         import importlib
         import threading
         from http.server import ThreadingHTTPServer
@@ -2161,8 +2161,8 @@ class TestOllamaDiscovery(Base):
             thread = threading.Thread(target=api_server.serve_forever, daemon=True)
             thread.start()
             try:
-                url = f"http://127.0.0.1:{api_server.server_address[1]}/api/providers/local-ollama/probe"
-                with patch.object(probe, "OLLAMA_TAGS_URL", self.url):
+                url = f"http://127.0.0.1:{api_server.server_address[1]}/api/providers/local-model/probe"
+                with patch.object(probe, "LOCAL_MODEL_TAGS_URL", self.url):
                     with self.assertRaises(HTTPError) as error:
                         urlopen(url)
                     self.assertEqual(error.exception.code, 404)

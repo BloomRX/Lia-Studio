@@ -1,4 +1,4 @@
-"""Jobs de rascunho Ollama: tentativa real limitada, sem execução de código/Task.
+"""Jobs de rascunho serviço local: tentativa real limitada, sem execução de código/Task.
 
 JSON contém somente metadados fixos; proposta/diff vivem na memória até expirar.
 Ao reiniciar, nunca converter `running` em sucesso nem repetir inferência/custo.
@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import code_drafts, ollama_chat, runtime_policy, skills, validation_sessions
+from . import legacy_ids, code_drafts, local_model_chat, runtime_policy, skills, validation_sessions
 from .storage import Storage, StorageError
 
 NAME = "draft_jobs.json"
@@ -28,7 +28,7 @@ OUTCOMES = {"running": ("none", False), "cancel_requested": ("none", False),
             "ready": ("preview_only", True), "failed": ("operation_failed", True),
             "cancelled": ("cancelled", True), "timed_out": ("timeout", True)}
 _lock = threading.RLock()
-_active: Dict[Tuple[str, str, str], ollama_chat.CancelHandle] = {}
+_active: Dict[Tuple[str, str, str], local_model_chat.CancelHandle] = {}
 _results: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
 
 
@@ -59,7 +59,7 @@ def validate_entries(entries: Any, expected_project_id: Optional[str] = None) ->
             or (r["skill_id"] is not None and
                 (type(r["skill_id"]) is not str or not skills.SKILL_ID.fullmatch(r["skill_id"])
                  or type(r["skill_revision"]) is not str or not SHA.fullmatch(r["skill_revision"])))
-            or r["runtime_id"] != "ollama-draft-job" or type(r["state"]) is not str
+            or r["runtime_id"] != "local-model-draft-job" or type(r["state"]) is not str
             or r["state"] not in OUTCOMES or r["result_code"] != OUTCOMES[r["state"]][0]
             or (r["finished_at"] is not None) != OUTCOMES[r["state"]][1]
             or r["verified_result"] is not False):
@@ -79,6 +79,9 @@ def validate_entries(entries: Any, expected_project_id: Optional[str] = None) ->
 
 def _load(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
     entries = storage.read_structured(project_id, NAME)
+    if type(entries) is list:
+        entries = [{**r, "runtime_id": legacy_ids.canonical(r.get("runtime_id"))}
+                   if type(r) is dict else r for r in entries]
     validate_entries(entries, expected_project_id=project_id)
     return entries
 
@@ -93,7 +96,7 @@ def _view(storage: Storage, project_id: str, r: Dict[str, Any], include_diff: bo
         display = "interrupted_or_uncertain"
     elif state == "ready" and not (result and code_drafts.has_pending(project_id, r["id"])):
         # Mesmo ID em code_changes significa arquivo realmente alterado, não gate.
-        applied = any(c["id"] == r["id"] and c["runtime_id"] == "ollama-draft"
+        applied = any(c["id"] == r["id"] and c["runtime_id"] == "local-model-draft"
                       for c in code_drafts._load_changes(storage, project_id))
         display = "applied_unverified" if applied else "unavailable_after_restart_or_expiry"
         with _lock:
@@ -124,7 +127,7 @@ def get_job(storage: Storage, project_id: str, job_id: str) -> Dict[str, Any]:
     return _view(storage, project_id, record, True)
 
 
-def _finish(storage: Storage, project_id: str, job_id: str, handle: ollama_chat.CancelHandle,
+def _finish(storage: Storage, project_id: str, job_id: str, handle: local_model_chat.CancelHandle,
             state: str, preview: Optional[Dict[str, Any]]) -> None:
     key = _key(storage, project_id, job_id)
     with storage.stage_lock:
@@ -151,16 +154,16 @@ def _finish(storage: Storage, project_id: str, job_id: str, handle: ollama_chat.
 
 def _worker(storage: Storage, project_id: str, module_id: str, task_id: str,
             path: str, model: str, skill_id: Optional[str], job_id: str,
-            handle: ollama_chat.CancelHandle) -> None:
+            handle: local_model_chat.CancelHandle) -> None:
     preview = None
     state = "failed"
     try:
         preview = code_drafts.preview(storage, project_id, module_id, task_id, path,
                                       model, True, skill_id, cancel=handle, proposal_id=job_id)
         state = "ready"
-    except ollama_chat.ChatCancelled:
+    except local_model_chat.ChatCancelled:
         state = "cancelled"
-    except ollama_chat.ChatTimedOut:
+    except local_model_chat.ChatTimedOut:
         state = "timed_out"
     except StorageError:
         state = "failed"
@@ -185,7 +188,7 @@ def start(storage: Storage, project_id: str, module_id: str, task_id: str,
         raise StorageError("confirme o modelo e o envio do contexto deste Job")
     with storage.stage_lock:
         runtime_policy.require(storage, project_id, module_id, task_id, "project.python.read", confirmed)
-        runtime_policy.require(storage, project_id, module_id, task_id, "model.ollama.infer", confirmed)
+        runtime_policy.require(storage, project_id, module_id, task_id, "model.local.infer", confirmed)
         source, task = code_drafts._snapshot(storage, project_id, module_id, task_id, path)
         chosen = code_drafts._selected_skill(storage, skill_id)
         goal = task.get("objective")
@@ -208,12 +211,12 @@ def start(storage: Storage, project_id: str, module_id: str, task_id: str,
                   "skill_revision": chosen["revision"] if chosen else None,
                   "base_sha256": hashlib.sha256(source).hexdigest(),
                   "objective_sha256": hashlib.sha256(goal.encode("utf-8")).hexdigest(),
-                  "runtime_id": "ollama-draft-job", "state": "running", "result_code": "none",
+                  "runtime_id": "local-model-draft-job", "state": "running", "result_code": "none",
                   "started_at": _now(), "finished_at": None, "verified_result": False}
         records.append(record)
         validate_entries(records, expected_project_id=project_id)
         storage.write_structured(project_id, NAME, records)
-        handle = ollama_chat.CancelHandle()
+        handle = local_model_chat.CancelHandle()
         with _lock:
             _active[_key(storage, project_id, job_id)] = handle
         thread = threading.Thread(target=_worker,

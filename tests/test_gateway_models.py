@@ -1,83 +1,116 @@
-"""Consulta de metadados com serviço FALSO; nunca chama o gateway do Dev."""
+"""Testes offline: somente transporte simulado; não validam cofre nem gateway reais."""
 import io
-import json
-import os
 import sys
+import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import URLError
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from app.lia import gateway_models
-from app.lia.storage import StorageError
-
+from app.lia.storage import Storage, StorageError
 
 class TestGatewayModels(unittest.TestCase):
-    def response(self, data=None):
-        return json.dumps(data or {"data":[{"id":"combo-a", "capabilities":["text", "tools"],
-                                             "context_window":4096, "secret":"never return"}]}).encode()
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.storage=Storage(Path(self.tmp.name))
+        self.secrets={}
+        def put(target,value): self.secrets[target]=value
+        def get(target): return self.secrets.get(target)
+        for name,fn in (("put",put),("get",get)):
+            patcher=patch.object(gateway_models.credential_store,name,side_effect=fn)
+            patcher.start();self.addCleanup(patcher.stop)
 
-    def test_no_confirmation_or_existing_key_does_not_make_request(self):
-        with patch.object(gateway_models, "build_opener") as opener, \
-             patch.dict(os.environ, {"ANTHROPIC_AUTH_TOKEN":"", "ANTHROPIC_API_KEY":""}):
-            with self.assertRaises(StorageError):
-                gateway_models.inspect("combo-a", False)
-            with self.assertRaises(StorageError):
-                gateway_models.inspect("combo-a", True)
+    def setup_connection(self):
+        config=gateway_models.configure(self.storage,"http://127.0.0.1:5123","test-only-key",True)
+        self.assertEqual(config,{"address":"http://127.0.0.1:5123","has_key":True,
+                                  "vault_available":True,"runtime_enabled":False})
+        self.assertNotIn("test-only-key",(Path(self.tmp.name)/gateway_models.NAME).read_text())
+
+    def test_revoke_removes_secret_first_without_network(self):
+        self.setup_connection()
+        def remove(target): self.secrets.pop(target,None)
+        with patch.object(gateway_models.credential_store,"delete",side_effect=remove):
+            with self.assertRaises(StorageError): gateway_models.revoke(self.storage,False)
+            result=gateway_models.revoke(self.storage,True)
+        self.assertEqual(result["address"],"")
+        self.assertFalse(result["has_key"])
+        self.assertEqual(self.secrets,{})
+        with patch.object(gateway_models,"build_opener") as opener:
+            with self.assertRaises(StorageError): gateway_models.list_models(self.storage,True)
             opener.assert_not_called()
 
-    def test_bounded_loopback_only_and_only_tier_metadata_returned(self):
+    def test_remote_preview_cannot_read_secret_or_call_service(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        with patch.dict("os.environ", {"LIA_PROJECTS_DIR":self.tmp.name}):
+            from app import server
+        with patch.object(server,"storage",self.storage), patch.object(gateway_models,"build_opener") as opener:
+            fake=SimpleNamespace(path="/api/gateway/connection",command="GET",_body={},
+                                 server=SimpleNamespace(server_address=("0.0.0.0",8080)))
+            response,status=server.Handler._dispatch_api(fake)
+            self.assertEqual(status,200)
+            self.assertEqual(response["address"],"")
+            fake.path="/api/gateway/models";fake.command="POST";fake._body={"confirm":True}
+            response,status=server.Handler._dispatch_api(fake)
+            self.assertEqual(status,400)
+            opener.assert_not_called()
+
+    def test_validation_never_contacts_or_stores_plaintext(self):
+        for address in ("http://example.com","https://user:pass@example.com",
+                        "http://127.0.0.1:1234/v1","https://x.test/?q=x",
+                        "http://localhost:1234","file:///tmp/a"):
+            with self.assertRaises(StorageError):
+                gateway_models.configure(self.storage,address,"test-only-key",True)
+        with self.assertRaises(StorageError):
+            gateway_models.configure(self.storage,"https://example.com","test-only-key",False)
+        self.assertEqual(self.secrets,{})
+        self.assertEqual(gateway_models.public_config(self.storage)["address"],"")
+
+    def test_key_is_bound_to_address_and_never_exposed(self):
+        self.setup_connection()
+        self.storage.write_structured_global(gateway_models.NAME,{"address":"https://other.example"})
+        self.assertFalse(gateway_models.public_config(self.storage)["has_key"])
+        with patch.object(gateway_models,"build_opener") as opener:
+            with self.assertRaises(StorageError): gateway_models.list_models(self.storage,True)
+            opener.assert_not_called()
+
+    def test_metadata_classification_and_bounded_request(self):
+        self.setup_connection()
         class Opener:
-            def open(self, request, timeout):
-                self.request = request
-                self.timeout = timeout
-                return io.BytesIO(self.data)
-        fake = Opener()
-        fake.data = self.response()
-        with patch.object(gateway_models, "build_opener", return_value=fake) as build, \
-             patch.dict(os.environ, {"ANTHROPIC_AUTH_TOKEN":"example-test-token",
-                                          "ANTHROPIC_API_KEY":""}):
-            result = gateway_models.inspect("combo-a", True)
-        self.assertEqual(result, {"tier_id":"combo-a", "capabilities":["text", "tools"],
-                                  "context_window":4096})
-        self.assertNotIn("secret", str(result))
-        self.assertEqual(fake.request.full_url, "http://127.0.0.1:20128/v1/models")
-        self.assertEqual(fake.request.get_method(), "GET")
-        self.assertEqual(fake.request.get_header("Authorization"), "Bearer example-test-token")
-        self.assertEqual(fake.timeout, gateway_models.TIMEOUT)
-        handlers = build.call_args.args
-        self.assertEqual(handlers[0].proxies, {})
-        self.assertIsNone(handlers[1].redirect_request(None, None, 302, "", {}, "https://evil.test"))
+            def open(self,request,timeout):
+                self.request=request;self.timeout=timeout
+                return io.BytesIO(json.dumps({"data":[
+                    {"id":"chain","owned_by":"combo","secret":"never"},
+                    {"id":"one","owned_by":"remote"},{"id":"unknown"}]}).encode())
+        fake=Opener()
+        with patch.object(gateway_models,"build_opener",return_value=fake) as build:
+            result=gateway_models.list_models(self.storage,True)
+            self.assertIsNone(gateway_models.inspect(self.storage,"absent",True))
+        self.assertEqual([m["kind"] for m in result["models"]],
+                         ["fallback_chain","single_model","unknown"])
+        self.assertTrue(all(not m["approved"] and m["tool_round_trip"]=="not_tested"
+                            for m in result["models"]))
+        self.assertNotIn("secret",str(result))
+        self.assertEqual(fake.request.full_url,"http://127.0.0.1:5123/v1/models")
+        self.assertEqual(fake.request.get_header("Authorization"),"Bearer test-only-key")
+        self.assertEqual(fake.timeout,gateway_models.TIMEOUT)
+        handlers=build.call_args.args
+        self.assertEqual(handlers[0].proxies,{})
+        self.assertIsNone(handlers[1].redirect_request(None,None,302,"",{},"https://evil.test"))
 
-    def test_api_key_fallback_missing_tier_or_network_error_returns_none(self):
-        class Opener:
-            def open(self, request, timeout):
-                self.request = request
-                if getattr(self, "offline", False):
-                    raise URLError("fake token should never escape")
-                return io.BytesIO(b'{"data":[]}')
-        fake = Opener()
-        with patch.object(gateway_models, "build_opener", return_value=fake), \
-             patch.dict(os.environ, {"ANTHROPIC_AUTH_TOKEN":"",
-                                          "ANTHROPIC_API_KEY":"example-test-api-key"}):
-            self.assertIsNone(gateway_models.inspect("combo-a", True))
-            self.assertEqual(fake.request.get_header("X-api-key"), "example-test-api-key")
-            fake.offline = True
-            self.assertIsNone(gateway_models.inspect("combo-a", True))
+    def test_failure_and_no_consent_do_not_approve(self):
+        self.setup_connection()
+        with patch.object(gateway_models,"build_opener") as opener:
+            with self.assertRaises(StorageError): gateway_models.list_models(self.storage,False)
+            opener.assert_not_called()
+            opener.return_value.open.side_effect=URLError("remote secret must not leak")
+            with self.assertRaisesRegex(StorageError,"indisponíveis") as e:
+                gateway_models.list_models(self.storage,True)
+            self.assertNotIn("remote secret",str(e.exception))
+            self.assertIsNone(gateway_models.inspect(self.storage,"chain",True))
+        with self.assertRaises(StorageError): gateway_models.inspect(self.storage,"invalid tier",True)
 
-    def test_large_or_invalid_json_is_unavailable_no_content_echo(self):
-        class Opener:
-            def open(self, request, timeout):
-                return io.BytesIO(self.data)
-        fake = Opener()
-        with patch.object(gateway_models, "build_opener", return_value=fake), \
-             patch.dict(os.environ, {"ANTHROPIC_AUTH_TOKEN":"example-test-token"}):
-            for data in (b'not json', b'x' * (gateway_models.MAX_RESPONSE + 1),
-                         self.response({"data":[{"id":"combo-a", "context_window":4096}]})):
-                fake.data = data
-                self.assertIsNone(gateway_models.inspect("combo-a", True))
-
-
-if __name__ == "__main__":
-    unittest.main()
+if __name__=="__main__": unittest.main()
