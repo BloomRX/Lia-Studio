@@ -76,6 +76,34 @@ Decisões tomadas:
 
 **Desbloqueia:** implementação do Orchestrator e dos contratos de domínio. **Não é necessário criar uma árvore falsa de Sessions na simulação Alpha.**
 
+## D5 — Lia Forge na produção de assets (proposta; não é bridge existente)
+
+**Situação:** `LIA-FORGE-NA-PIPELINE.md` mapeia a visão/estado da branch consultada
+para as fases do jogo. Studio cataloga arquivos existentes; Forge é ferramenta
+opcional para produzir assets. Não há protocolo Studio ↔ Forge, importação
+automática nem execução cruzada. A pesquisa de humanoides do Forge cita módulos
+que não estão na árvore auditada: reconciliar docs e commit antes de negociar API.
+
+**Antes de criar integração:**
+1. O primeiro corte é brief exportado + registro manual, ou há necessidade real
+   de bridge versionada? Quem aprova/inicia cada operação, e como funciona sem Forge?
+2. Qual projeto/workspace foi escolhido e como resolver caminhos, duplicatas,
+   limites de tamanho e alterações de bytes sem escrever diretamente o
+   `assets.json`/índice do outro produto ou seguir symlinks externos?
+3. Qual contrato tipado distingue task/etapa/arquivo/checks do Forge dos estados de
+   asset, QA/gameplay, evidência e gates do Studio? Que versão/schema cada lado
+   aceita e como falhar ao encontrar versão desconhecida ou output parcial?
+4. Quais licenças, origem, direitos de redistribuição, privacidade, custos,
+   ferramentas, instalação e destino de prompt/referência foram revisados pelo
+   Dev? Como ficam cancelamento, indisponibilidade e nenhum fallback pago?
+5. Qual teste de ponta a ponta com asset real, revisão visual e importação na
+   engine, na plataforma alvo, prova cada afirmação sem confundir hash/PNG/JSON
+   com resultado do jogo?
+
+**Desbloqueia:** primeiro handoff **opcional** e, só após contrato/aceite,
+integração incremental. **Até decidir:** nenhum launcher/MCP/adapter automático
+entre produtos, nenhum avanço de Task, QA ou gate por status do Forge.
+
 ## Dependências adicionais para execução real
 
 | Etapa | Decisão ainda necessária | Estado seguro atual |

@@ -106,6 +106,12 @@
   no registro. Dados privados na origem/nota permanecem no JSON e podem ser
   expostos pela API local ou exportados junto com o projeto: revise antes de salvar
   ou compartilhar. Projeto arquivado bloqueia cadastro e edição.
+  **Lia Forge (proposta, não conectado):** `.spriteforge/assets.json` pertence ao
+  workspace do Forge e não é o `assets.json` do Studio; não compartilhar escrita
+  ou tratar uma etapa do Forge como QA. Se um asset estiver fora da pasta do jogo,
+  o Dev precisa autorizar sua cópia/importação local e revisar conflito, tamanho,
+  origem/licença e dados privados antes do cadastro no Studio. Caminhos externos
+  e symlinks não substituem essa autorização. Ver `LIA-FORGE-NA-PIPELINE.md`.
 - `evidence.json` é registro local de SHA-256/ID/arquivo relativo/QA opcional. O
   registro só lê arquivos de até 50 MB dentro do projeto, recusando links simbólicos;
   a API não serve os bytes. Campos persistidos inesperados (inclusive uma alegação

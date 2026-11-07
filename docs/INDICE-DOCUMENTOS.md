@@ -21,6 +21,9 @@ não as apresenta. Não interpretar o registro histórico como estado atual.
 4. `README.md`, `docs/quickstart-dev.md`, `docs/armazenamento-privacidade.md`,
    `THIRD_PARTY_NOTICES.md`: operação, dados e avisos legais. Se divergirem de
    código/testes, corrigir com evidência; não remover histórico para esconder erro.
+5. `docs/LIA-FORGE-NA-PIPELINE.md`: proposta de fronteira opcional entre produto
+   de assets e projeto de jogo; distingue visão, código presente e ensaio real.
+   Não configura bridge nem altera gates do Studio.
 
 ## Históricos que não são documentação ativa de contrato
 

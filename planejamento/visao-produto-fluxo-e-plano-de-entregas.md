@@ -127,6 +127,7 @@ As memórias pessoais da Lia Waifu ficam fora desses quatro grupos e não devem 
 - **Stefan3D — workspace:** projetos, arquivos, sessões retomáveis, skills e conexões numa experiência visual são úteis. O README do Mr. Mak também deixa claras algumas barreiras: exige CLI externo, tem foco em Windows x64, e contas/serviços de voz ou provedores são externos/opcionais. A Lia deve ser mais acessível no onboarding e tratar essas integrações como adaptadores, não pré-requisitos. [Workspace](https://github.com/witnesstodark/mr-mak-workspace)
 - **MagmaDev — direção e processo:** o Dev define a direção criativa; documentação e tarefas ajudam continuidade; módulos demais geram sobrecarga. Testes devem comparar o resultado com requisitos e evidências, não confiar apenas na autocrítica do agente que implementou. [Comparação de workflows](https://youtu.be/m7jtTTOWUU4) · [uso de IA no desenvolvimento](https://youtu.be/tibV8bHCTcQ)
 - **Workflow de assets:** conceito aprovado, mesh, rig/animação, exportação e funcionamento dentro da engine são etapas diferentes. Gerar um asset ou conseguir exportá-lo não prova que esteja pronto para jogo. [Personagens e animações](https://youtu.be/UBjgJM6D18A) · [animação de criatura](https://youtu.be/h_mR2BRibZ8)
+- **Lia Forge na pipeline:** app autônomo e opcional para produzir/retomar assets de personagem/item. Na revisão do commit `f274b01`, há adapters de conceito e de spritesheet de modelo existente, mas a cadeia 3D/rig/animação e o E2E real continuam pendentes. O Studio recebe arquivos locais após escolha do Dev e mantém planejamento, integração na engine, QA e gates. Divisão de responsabilidades, estado e contrato futuro: [`docs/LIA-FORGE-NA-PIPELINE.md`](../docs/LIA-FORGE-NA-PIPELINE.md).
 - **Limite de pesquisa:** o episódio do MagmaDev sobre criação de skills é restrito a membros; o conteúdo integral não foi avaliado. Não criar conclusões sobre ele.
 
 ### Estratégia provisória para IA gratuita — pesquisa de 29/09/2026
@@ -211,7 +212,7 @@ Não duplicar a mesma instrução em várias skills sem motivo: cada skill deve 
 
 - deixar todas as etapas centrais acessíveis na experiência: preparação, planejamento, execução, QA/playtest, iteração, registro/retomada e preparação de build/entrega/release;
 - skills próprias para testes, playtest, build/empacotamento, checklist de release, handoff final e revisão pós-entrega;
-- conectar engines e ferramentas por adaptadores quando escolhidos; geração de mídia e ditado permanecem extras opcionais;
+- conectar engines e ferramentas por adaptadores quando escolhidos; Lia Forge é rota opcional de produção de assets, não requisito do Studio nem substituto de integração/QA na engine; geração de mídia e ditado permanecem extras opcionais;
 - oferecer caminho básico completo sem API paga, com custo/limitações explicados para recursos externos.
 
 **Decisão do Dev para a primeira slice:** começar pela fundação/criação das skills, antes de integrar a Etapa 0 à experiência visual. Essa ordem é só a primeira entrega: a Etapa 0 e o ciclo completo continuam obrigatórios para a versão completa.

@@ -257,6 +257,15 @@ Priorizar:
 - bloqueios;
 - progresso.
 
+**Ferramentas de assets:** Lia Forge, se escolhido pelo Dev, entra como rota
+opcional dentro de uma tarefa de asset na Produção (ou do protótipo no MVP),
+**não** como quinta fase, pipeline duplicada ou dependência para abrir o Studio.
+Distinguir na interface futura: arquivo produzido pela ferramenta, registrado
+no catálogo, revisado visualmente e testado na engine. Não exibir status
+"pronto para o jogo" a partir de um PNG/JSON válido ou da conclusão de uma
+etapa no Forge. Ver [`LIA-FORGE-NA-PIPELINE.md`](LIA-FORGE-NA-PIPELINE.md);
+essa ligação ainda não está implementada.
+
 ### Finalização
 
 Pergunta principal:
