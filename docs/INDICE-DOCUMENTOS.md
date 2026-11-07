@@ -24,6 +24,8 @@ não as apresenta. Não interpretar o registro histórico como estado atual.
 5. `docs/LIA-FORGE-NA-PIPELINE.md`: proposta de fronteira opcional entre produto
    de assets e projeto de jogo; distingue visão, código presente e ensaio real.
    Não configura bridge nem altera gates do Studio.
+6. `docs/PLANO-DE-CONCLUSAO-LIA-STUDIO.md`: marcos propostos e pré-condições de
+   validação real; não é comprovação de execução nem decisão de engine/Runtime.
 
 ## Históricos que não são documentação ativa de contrato
 

@@ -482,6 +482,31 @@ assert.equal(reloads, 1);
   assert.deepEqual(JSON.parse(godotRequests[1].options.body),
     {command:'godot4',path:'/path/<img src=x onerror=alert(1)>',confirm:true});
   assert.match(godotResult.textContent,/jogo NÃO verificado/);
+  // Inspeção de descritor é leitura local; não deve executar engine nem mudar gate.
+  assert.match(configHtml,/Inspeção estática do projeto de jogo/);
+  const inspectHandlers={};
+  const inspectFields={
+    'engine-descriptor':{value:'game/project.godot'},
+    'engine-inspect':{disabled:false,addEventListener:(_,fn)=>inspectHandlers.click=fn},
+    'engine-inspect-result':{textContent:'',innerHTML:''},
+  };
+  context.document.getElementById=id=>({view,toast,...inspectFields})[id];
+  const inspectRequests=[];
+  context.fetch=async(url,options)=>{
+    inspectRequests.push({url,options});
+    return {ok:true,json:async()=>({engine:'godot',descriptor_format_version:'5',bytes:52,
+      sha256:'a'.repeat(64),warning:'engine NÃO verificada'})};
+  };
+  context.wireConfig('project-1',{});
+  context.confirm=()=>false;
+  await inspectHandlers.click();
+  assert.equal(inspectRequests.length,0);
+  context.confirm=()=>true;
+  await inspectHandlers.click();
+  assert.equal(inspectRequests[0].url,'/api/projects/project-1/engine-inspection');
+  assert.deepEqual(JSON.parse(inspectRequests[0].options.body),{path:'game/project.godot',confirm:true});
+  assert.match(inspectFields['engine-inspect-result'].textContent,/NÃO verificada/);
+  assert.equal(inspectFields['engine-inspect-result'].innerHTML,'');
   const probeResult = {textContent: '', innerHTML: ''};
   const probeButton = {disabled: false};
   context.document.getElementById = id => ({view, toast,

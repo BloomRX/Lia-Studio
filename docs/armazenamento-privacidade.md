@@ -96,6 +96,12 @@
   prompts ou credenciais; revise antes de exportar. Backups `.bak` contêm versões
   anteriores e não são um sistema de exclusão segura de dados. Recuperação exige
   confirmação e validação sem promover relatório a teste verificado.
+- A inspeção de descritor de engine (`POST .../engine-inspection`) lê, após
+  confirmação, somente `project.godot` ou `*.uproject` **dentro** da pasta do
+  projeto, recusando symlinks e arquivos acima de 256 KiB; devolve tipo,
+  versão do formato declarada, hash e tamanho, não devolve conteúdo, não grava
+  estado e não inicia a engine. O caminho relativo informado aparece no resultado
+  HTTP local; não cole segredos nesse campo. Nenhum gate/QA muda por inspeção.
 - `assets.json` é um catálogo opcional de **metadados** dos arquivos de mídia já
   existentes dentro do projeto (até 50 MB por arquivo): caminho relativo, SHA-256,
   tamanho, categoria, alvo, origem/licença/nota **declarados pelo usuário** e data.

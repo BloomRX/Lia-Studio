@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_probe, engines, evidence, execution, gameplay_loop, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, gameplay_loop, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -137,6 +137,11 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
 
     if method == "POST" and sub == ["export"]:
         return {"path": storage.export_project(pid, body.get("dest_dir"))}
+
+    if method == "POST" and sub == ["engine-inspection"]:
+        if set(body) != {"path", "confirm"}:
+            raise StorageError("envie caminho relativo do descritor e confirmação")
+        return engine_inspection.inspect_project(storage, pid, body["path"], body["confirm"])
 
     if method == "GET" and sub == ["stage"]:
         gate = stages.evaluate(storage, pid)

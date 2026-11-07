@@ -1460,6 +1460,13 @@ function projectConfig(pid, data) {
       <button type="button" id="godot-version" class="ghost" disabled>Consultar versão do binário selecionado</button>
       <p id="godot-result" class="muted" role="status">Sem diagnóstico. PATH pode conter executáveis não confiáveis; não é teste de engine/projeto/build.</p>
     </div>
+    <div class="card"><h3>Inspeção estática do projeto de jogo</h3>
+      <p class="muted">Somente arquivo relativo dentro deste projeto: project.godot ou *.uproject (até 256 KiB). Não inicia engine, não testa importação, build, jogo ou QA; não muda estágio ou perfil.</p>
+      <label for="engine-descriptor">Descritor existente no projeto</label>
+      <input id="engine-descriptor" type="text" placeholder="game/project.godot ou game/MeuJogo.uproject" />
+      <button type="button" id="engine-inspect" class="ghost">Conferir descritor local</button>
+      <p id="engine-inspect-result" class="muted" role="status" aria-live="polite">Não inspecionado.</p>
+    </div>
     <div class="card"><h3>Provedores de IA (offline / simulado)</h3>
       <div class="banner warn">${esc(prov.message||"Sem conexão.")}</div>
       <p class="muted">Modo: <b>${esc(prov.mode||"offline")}</b> · conectado: <b>${prov.connected?"sim":"não"}</b> · simulado: <b>${prov.simulated?"sim":"não"}</b></p>
@@ -1467,6 +1474,22 @@ function projectConfig(pid, data) {
     </div>`;
 }
 async function wireConfig(pid, data) {
+  const descriptor = document.getElementById("engine-descriptor");
+  const inspect = document.getElementById("engine-inspect");
+  const output = document.getElementById("engine-inspect-result");
+  if (descriptor && inspect && output) {
+    inspect.addEventListener("click", async () => {
+      const path = descriptor.value.trim();
+      if (!path) return toast("Informe o caminho relativo do descritor de jogo.");
+      if (!confirm(`Ler apenas ${path} neste projeto? O arquivo não será alterado e nenhuma engine será executada.`)) return;
+      inspect.disabled = true;
+      try {
+        const info = await api("POST", `/api/projects/${pid}/engine-inspection`, {path, confirm:true});
+        output.textContent = `${info.engine} · formato declarado ${info.descriptor_format_version} · ${info.bytes} bytes · SHA-256 ${info.sha256}. ${info.warning}`;
+      } catch (e) { output.textContent = "Não foi possível inspecionar: " + e.message; }
+      finally { inspect.disabled = false; }
+    });
+  }
   const scan = document.getElementById("godot-scan");
   const version = document.getElementById("godot-version");
   const select = document.getElementById("godot-candidate");
