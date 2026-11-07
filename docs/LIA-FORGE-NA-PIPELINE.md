@@ -50,4 +50,32 @@ commit e contrato antes de implementar.
 4. **Estados independentes:** `concept`, `model`, `rig`, `spritesheet` e checks do Forge descrevem etapas de arte; Studio mantém `arquivo registrado` → `integridade intacta/alterada/indisponível` → `revisão visual humana` → `import/teste na engine` → `QA/gameplay`, cada qual com evidência própria. Mudar bytes, versão ou procedência requer nova revisão; hash intacto sozinho não aprova o asset. Falha/cancelamento do Forge não altera estágio, Task, Session ou gate do Studio.
 5. **Segurança e custos:** antes de automatizar, definir limites de processo, diretórios e rede, autorização para instalar/iniciar ferramentas, destino e retenção de prompts/referências, aceite de licenças, orçamento/limite por tentativa, cancelamento e comportamento offline. Nenhum fallback pago silencioso; não repassar credenciais, memória pessoal nem documentos inteiros do jogo sem escopo/consentimento. Handoff/MCP do Forge não é uma ponte autenticada do Studio nem sandbox.
 
-**Critério para uma primeira integração futura:** o Dev escolhe um asset real com licença/origem conferidas, produz e revisa um resultado no Forge na versão escolhida; copia/importa explicitamente para a pasta do jogo; o Studio registra os bytes sem sobrescrever dados preexistentes; um teste real na engine e a revisão humana registram resultado separado. Testar também Forge ausente, output alterado, caminho externo, duplicata, tamanho excedido, falha de renderer e versão de manifesto desconhecida. Até lá, manter somente o fluxo manual e os gates atuais.
+## Integração de experiência desejada quando o Forge estiver completo
+
+**Objetivo de produto, PLANEJADO:** o Dev parte de uma Task de asset no Studio,
+seleciona **Produzir no Forge** se o app estiver disponível e autoriza um brief
+**mínimo e revisado** (tipo, alvo, resolução, animações e referências que escolheu
+compartilhar). O Forge apresenta o próprio plano, custos, instalações, dependências
+e bloqueios; o Dev inicia a produção lá. Depois de entregar arquivos reais,
+uma passagem versionada retorna caminhos/manifesto/procedência ao Studio para
+**importação ou cadastro explícito**. O Studio mostra prévia e checks, solicita
+revisão humana e só então acompanha integração na engine e QA do jogo. A Task
+pode ser retomada no Studio sem perder o estado se o Forge fechar ou faltar.
+
+Isto é **integração na experiência, autonomia na arquitetura**: Forge não vira
+biblioteca interna, subprocesso obrigatório nem a quinta fase do jogo. Studio não
+assume que o Forge está instalado, autenticado ou em execução. O contrato de
+mensagens e a forma de descoberta/transporte (arquivo de handoff, CLI, IPC ou
+outro) **ainda precisam de decisão**; não há bridge nem UI desse botão hoje.
+Progresso do Forge não substitui Session/execução de agente do Studio; cada app
+mantém seus próprios estados. Identidade, versão, autorização por tarefa,
+capacidade de cancelar/revogar e falha offline precisam ser desenhadas antes de
+qualquer integração que execute ou compartilhe dados. Manter um caminho manual
+funcional e um Forge autônomo mesmo depois da integração completa.
+
+**Sequência sem atalhos:** primeiro handoff manual verificável; depois contrato
+versionado e importação supervisionada; só então uma experiência guiada de ponta
+a ponta, testada com Forge ausente/atualizado, output alterado e jogo na engine.
+"Forge completo" sozinho não entrega esses passos do lado Studio.
+
+**Critério para uma primeira integração futura:** o Dev escolhe um asset real com licença/origem conferidas, produz e revisa um resultado no Forge na versão escolhida; copia/importa explicitamente para a pasta do jogo; o Studio registra caminhos e hashes dos arquivos sem sobrescrever dados preexistentes; um teste real na engine e a revisão humana registram resultado separado. Testar também Forge ausente, output alterado, caminho externo, duplicata, tamanho excedido, falha de renderer e versão de manifesto desconhecida. Até lá, manter somente o fluxo manual e os gates atuais.

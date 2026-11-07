@@ -101,7 +101,8 @@ que não estão na árvore auditada: reconciliar docs e commit antes de negociar
    com resultado do jogo?
 
 **Desbloqueia:** primeiro handoff **opcional** e, só após contrato/aceite,
-integração incremental. **Até decidir:** nenhum launcher/MCP/adapter automático
+integração incremental com experiência guiada Task → Forge → arquivos → revisão.
+Forge completo não implica bridge pronta no Studio. **Até decidir:** nenhum launcher/MCP/adapter automático
 entre produtos, nenhum avanço de Task, QA ou gate por status do Forge.
 
 ## Dependências adicionais para execução real
