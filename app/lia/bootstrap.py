@@ -22,7 +22,7 @@ def _validate_answers(answers: Dict[str, Any]) -> None:
     """Falhar antes de escrever qualquer documento se a entrada do wizard não for válida."""
     if not isinstance(answers, dict):
         raise StorageError("respostas da Etapa 0 devem ser um objeto")
-    for field in ("idea", "experience", "audience", "platform", "engine",
+    for field in ("idea", "origin", "experience", "audience", "platform", "engine",
                   "restrictions", "vertical_slice"):
         value = answers.get(field)
         if value is not None and not isinstance(value, str):
@@ -159,6 +159,7 @@ def _run_bootstrap(storage: Storage, project_id: str, answers: Dict[str, Any]) -
     proj_name = entry["name"]
     idea = (answers.get("idea") or "").strip() or "_(ideia ainda não descrita — [em aberto])_"
     experience = (answers.get("experience") or "").strip() or "_(a definir — [em aberto])_"
+    origin = (answers.get("origin") or "").strip() or "_(origem da ideia a investigar — [em aberto])_"
     audience = (answers.get("audience") or "").strip()
     platform = (answers.get("platform") or "").strip()
     pillars = _fmt_list(answers.get("pillars"))
@@ -180,6 +181,9 @@ def _run_bootstrap(storage: Storage, project_id: str, answers: Dict[str, Any]) -
 
 ## Experiência pretendida
 {experience}
+
+## Origem da ideia (inspiração, não cópia)
+{origin}
 
 ## Público
 - Faixa etária / perfil: {audience or '_(a definir — [em aberto])_'} — estado: {"confirmado" if audience else "em aberto"}
@@ -215,6 +219,12 @@ Rótulos usados: `confirmado` · `proposto` · `suposição` · `em aberto`
 
 ## Loop principal (o que o jogador repete)
 _（a definir — [em aberto]）_
+
+## Hipótese e protótipo do loop (sem validar gameplay)
+- Sensação pretendida, ação repetida e recompensa/risco: _a definir — [em aberto]_.
+- O que é inegociável e o que pode mudar para caber no escopo: _a definir — [em aberto]_.
+- Pergunta que um protótipo descartável deve responder: _a definir — [em aberto]_.
+- Relatos e revisões ficam no workspace **Loop do jogo**; atualizar este GDD conscientemente, não automaticamente.
 
 ## Progressão e objetivos
 _（a definir — [em aberto]）_

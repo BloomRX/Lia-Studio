@@ -46,6 +46,7 @@ STRUCTURED_FILES = [
     "code_changes.json",  # alterações assistidas após diff e confirmação
     "draft_jobs.json",  # metadados de inferência local cancelável, sem prompts
     "assets.json",
+    "gameplay_loop.json",
     "release.json",
     "engine_profile.json",
 ]
@@ -421,6 +422,9 @@ class Storage:
         if path.name in ("runtime_policy.json", "runtime_policy.json.bak"):
             from . import runtime_policy
             runtime_policy.validate_global(data)
+        if path.name in ("gameplay_loop.json", "gameplay_loop.json.bak"):
+            from . import gameplay_loop
+            gameplay_loop.validate_data(data)
         if path.name in ("assets.json", "assets.json.bak"):
             from . import assets
             assets.validate_entries(data)

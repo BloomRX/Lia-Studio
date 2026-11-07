@@ -65,7 +65,9 @@ pipeline ou vertical slice (veja `references/glossario-e-metodo.md`).
 
 **Passo 1 — Captar a ideia (sem reduzir a ambição).**
 - Pergunte: "Como você imagina o jogo? O que o jogador deveria sentir?"
-- Registre em `PROJECT_BRIEF.md` (ideia em uma frase, experiência, pilares).
+- Registre em `PROJECT_BRIEF.md` (ideia em uma frase, origem, experiência, pilares).
+- Pergunte o que é **inegociável** e o que pode mudar para caber no escopo.
+  A origem ajuda a separar motivação de estética ou escala copiadas.
 - *Revisão do Dev:* confirme se a frase preserva a ambição (não estreitou o jogo).
 
 **Passo 2 — Perguntas de alto impacto (poucas).**
@@ -92,6 +94,12 @@ pipeline ou vertical slice (veja `references/glossario-e-metodo.md`).
   cópia". Mr. Mak e GameDevPipeline são referências externas, não estão incluídos.
 
 **Passo 7 — Sugerir vertical slice de validação.**
+- Esboce uma hipótese de ação repetida, desafio, recompensa e sensação. Proponha
+  uma pergunta observável para um protótipo **descartável**: visual verifica
+  estética/layout, interação jogável verifica mecânica. Não use uma mera imagem
+  para declarar gameplay validado, nem transforme rascunho em arquitetura final.
+- Se houver aleatoriedade, pergunte por sequências injustas e limites de geração;
+  não imponha um algoritmo universal. Evite padrões de manipulação do jogador.
 - Uma fatia pequena e demonstrável para testar os pilares. Deixe claro que **não** é
   o limite da visão do jogo.
 

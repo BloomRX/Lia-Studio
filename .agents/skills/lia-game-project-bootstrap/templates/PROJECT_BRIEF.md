@@ -5,6 +5,9 @@
 ## Ideia em uma frase
 <Uma frase que capture o jogo SEM reduzir a ambição do Dev.>
 
+## Origem da ideia (inspiração, não cópia)
+<O que despertou a ideia e por quê? Marque como em aberto se não souber.>
+
 ## Experiência pretendida
 <Como o jogador deve se sentir ao jogar — o "feeling" do jogo.>
 

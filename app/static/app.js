@@ -250,6 +250,7 @@ const SECTIONS = [
   ["decisions", "Decisões"],
   ["docs", "Documentos"],
   ["plan", "Plano"],
+  ["gameplay-loop", "Loop do jogo"],
   ["handoff", "Handoff"],
   ["execute", "Execução"],
   ["assets", "Assets"],
@@ -296,9 +297,9 @@ async function renderProject(pid, section, visualStage) {
   }
   const selectedStage = STAGE_ORDER.includes(visualStage) ? visualStage : gate.stage;
   if (section !== "stage" && !SECTIONS.some(([name]) => name === section)) section = "stage";
-  const activeSections = ({preparation: ["bootstrap", "docs", "decisions", "plan"],
-    mvp: ["plan", "execute", "qa", "evidence"],
-    production: ["plan", "execute", "assets", "qa"],
+  const activeSections = ({preparation: ["bootstrap", "docs", "decisions", "gameplay-loop", "plan"],
+    mvp: ["gameplay-loop", "plan", "execute", "qa", "evidence"],
+    production: ["plan", "execute", "assets", "gameplay-loop", "qa"],
     delivery: ["qa", "evidence", "release", "handoff"]})[selectedStage];
   const left = `<aside class="context-panel" aria-label="Contexto do projeto">
     <div class="panel-top"><span class="panel-mini">CONTEXTO</span><button id="toggle-left" class="icon-button" aria-expanded="${!PANEL_PREFS.left}" aria-label="${PANEL_PREFS.left ? "Expandir" : "Recolher"} painel de contexto" title="Recolher / expandir contexto" onclick="togglePanel('left')">≡</button></div>
@@ -321,6 +322,7 @@ async function renderProject(pid, section, visualStage) {
   else if (section === "docs") content = await projectDocs(pid, data);
   else if (section === "decisions") content = projectDecisions(pid, data);
   else if (section === "plan") content = await projectPlan(pid, data);
+  else if (section === "gameplay-loop") content = await projectGameplayLoop(pid, data);
   else if (section === "handoff") content = await projectHandoff(pid, data);
   else if (section === "execute") content = await projectExecute(pid, data);
   else if (section === "qa") {
@@ -369,6 +371,7 @@ async function renderProject(pid, section, visualStage) {
   if (section === "docs") wireDocs(pid, data.docs);
   if (section === "decisions") wireDecisions(pid, data);
   if (section === "plan") wirePlan(pid, data.modules);
+  if (section === "gameplay-loop") wireGameplayLoop(pid, data);
   if (section === "handoff") wireHandoff(pid, data.modules, data.resume?.handoff);
   if (section === "execute") wireExecute(pid, data.modules);
   if (section === "qa") wireQa(pid, data.slice_review);
@@ -435,6 +438,7 @@ function renderStageContext(pid, stage, data) {
       cards: [["Etapa 0", "Definir a ideia e gerar Brief, GDD e Escopo.", "bootstrap", "COMEÇAR AQUI"],
               ["Documentos", "Revise GDD, direção visual, sistemas e mecânicas nos documentos existentes.", "docs", "REVISAR"],
               ["Decisões", "Marque o que é confirmado, proposto ou ainda está em aberto.", "decisions", "DECIDIR"],
+              ["Loop do jogo", "Escreva a sensação desejada e uma pergunta para prototipar, sem declarar gameplay validado.", "gameplay-loop", "HIPÓTESE"],
               ["Plano", "Organize módulos, tarefas, asset plan e produção sem executar código.", "plan", "PLANEJAR"]]},
     mvp: { kicker: "02 / MVP JOGÁVEL", question: "O núcleo funciona?",
       intro: "Valide mecânicas e core loop com protótipos, UI básica e assets provisórios antes de investir em polish.",
@@ -447,7 +451,7 @@ function renderStageContext(pid, stage, data) {
       cards: [["Sistemas e assets", "Registre origem e integridade dos arquivos locais antes de integrar na engine.", "assets", "CATALOGAR"],
               ["Implementação", "Prévia e Session simulada; runtime de código não conectado.", "execute", "SIMULADO"],
               ["Documentação", "Acompanhe revisões de GDD e escopo.", "docs", "ATUALIZAR"],
-              ["Playtest contínuo", "Verifique, colete feedback e itere.", "qa", "ITERAR"]]},
+              ["Playtest contínuo", "Documente decisões sobre o loop, depois registre QA com evidência separada.", "gameplay-loop", "ITERAR"]]},
     delivery: { kicker: "04 / FINALIZAÇÃO", question: "O que precisa ser revisto antes de entregar?",
       intro: "Reúna QA, polish, performance e preparação de release. Build, execução e publicação ainda não são automáticas.",
       cards: [["QA final", "Registre verificações e playtest, sem alegar teste executado pelo Studio.", "qa", "VERIFICAR"],
@@ -467,6 +471,7 @@ function renderStageContext(pid, stage, data) {
 
 function projectOverview(pid, data) {
   const r = data.resume || {};
+  const loop = r.gameplay_loop || {};
   const gate = data.stage_gate;
   const blockers = gate.blockers.length
     ? `<ul class="clean">${gate.blockers.map(b => `<li>${esc(b.message)}</li>`).join("")}</ul>`
@@ -503,7 +508,8 @@ function projectOverview(pid, data) {
     <div class="banner info"><b>Próximo passo:</b> ${esc(data.entry.next_step || "—")}</div>
     <div class="card"><h3>Resumo ativo</h3><p>${esc(r.summary || "—")}</p>
       <p class="muted">Atividade atual: ${esc(r.phase || "?")}</p>
-      <p>Handoff: ${r.handoff && r.handoff.exists ? r.handoff.stale === true ? "desatualizado — revise antes de usar" : r.handoff.stale === false ? "gerado e sem mudanças detectadas nas fontes" : "manual; atualidade não verificada" : "não gerado"}. <a href="#/project/${esc(pid)}/handoff">Abrir Handoff</a></p></div>
+      <p>Handoff: ${r.handoff && r.handoff.exists ? r.handoff.stale === true ? "desatualizado — revise antes de usar" : r.handoff.stale === false ? "gerado e sem mudanças detectadas nas fontes" : "manual; atualidade não verificada" : "não gerado"}. <a href="#/project/${esc(pid)}/handoff">Abrir Handoff</a></p>
+      <p>Loop do jogo: ${loop.error ? esc(loop.error) : loop.hypothesis_present ? `hipótese registrada · ${esc(loop.observations_total)} relato(s) manual(is) · ${esc(loop.stale_reports)} desatualizado(s)` : "hipótese ainda não registrada"}. <a href="#/project/${esc(pid)}/gameplay-loop">Abrir hipótese e relatos</a>. Não é QA verificado.</p></div>
     <h2>Tarefas abertas (${ (r.open_tasks||[]).length })</h2>
     ${ (r.open_tasks||[]).length ? `<ul class="clean">${r.open_tasks.map(t=>`<li>${pill(t.status)} ${esc(t.name)}</li>`).join("")}</ul>` : `<div class="empty">Nenhuma tarefa aberta.</div>` }
     <h2>Decisões em aberto/suposição (${ (r.pending_decisions||[]).length })</h2>
@@ -542,12 +548,13 @@ function projectBootstrap(pid, data) {
     return `<h1>Etapa 0 — preparação do jogo</h1>
       <div class="banner ok">Etapa 0 já iniciada. Os documentos foram gerados (veja em <b>Documentos</b>). Você pode editá-los livremente.</div>
       <div class="card"><h3>Próximo</h3><p>Vá para <b>Plano</b> para transformar os documentos aprovados em módulos/tarefas.</p>
-      <a class="btn" href="#/project/${esc(pid)}/plan">Ir para Plano →</a></div>`;
+      <a class="btn" href="#/project/${esc(pid)}/gameplay-loop">Formular hipótese do loop →</a> <a class="btn ghost" href="#/project/${esc(pid)}/plan">Ir para Plano →</a></div>`;
   }
   return `<h1>Etapa 0 — preparação do jogo</h1>
     <div class="banner info">Conversa guiada. Não exigimos vocabulário técnico e não reduzimos sua ambição. Campos não preenchidos viram <b>[em aberto]</b>. Nenhum código de jogo é escrito aqui.</div>
     <div class="card">
       <label>Ideia em uma frase *</label><input id="b-idea" type="text" placeholder="Ex.: um jogo calmo onde você cultiva ilhas flutuantes" />
+      <label>Origem da ideia (o que inspirou o jogo?)</label><input id="b-origin" type="text" placeholder="Ex.: explorar com calma, inspirado por jogos pequenos de aventura" />
       <label>Experiência pretendida (como o jogador deve se sentir)</label><input id="b-exp" type="text" placeholder="Ex.: paz, curiosidade" />
       <div class="row">
         <div><label>Público</label><input id="b-aud" type="text" placeholder="Ex.: casuais, 12+" /></div>
@@ -568,6 +575,7 @@ async function runBootstrap(pid) {
   }).filter(Boolean);
   const answers = {
     idea: document.getElementById("b-idea").value,
+    origin: document.getElementById("b-origin").value,
     experience: document.getElementById("b-exp").value,
     audience: document.getElementById("b-aud").value,
     platform: document.getElementById("b-plat").value,
@@ -1109,7 +1117,7 @@ function renderSliceReview(pid, report, error) {
         <td><button type="button" class="ghost small" data-slice-task="${esc(task.task_id)}" data-slice-check="${esc(check.id)}">Preparar QA</button></td></tr>`).join("")}</table></div>
     <p class="muted">Playtest e resultado do jogo: NÃO VERIFICADOS pelo Studio, mesmo se QA for aprovado manualmente.</p>
   </details>`).join("");
-  return `<h2>Fatia vertical · roteiro por tarefa</h2><div class="banner info">Planeje e relate: início → loop → recompensa → retomada. Critérios opcionais podem ser marcados como não aplicáveis no texto de QA após revisão. Nenhum checkbox ou relato desbloqueia o gate.</div>
+  return `<h2>Fatia vertical · roteiro por tarefa</h2><div class="banner info">Planeje e relate: início → loop → recompensa → retomada. Critérios opcionais podem ser marcados como não aplicáveis no texto de QA após revisão. Nenhum checkbox ou relato desbloqueia o gate. <a href="#/project/${esc(pid)}/gameplay-loop">Revisar hipótese e relatos do loop</a> (registro separado de QA).</div>
     ${cards || `<div class="empty">Crie uma tarefa no Plano antes de preparar a fatia vertical. <a href="#/project/${esc(pid)}/plan">Abrir Plano</a>.</div>`}`;
 }
 function projectQa(pid, data) {
@@ -1168,6 +1176,103 @@ async function wireQa(pid, review) {
       renderProject(pid, "qa");
     } catch (e) { toast("Não foi possível registrar QA: " + e.message); }
   };
+}
+
+/* ----- loop do jogo: hipótese e relatos humanos, nunca execução verificada ----- */
+const LOOP_FIELDS = [
+  ["origin", "Por que esta ideia existe?", "O que inspirou o projeto, sem copiar referências"],
+  ["experience", "O que o jogador deve sentir?", "Ex.: descoberta e alívio, não apenas 'diversão'"],
+  ["core_action", "Que ação o jogador vai repetir?", "Agir → perceber resultado → decidir de novo"],
+  ["challenge", "Que desafio aumenta com o aprendizado?", "Evite fácil demais ou injusto"],
+  ["reward", "Qual feedback/recompensa faz sentido?", "Inclua risco e consequências, sem gratificação incessante"],
+  ["pacing", "Como alternar tensão e descanso?", "Inclua momentos de respiro"],
+  ["non_negotiable", "O que é inegociável?", "O núcleo que preserva sua intenção"],
+  ["scope_tradeoffs", "O que pode mudar para caber no escopo?", "Arte, estrutura, escala ou sistemas"],
+  ["references", "Referências comparáveis ao seu escopo", "Inspiração e solução estudada; referência não autoriza cópia"],
+  ["prototype_question", "Qual pergunta um protótipo rápido responde?", "Descreva algo observável, sem tornar o protótipo produto final"],
+  ["randomness_rule", "Se houver aleatoriedade: como evitar sequências injustas?", "Opcional: limites de repetição, proporção, sementes, testes"],
+  ["ethical_boundary", "Como preservar escolha e bem-estar do jogador?", "Evite pressão/manipulação e padrões exploratórios"],
+];
+const LOOP_REPORT_FIELDS = ["prototype_ref", "method", "observed_actions", "observed_experience",
+                            "friction", "risk_reward", "randomness", "note"];
+
+async function projectGameplayLoop(pid, data) {
+  let record;
+  try { record = await api("GET", `/api/projects/${pid}/gameplay-loop`); }
+  catch(e) { return `<h1>Loop do jogo</h1><div class="banner danger">Registro indisponível: ${esc(e.message)}. Revise a integridade antes de editar.</div>`; }
+  data._gameplayLoop = record;
+  const h = record.hypothesis || {};
+  const fields = LOOP_FIELDS.map(([key, title, hint]) =>
+    `<label for="loop-${key}">${esc(title)}</label><textarea id="loop-${key}" maxlength="1200" placeholder="${esc(hint)}">${esc(h[key] || "")}</textarea>`).join("");
+  const observations = record.observations.length ? record.observations.map(o => `<div class="card">
+    <h3>${esc(o.prototype_kind)} · ${esc(o.recorded_at)} ${o.stale ? pill("hipótese revisada depois do relato") : pill("relato da hipótese atual")}</h3>
+    <p><b>Protótipo declarado:</b> ${esc(o.prototype_ref)}. <b>Método:</b> ${esc(o.method)}.</p>
+    <p><b>Ações observadas:</b> ${esc(o.observed_actions)}</p>
+    <p><b>Sensação relatada:</b> ${esc(o.observed_experience || "não informada")} · <b>Fricção:</b> ${esc(o.friction || "não informada")}</p>
+    <p><b>Risco/recompensa:</b> ${esc(o.risk_reward || "não informado")} · <b>Aleatoriedade:</b> ${esc(o.randomness || "não informada")}</p>
+    <p><b>Próxima decisão humana:</b> ${esc(o.decision)} · ${esc(o.note || "sem nota")}</p>
+    <p class="muted">Relato manual, não auditado. Não prova execução, satisfação do jogador, QA ou gate.</p></div>`).join("") :
+    `<div class="empty">Nenhum relato ainda. Registrar hipótese não equivale a testar o jogo.</div>`;
+  return `<h1>Hipótese do loop de gameplay</h1>
+    <div class="banner warn">Comece pela experiência pretendida, depois descreva a ação repetida e um teste simples. Referências inspiram; não copiam nem validam direitos. Fluxo, dopamina e dark patterns não são métricas clínicas nem metas de manipulação. Nada aqui executa protótipos, muda QA ou avança o estágio.</div>
+    <div class="card"><h2>Pergunta → protótipo descartável → observação → revisão</h2>
+      <p>Comece com a menor dúvida. Protótipo visual testa estética/layout; protótipo jogável testa interação. Não transforme automaticamente um rascunho em arquitetura final.</p>
+      ${fields}
+      <button type="button" id="loop-save">${record.hypothesis ? "Revisar hipótese" : "Registrar hipótese"}</button>
+      <p id="loop-status" role="status" aria-live="polite" class="muted"></p>
+    </div>
+    <h2>Observações de protótipos (declarações humanas)</h2>${observations}
+    <div class="card"><h3>Relatar um teste realizado fora do Studio</h3>
+      <p>Não cole dados pessoais de participantes, prompts ou segredos. Descreva o método sem chamar uma impressão de evidência verificada. Uma hipótese revisada deixa os relatos anteriores desatualizados.</p>
+      <label for="loop-prototype_kind">Tipo</label><select id="loop-prototype_kind"><option value="paper">Papel / conceito</option><option value="visual">Visual ou layout (não testa gameplay)</option><option value="gameplay">Interação jogável declarada</option><option value="other">Outro</option></select>
+      ${LOOP_REPORT_FIELDS.map(key => `<label for="loop-report-${key}">${esc(({
+        prototype_ref:"Qual protótipo? (descrição, não upload)",method:"Como você observou ou testou?",
+        observed_actions:"O que o jogador realmente fez?",observed_experience:"O que relatou sentir?",
+        friction:"Onde travou, cansou ou se confundiu?",risk_reward:"Risco, recompensa e descanso",
+        randomness:"Sequências injustas ou sorte excessiva?",note:"O que mudar na próxima tentativa?"
+      })[key])}</label><textarea id="loop-report-${key}" maxlength="1200"></textarea>`).join("")}
+      <label for="loop-decision">Próxima decisão (não é aprovação)</label><select id="loop-decision"><option value="keep_testing">Testar mais</option><option value="iterate">Iterar</option><option value="discard">Descartar protótipo</option></select>
+      <button type="button" id="loop-report-save" ${record.hypothesis ? "" : "disabled"}>Guardar relato manual</button>
+      <p id="loop-report-status" role="status" aria-live="polite" class="muted"></p>
+    </div>`;
+}
+
+function wireGameplayLoop(pid, data) {
+  const get = key => document.getElementById(key);
+  if (!get("loop-save")) return;
+  const record = data._gameplayLoop;
+  get("loop-save").addEventListener("click", async () => {
+    const hypothesis = Object.fromEntries(LOOP_FIELDS.map(([key]) => [key, get(`loop-${key}`).value.trim()]));
+    if (!["origin","experience","core_action","non_negotiable","prototype_question"].every(k => hypothesis[k])) {
+      get("loop-status").textContent = "Preencha origem, sensação, ação, inegociável e pergunta do protótipo.";
+      return;
+    }
+    if (!confirm("Guardar/revisar a hipótese? Relatos anteriores podem ficar desatualizados. Não aprova o jogo nem altera o GDD.")) return;
+    get("loop-save").disabled = true;
+    try {
+      await api("PUT", `/api/projects/${pid}/gameplay-loop`,
+        {hypothesis, expected_revision:record.hypothesis_revision, confirm:true});
+      renderProject(pid, "gameplay-loop");
+    } catch(e) { get("loop-status").textContent = "Hipótese não salva: " + e.message; }
+    finally { get("loop-save").disabled = false; }
+  });
+  get("loop-report-save").addEventListener("click", async () => {
+    const observation = Object.fromEntries(LOOP_REPORT_FIELDS.map(key => [key, get(`loop-report-${key}`).value.trim()]));
+    observation.prototype_kind = get("loop-prototype_kind").value;
+    observation.decision = get("loop-decision").value;
+    if (!["prototype_ref","method","observed_actions"].every(k => observation[k])) {
+      get("loop-report-status").textContent = "Descreva o protótipo, o método e as ações observadas.";
+      return;
+    }
+    if (!confirm("Guardar apenas seu relato manual? O Studio NÃO verificou o protótipo ou gameplay e não avançará nenhum gate.")) return;
+    get("loop-report-save").disabled = true;
+    try {
+      await api("POST", `/api/projects/${pid}/gameplay-loop/observations`,
+        {observation, expected_revision:record.revision, confirm:true});
+      renderProject(pid, "gameplay-loop");
+    } catch(e) { get("loop-report-status").textContent = "Relato não salvo: " + e.message; }
+    finally { get("loop-report-save").disabled = false; }
+  });
 }
 
 /* ----- assets: catálogo local, sem upload, licença ou engine verificados ----- */

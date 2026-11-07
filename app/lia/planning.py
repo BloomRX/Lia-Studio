@@ -340,6 +340,18 @@ def build_resume(storage: Storage, project_id: str) -> Dict[str, Any]:
     journal = storage.read_doc(project_id, "JOURNAL.md")
     from . import handoff
     handoff_state = handoff.get_saved(storage, project_id)
+    from . import gameplay_loop
+    loop_file = storage.project_path(project_id) / gameplay_loop.NAME
+    loop_status = {"exists": False, "hypothesis_present": False,
+                   "observations_total": 0, "stale_reports": 0}
+    if loop_file.exists() or loop_file.is_symlink():
+        try:
+            loop = gameplay_loop.snapshot(storage, project_id)
+            loop_status = {"exists": True, "hypothesis_present": loop["hypothesis"] is not None,
+                           "observations_total": len(loop["observations"]),
+                           "stale_reports": sum(o["stale"] for o in loop["observations"])}
+        except StorageError:
+            loop_status = {"exists": True, "error": "registro indisponível; revise em Integridade"}
 
     open_tasks = [t for m in modules for t in m.get("tasks", []) if t["status"] in ("pendente", "em andamento", "bloqueado")]
     blocked = [t for m in modules for t in m.get("tasks", []) if t["status"] == "bloqueado"]
@@ -362,6 +374,7 @@ def build_resume(storage: Storage, project_id: str) -> Dict[str, Any]:
         "blocked": blocked,
         "module_blockers": module_issues,
         "handoff": {k: v for k, v in handoff_state.items() if k != "content"},
+        "gameplay_loop": loop_status,
         "pending_decisions": pending_decisions,
         "journal_tail": "\n".join(journal.splitlines()[-12:]),
     }

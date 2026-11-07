@@ -1,4 +1,4 @@
-# Lia Studio — estado verificável, 01/11/2026
+# Lia Studio — estado verificável, atualizado em 06/11/2026
 
 **Ambiente deste relatório:** Linux, Python stdlib e Node disponíveis, sem Windows, sem chave real, sem gateway/engine de jogo. **Escopo:** ponta da branch `arena/01a0f4ab-lia-gamedev`; não é aceite de release. A visão de produto e os critérios por etapa estão em `planejamento/visao-produto-fluxo-e-plano-de-entregas.md` e `docs/UI-UX-DESIGN-SYSTEM-LIA-STUDIO.md`.
 
@@ -6,6 +6,7 @@
 |---|---|---|
 | 0 · ideia, projeto, preparação documental e Skills | **IMPLEMENTADO / AUTOMATED-PASS** (offline) | Fluxos e testes Alpha; revisão humana dos documentos ainda necessária. |
 | 1 · tarefas, dependências, permissões, plano e handoff | **IMPLEMENTADO / AUTOMATED-PASS** (offline) | Contratos e simulação; uma Task não é executada pelo Agent. |
+| Hipótese e relatos do loop de gameplay | **IMPLEMENTADO / AUTOMATED-PASS** (offline) | Campo de origem na Etapa 0; hipóteses/relatos com revisão, obsolescência e retomada. Não há protótipo executado nem gameplay validado pelo Studio. |
 | 2 · MVP jogável e ciclo de execução em engine | **BLOCKED** | Integrar Runtime sob isolamento/budget e executar um jogo real para medir gameplay; só diagnóstico de binário e parser estão presentes. |
 | 3 · produção/QA e evidência validada | **BLOCKED** | Screenshots, jogo rodando, testes e revisão humana de cada fatia; nenhuma simulação promove QA. |
 | Catálogo de assets da Produção | **IMPLEMENTADO / AUTOMATED-PASS** (Linux, arquivos de teste) | Registro de mídia local com origem/licença declaradas, hash e revisão; sem importação, QA visual, validação jurídica ou engine. |
@@ -21,6 +22,6 @@
 
 ## Verificação reproduzível
 
-Executar **separadamente, uma parte por chamada**, `python verify_alpha.py --part 1` até `--part 10`. São testes offline e mocks; a parte 10 inclui catálogo de assets, API local, sintaxe JS e regressão de UI sob Node. No Windows, a primeira verificação sem instalar dependências é **uma linha PowerShell**, no checkout atualizado: `py -3 verify_alpha.py --part 9`. Isso não prova o cofre; depois, **somente na máquina do usuário e com chave própria**, abrir o Studio em loopback, salvar, listar e revogar conexão, observar cofre do Windows e verificar que nenhum segredo foi enviado a outro host. O usuário decide endereço, custo, isolamento e retenção antes de qualquer teste real de Agent. Não executar serviço pago nem instalar dependências sem aprovação.
+Executar **separadamente, uma parte por chamada**, `python verify_alpha.py --part 1` até `--part 10`. São testes offline e mocks; a parte 10 inclui catálogo de assets, hipóteses/relatos do loop, API local, sintaxe JS e regressão de UI sob Node. No Windows, a primeira verificação sem instalar dependências é **uma linha PowerShell**, no checkout atualizado: `py -3 verify_alpha.py --part 9`. Isso não prova o cofre; depois, **somente na máquina do usuário e com chave própria**, abrir o Studio em loopback, salvar, listar e revogar conexão, observar cofre do Windows e verificar que nenhum segredo foi enviado a outro host. O usuário decide endereço, custo, isolamento e retenção antes de qualquer teste real de Agent. Não executar serviço pago nem instalar dependências sem aprovação.
 
 **Conclusão:** houve incremento verificável no Alpha; o aplicativo **não está literalmente completo**. As linhas BLOCKED exigem implementação, decisões e evidência de runtime real; não podem ser promovidas por testes falsos ou por documentação.

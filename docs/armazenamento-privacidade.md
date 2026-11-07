@@ -7,7 +7,7 @@
     `DECISIONS.md`, `MODULE_INDEX.md`, `ASSET_REGISTER.md`, `RELEASE.md`, `JOURNAL.md`,
     `HANDOFF.md` (opcional, salvo somente após revisão/confirmação).
   - JSON estruturado: `decisions.json`, `modules.json`, `qa.json`, `assets.json`,
-    `release.json`, `engine_profile.json`, `evidence.json` (metadados de arquivos
+    `gameplay_loop.json` (hipótese e relatos humanos de protótipos), `release.json`, `engine_profile.json`, `evidence.json` (metadados de arquivos
     locais, IDs e SHA-256; não contém o conteúdo dos arquivos referenciados) e
     `sessions.json` (somente metadados de simulações aprovadas, sem logs ou prompts)
     e `attempt_events.json` (opcional, eventos declarativos de tentativas; sem
@@ -87,6 +87,15 @@
 
 ## Privacidade
 - Nenhum dado de projeto sai da máquina por padrão.
+- `gameplay_loop.json` guarda a hipótese atual e no máximo 100 relatos humanos com
+  data, tipo de protótipo e revisão da hipótese; não guarda saída de jogo por padrão,
+  não executa engine, não valida QA e não muda gates. Revisões deixam os relatos
+  anteriores desatualizados, preservando-os para auditoria humana. Retomada e
+  Handoff expõem só contagens/estado e o fingerprint, não copiam os relatos.
+  Texto pode conter dados privados: não cole informações pessoais de participantes,
+  prompts ou credenciais; revise antes de exportar. Backups `.bak` contêm versões
+  anteriores e não são um sistema de exclusão segura de dados. Recuperação exige
+  confirmação e validação sem promover relatório a teste verificado.
 - `assets.json` é um catálogo opcional de **metadados** dos arquivos de mídia já
   existentes dentro do projeto (até 50 MB por arquivo): caminho relativo, SHA-256,
   tamanho, categoria, alvo, origem/licença/nota **declarados pelo usuário** e data.
@@ -122,7 +131,7 @@
   Inspecione-o junto com os demais dados antes de compartilhar/exportar.
 - `HANDOFF.md` é uma projeção local, não uma cópia dos arquivos de projeto nem das
   evidências brutas de QA. A prévia não grava nada; a confirmação salva o Markdown.
-  O hash do snapshot indica alteração nas fontes estruturadas, inclusive Jobs,
+  O hash do snapshot indica alteração nas fontes estruturadas, inclusive hipótese/relatos do loop, Jobs,
   edições e parser, e nos documentos citados; nunca inclui fonte/prompt/diff de
   inferência, nem concede ou exporta os grants locais. Não garante ausência de
   segredos. Texto de decisões, objetivos e caminhos

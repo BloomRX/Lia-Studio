@@ -205,6 +205,7 @@ Não duplicar a mesma instrução em várias skills sem motivo: cada skill deve 
 - pausa/ajuste e confirmação para efeitos colaterais;
 - testes e relatórios verificáveis;
 - revisão/playtest iterativo, comparação com os critérios do jogo e registro das limitações.
+- testar hipóteses do loop (sensação pretendida, ação repetida, desafio/recompensa, escopo inegociável) com protótipos descartáveis; registrar observações humanas e limites de aleatoriedade, sem converter relato em gameplay verificado.
 
 ### Fase D — Ciclo completo e preparação de entrega
 

@@ -9,7 +9,7 @@ import hashlib
 import json
 from typing import Any, Dict, List, Tuple
 
-from . import (code_drafts, conflicts, draft_jobs, evidence, planning, qa,
+from . import (code_drafts, conflicts, draft_jobs, evidence, gameplay_loop, planning, qa,
                sessions, validation_sessions)
 from .storage import Storage, StorageError
 
@@ -68,7 +68,15 @@ def _context(storage: Storage, project_id: str, module_id: str, task_id: str) ->
     linked_changes = [c for c in changes if c["module_id"] == module_id and c["task_id"] == task_id]
     linked_validations = [v for v in validations if v["module_id"] == module_id and v["task_id"] == task_id]
     summary = {k: entry.get(k) for k in ("id", "name", "stage", "phase", "archived", "next_step")}
-    return {
+    loop_source = storage.project_path(project_id) / gameplay_loop.NAME
+    loop_marker = None
+    if loop_source.exists() or loop_source.is_symlink():
+        loop = gameplay_loop.snapshot(storage, project_id)
+        loop_marker = {"revision": loop["revision"],
+                       "hypothesis_present": loop["hypothesis"] is not None,
+                       "observations_total": len(loop["observations"]),
+                       "stale_reports": sum(o["stale"] for o in loop["observations"])}
+    context = {
         "project": summary, "module": mod, "task": task,
         "blockers": planning.module_blockers(modules, module_id),
         "decisions": decisions, "conflicts": conflicts.detect_conflicts(decisions),
@@ -95,6 +103,9 @@ def _context(storage: Storage, project_id: str, module_id: str, task_id: str) ->
                                   ensure_ascii=False).encode("utf-8")).hexdigest(),
         "sources": _source_hashes(storage, project_id),
     }
+    if loop_marker is not None:
+        context["gameplay_loop"] = loop_marker
+    return context
 
 
 def _digest(context: Dict[str, Any]) -> str:
@@ -137,8 +148,15 @@ def _render(c: Dict[str, Any], digest: str) -> str:
              "- Fonte da lista: decisions.json; confirme também DECISIONS.md, que pode ter edição manual divergente."]
     lines += [f"- [{_text(d.get('label'))}] {_text(d.get('topic'))}: {_text(d.get('value'))}"
               for d in c["decisions"]] or ["- Nenhuma registrada."]
-    lines += ["- Conflitos detectados: " + str(len(c["conflicts"])) + "; revisar DECISIONS.md.",
-              "", "## QA e histórico", "",
+    lines += ["- Conflitos detectados: " + str(len(c["conflicts"])) + "; revisar DECISIONS.md."]
+    if "gameplay_loop" in c:
+        loop = c["gameplay_loop"]
+        lines += ["", "## Hipótese do loop (metadados, não teste de jogo)", "",
+                  f"- Hipótese registrada: {'sim' if loop['hypothesis_present'] else 'não'}; "
+                  f"relatos manuais: {loop['observations_total']}; "
+                  f"desatualizados após revisão: {loop['stale_reports']}.",
+                  "- Consulte gameplay_loop.json localmente após revisar privacidade; nenhum relato é evidência validada."]
+    lines += ["", "## QA e histórico", "",
               "- Verificações ligadas a este módulo/tarefa por ID (declarações manuais; evidência bruta apenas em qa.json):"]
     lines += [f"- `{_text(q.get('id'))}` [{_text(q.get('result'))}] alvo {_text(q.get('target_ref'))}; "
               f"critério: {_text(q.get('criteria'))}; ferramenta: {_text(q.get('tool'))}; "

@@ -13,6 +13,12 @@
 ## Loop principal (o que o jogador repete)
 <Descreva o ciclo básico: entrar, agir, receber feedback, repetir.>
 
+## Hipótese e protótipo do loop (não são QA verificado)
+- Sensação, ação repetida, desafio e recompensa: <a investigar — [em aberto]>.
+- O que é inegociável e o que pode mudar com o escopo: <a investigar — [em aberto]>.
+- Pergunta que um protótipo descartável deve responder: <a investigar — [em aberto]>.
+- Registre relatos manuais e revisões no workspace **Loop do jogo**; atualize este GDD após revisão humana, não automaticamente.
+
 ## Progressão e objetivos
 <Como o jogador avança? O que ele quer conquistar?>
 

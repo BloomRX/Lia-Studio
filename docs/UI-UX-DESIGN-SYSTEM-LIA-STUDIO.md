@@ -93,6 +93,7 @@ LIA STUDIO
 │   ├── Tarefas
 │   ├── Documentos
 │   ├── Assets
+│   ├── Loop do jogo (hipótese e relatos manuais)
 │   ├── QA
 │   ├── Builds
 │   └── Skills do Projeto
@@ -218,6 +219,13 @@ Priorizar:
 - planejamento.
 
 ### MVP Jogável
+
+O workspace **Loop do jogo** conecta Preparação, MVP e Produção sem duplicar a pipeline:
+pergunta sobre a experiência pretendida → hipótese de ação/desafio/recompensa →
+protótipo descartável visual ou jogável → relato humano → revisão. Separar visual
+(layout/arte) de interação (mecânica); relatórios anteriores ficam marcados como
+desatualizados quando a hipótese muda. Relato é texto do Dev, não execução pela
+engine, aprovação de QA nem avanço de estágio. Evitar padrões manipulativos.
 
 Pergunta principal:
 

@@ -708,5 +708,80 @@ assert.equal(reloads, 1);
   assert.equal(sentAsset.path,undefined); // edição não altera arquivo ou hash
   context.renderProject=originalProjectRender;
 
+  // O loop é hipótese e relato manual; saída hostil deve ser texto, não HTML ativo.
+  const loopRequests = [];
+  const hypothesis = {origin:'<img src=x onerror=alert(1)>',experience:'curiosidade',
+    core_action:'explorar',challenge:'',reward:'',pacing:'',non_negotiable:'descoberta',
+    scope_tradeoffs:'',references:'',prototype_question:'como escolher?',
+    randomness_rule:'',ethical_boundary:''};
+  const observation = {prototype_kind:'visual',prototype_ref:'rascunho',method:'observação em papel',
+    observed_actions:'tocou <script>alert(1)</script>',observed_experience:'',friction:'',
+    risk_reward:'',randomness:'',decision:'iterate',note:'',id:'abcdef123456',
+    hypothesis_revision:'a'.repeat(64),recorded_at:'2026-11-01T10:00:00+00:00',
+    origin:'manual_report',stale:true,verified_result:false};
+  const snapshot = {hypothesis,hypothesis_revision:'a'.repeat(64),revision:'b'.repeat(64),
+    observations:[observation],gameplay_verified:false};
+  context.fetch = async(url,options) => {
+    loopRequests.push({url,options});
+    return {ok:true,json:async()=>snapshot};
+  };
+  const loopData = {};
+  const loopHtml = await context.projectGameplayLoop('project-1',loopData);
+  assert.equal(loopRequests.at(-1).url,'/api/projects/project-1/gameplay-loop');
+  assert.match(loopHtml,/Protótipo visual|Visual ou layout/);
+  assert.match(loopHtml,/hipótese revisada depois do relato/);
+  assert.match(loopHtml,/&lt;img/);
+  assert.doesNotMatch(loopHtml,/<img src=x/);
+  assert.doesNotMatch(loopHtml,/<script>/);
+  assert.match(context.projectBootstrap('project-1',{docs:[]}),/id="b-origin"/);
+  const loopActions = {};
+  const loopFields = Object.fromEntries([
+    ...Object.keys(hypothesis).map(k=>`loop-${k}`),
+    ...['prototype_ref','method','observed_actions','observed_experience','friction','risk_reward',
+        'randomness','note'].map(k=>`loop-report-${k}`),
+    'loop-prototype_kind','loop-decision','loop-save','loop-status','loop-report-save','loop-report-status'
+  ].map(id=>[id,{value:'',textContent:'',disabled:false,
+    addEventListener:(_,fn)=>loopActions[id]=fn}]));
+  for (const [key,value] of Object.entries(hypothesis)) loopFields[`loop-${key}`].value = value;
+  for (const key of ['prototype_ref','method','observed_actions','observed_experience','friction',
+                     'risk_reward','randomness','note']) loopFields[`loop-report-${key}`].value = observation[key];
+  loopFields['loop-prototype_kind'].value='visual';
+  loopFields['loop-decision'].value='iterate';
+  context.document.getElementById=id=>loopFields[id];
+  context.wireGameplayLoop('project-1',loopData);
+  context.confirm=()=>false;
+  const beforeLoopWrites=loopRequests.length;
+  await loopActions['loop-save']();
+  assert.equal(loopRequests.length,beforeLoopWrites);
+  const oldRender=context.renderProject;
+  context.renderProject=()=>{};
+  context.confirm=()=>true;
+  await loopActions['loop-save']();
+  assert.equal(loopRequests.at(-1).options.method,'PUT');
+  assert.equal(JSON.parse(loopRequests.at(-1).options.body).expected_revision,snapshot.hypothesis_revision);
+  await loopActions['loop-report-save']();
+  assert.equal(loopRequests.at(-1).url,'/api/projects/project-1/gameplay-loop/observations');
+  assert.equal(loopRequests.at(-1).options.method,'POST');
+  const sentLoop=JSON.parse(loopRequests.at(-1).options.body);
+  assert.equal(sentLoop.expected_revision,snapshot.revision);
+  assert.equal(sentLoop.observation.decision,'iterate');
+  assert.equal(sentLoop.observation.verified_result,undefined);
+  context.renderProject=oldRender;
+  // Etapa 0 persiste a origem opcional no Brief; não cria hipótese ou jogo.
+  const wizardHtml = context.projectBootstrap('project-1',{docs:[]});
+  assert.match(wizardHtml,/id="b-origin"/);
+  const answers = {'b-idea':'Explorar ilhas','b-origin':'brincar de mapas',
+    'b-exp':'curiosidade','b-aud':'','b-plat':'','b-pillars':'','b-rest':'',
+    'b-ref':'','b-vs':'','b-eng':''};
+  context.document.getElementById=id=>({value:answers[id]});
+  const oldHash=context.location.hash;
+  context.fetch=async(url,options)=>{
+    loopRequests.push({url,options});
+    return {ok:true,json:async()=>({})};
+  };
+  await context.runBootstrap('project-1');
+  assert.equal(loopRequests.at(-1).url,'/api/projects/project-1/bootstrap');
+  assert.equal(JSON.parse(loopRequests.at(-1).options.body).answers.origin,'brincar de mapas');
+  context.location.hash=oldHash;
   console.log('UI regression: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
