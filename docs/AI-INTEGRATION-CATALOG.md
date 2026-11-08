@@ -1,6 +1,6 @@
 # Lia Studio — AI Integration & Research Catalog
 
-> Lista de projetos open-source úteis para pesquisa, integração ou inspiração. **Nenhum projeto externo vira dependência automaticamente.** Cada item precisa passar por licença, segurança, compatibilidade, manutenção e arquitetura antes de integração.
+> Lista de projetos open-source úteis para pesquisa, integração ou inspiração. **Nenhum projeto externo vira dependência automaticamente.** Cada item precisa passar por licença, segurança, compatibilidade, manutenção e arquitetura antes de integração. A triagem de OpenBot/OpenDots para Skills e orquestração está em [`docs/research/OPENBOT-OPENDOTS-TRIAGEM.md`](research/OPENBOT-OPENDOTS-TRIAGEM.md): nenhum runtime foi incorporado.
 
 ## 1. Computer Use
 

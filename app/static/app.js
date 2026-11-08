@@ -143,7 +143,7 @@ async function renderSkills(selected, mode) {
     const onlyMine = selected === "mine";
     const active = creating ? null : onlyMine ? userSkills[0]?.id : (selected || skills[0]?.id);
     const item = active ? await api("GET", `/api/skills/${encodeURIComponent(active)}`) : null;
-    const nav = (onlyMine ? userSkills : skills).map(skill => `<a data-skill-entry href="#/skills/${esc(skill.id)}" class="${skill.id===active ? "active" : ""}"><span>${esc(skill.title)}</span><small>${skill.origin === "user" ? "MINHA SKILL" : "DO STUDIO"}</small></a>`).join("");
+    const nav = (onlyMine ? userSkills : skills).map(skill => `<a data-skill-entry data-search="${esc((skill.title || "") + " " + (skill.description || ""))}" href="#/skills/${esc(skill.id)}" class="${skill.id===active ? "active" : ""}"><span>${esc(skill.title)}</span><small>${skill.origin === "user" ? "MINHA SKILL" : "DO STUDIO"}</small></a>`).join("");
     let detail = "";
     if (creating) {
       detail = `<div class="workspace-heading"><span class="eyebrow">MINHA BIBLIOTECA</span><h1>Criar Skill</h1><p>Uma instrução reutilizável, independente de qualquer projeto. Salvar não executa Agent.</p></div>
@@ -153,7 +153,7 @@ async function renderSkills(selected, mode) {
     } else if (item) {
       const editing = mode === "edit" && item.origin === "user";
       detail = `<div class="workspace-heading"><span class="eyebrow">${item.origin === "user" ? "MINHA SKILL" : "BIBLIOTECA DO STUDIO"}</span><h1>${esc(item.title)}</h1>
-        <p>${esc(item.id)} · ${item.origin === "user" ? "salva neste Studio" : "incluída no Studio · somente leitura"}</p></div>
+        <p>${esc(item.id)} · ${item.origin === "user" ? "salva neste Studio" : "incluída no Studio · somente leitura"}</p>${item.description ? `<p>${esc(item.description)}</p>` : ""}</div>
         <div class="skill-actions">${item.origin === "user" ? `<a class="btn ${editing ? "ghost" : ""}" href="#/skills/${esc(item.id)}${editing ? "" : "/edit"}">${editing ? "Ver Skill" : "Editar Skill"}</a>` : ""}
           <button class="ghost" onclick="copySelectedSkill()">Duplicar para editar</button></div>
         ${editing ? `<div class="card skill-editor"><label for="skill-content">Markdown da Skill (inclua # Título; metadados podem vir antes)</label><textarea id="skill-content" maxlength="64000">${esc(item.content)}</textarea>
@@ -167,7 +167,7 @@ async function renderSkills(selected, mode) {
       <div class="skills-grid"><nav class="skills-nav" aria-label="Biblioteca de Skills">
         <a href="#/skills" class="${!creating && !onlyMine ? "active" : ""}">Biblioteca <span>${skills.length}</span></a>
         <a href="#/skills/mine" class="${onlyMine ? "active" : ""}">Minhas Skills <span>${userSkills.length}</span></a>
-        <label for="skill-filter">Buscar na biblioteca</label><input id="skill-filter" type="text" oninput="filterSkillList()" placeholder="Filtrar por nome" />
+        <label for="skill-filter">Buscar na biblioteca</label><input id="skill-filter" type="text" oninput="filterSkillList()" placeholder="Filtrar por nome ou finalidade" />
         <div class="skill-list">${nav || "<p class='muted'>Nenhuma Skill instalada.</p>"}</div>
       </nav><section class="skills-detail">${detail}</section>
       <aside class="skills-help"><span class="lia-monogram">L</span><span class="eyebrow">LIA · CONHECIMENTO</span><h3>Um método que você pode reutilizar.</h3>
@@ -176,7 +176,7 @@ async function renderSkills(selected, mode) {
     window.filterSkillList = () => {
       const term = document.getElementById("skill-filter").value.trim().toLocaleLowerCase();
       document.querySelectorAll("[data-skill-entry]").forEach(link => {
-        link.hidden = !link.textContent.toLocaleLowerCase().includes(term);
+        link.hidden = !(link.dataset.search || link.textContent).toLocaleLowerCase().includes(term);
       });
     };
     window.createUserSkill = async () => {

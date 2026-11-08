@@ -1,9 +1,12 @@
 # Avisos de terceiros — Lia Studio
 
-**Estado do código-fonte:** nenhum código, Skill ou asset de terceiros foi
-copiado para o núcleo. O build desktop opcional usa dependências externas
-listadas abaixo; pacote final e licenças transitivas ainda exigem auditoria.
-Estas notas não certificam um instalador Windows distribuível.
+**Estado do código-fonte:** o Core não recebeu código nem assets de terceiros.
+Doze Skills de instrução foram **adaptadas** de referências MIT, com fontes e
+revisões em cada `SKILL.md` e avisos integrais abaixo. Não foram importados
+agentes, hooks, scripts, configurações ou dependências desses projetos. O build
+desktop opcional usa dependências externas listadas abaixo; pacote final e
+licenças transitivas ainda exigem auditoria. Estas notas não certificam um
+instalador Windows distribuível.
 
 ## Referências externas (não incluídas neste repositório)
 
@@ -14,13 +17,29 @@ Estas notas não certificam um instalador Windows distribuível.
   ou redistribuído. Antes de redistribuir qualquer conteúdo desse projeto, confirme
   titularidade e permissão (a cópia local inspecionada não trazia `LICENSE` na raiz).
 
-- **Mr. Mak / witnesstodark/mr-mak-workspace** — conjunto de 14 skills de projeto
-  (ex.: `plan`, `feature-handoff`, `image-reference-workflow`). É uma **referência
-  externa**, não está incluído aqui. O repositório upstream informa sua própria
-  licença raiz (MIT) e avisos de terceiros (ex.: `img2threejs` é Apache-2.0).
-  Exemplos e mídias do Mr. Mak, se algum dia referenciados, permanecem em área
-  separada com seus avisos de origem e **não** são rebatizados como criação original
-  da Lia.
+## Skills adaptadas (incluídas na biblioteca)
+
+- **Mr. Mak Workspace** — fonte pública
+  [`witnesstodark/mr-mak-workspace` na revisão `cf1e1260253a61499dc67fe2332a330bf1b85c14`](https://github.com/witnesstodark/mr-mak-workspace/tree/cf1e1260253a61499dc67fe2332a330bf1b85c14),
+  licença raiz MIT, Copyright (c) 2026 Mr. Mak Workspace contributors. Cinco
+  Skills de planejamento/revisão de nível, visual, áudio, interface e VFX foram
+  adaptadas para instruções textuais limitadas do Studio; cada Skill liga à fonte.
+  Texto integral da licença: [`docs/licenses/MR-MAK-WORKSPACE-MIT.txt`](docs/licenses/MR-MAK-WORKSPACE-MIT.txt).
+  O ZIP do Drive informado pelo Dev **não foi comparado arquivo a arquivo** com
+  essa fonte pública; nenhuma cópia direta do ZIP foi incluída. Não foram
+  importados mídia, scripts, providers ou o subprojeto `img2threejs` (que tem
+  licença Apache-2.0 própria).
+- **Claude Code Game Studios** — fonte
+  [`donchitos/claude-code-game-studios` na revisão `05ad7c8a5b8aa2aa86bbd3439ae7cf7295cac418`](https://github.com/donchitos/claude-code-game-studios/tree/05ad7c8a5b8aa2aa86bbd3439ae7cf7295cac418),
+  licença MIT, Copyright (c) 2026 Donchitos. Sete Skills de revisão, prontidão,
+  QA, evidências, balanceamento, playtest e bugs foram adaptadas sem seu framework
+  de agentes, hooks, comandos Bash, aprovações automáticas, paths ou seleção de
+  modelos. Cada Skill liga à fonte. Texto integral da licença:
+  [`docs/licenses/CLAUDE-CODE-GAME-STUDIOS-MIT.txt`](docs/licenses/CLAUDE-CODE-GAME-STUDIOS-MIT.txt).
+
+As adaptações não incluem código executável de terceiros nem concedem permissões
+para ações no projeto. O Dev pode duplicá-las no gerenciador do Studio para
+editar sua cópia sem alterar a versão distribuída.
 
 ## Política de assets e marca
 

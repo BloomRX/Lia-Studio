@@ -612,10 +612,12 @@ assert.equal(reloads, 1);
     };
     else if (url === '/api/projects') data = {projects:[{id:'project-1', name:'Jogo',
       stage:'preparation', status:'ativo'}]};
-    else if (url === '/api/skills') data = {skills:[{id:'lia-project-resume',title:'Retomar',origin:'builtin'},
+    else if (url === '/api/skills') data = {skills:[{id:'lia-project-resume',title:'Retomar',
+      description:'Revisar <img src=x onerror=alert(1)>',origin:'builtin'},
       {id:'lia-user-abcdef123456',title:'Minha Skill',origin:'user'}]};
     else if (url === '/api/skills/lia-project-resume') data = {id:'lia-project-resume',
-      title:'Retomar',origin:'builtin',content:'# Retomar\n\nFluxo.'};
+      title:'Retomar',description:'Revisar <img src=x onerror=alert(1)>',
+      origin:'builtin',content:'# Retomar\n\nFluxo.'};
     else if (url === '/api/skills/lia-user-abcdef123456') data = {id:'lia-user-abcdef123456',
       title:'Minha Skill',origin:'user',content:'# Minha Skill\n\nFluxo.',revision:'a'.repeat(64)};
     if (url === '/api/skills' && options.method === 'POST') data = {id:'lia-user-abcdef123456'};
@@ -666,6 +668,9 @@ assert.equal(reloads, 1);
   assert.equal(JSON.parse(pageCalls.at(-1).options.body).revision, 'a'.repeat(64));
   await context.renderSkills('lia-project-resume');
   assert.match(view.innerHTML, /Duplicar para editar/);
+  assert.match(view.innerHTML, /Filtrar por nome ou finalidade/);
+  assert.match(view.innerHTML, /Revisar &lt;img/);
+  assert.doesNotMatch(view.innerHTML, /<img src=x onerror=alert/);
   assert.doesNotMatch(view.innerHTML, /onclick="saveUserSkill/);
   await context.window.copySelectedSkill();
   assert.equal(pageCalls.at(-1).options.method, 'POST');

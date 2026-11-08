@@ -53,7 +53,7 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   edição ou verificação sintática; só metadados desses registros são incluídos,
   sem grants locais, prompt, fonte ou diff. Handoff não envia dados nem executa
   código, e não substitui a revisão humana antes de compartilhar.
-- Biblioteca de quatro Skills locais consultáveis, separada dos projetos; aplicação por agente ainda não conectada.
+- Biblioteca de 16 Skills locais consultáveis (quatro originais e 12 adaptadas de fontes MIT), separada dos projetos; busca por finalidade e editor de cópia. Aplicação por agente ainda não conectada.
 
 ## Alpha UI.1 — aceita pelo Dev em 2026-10-05
 - Home como **launcher** separado dos projetos, com criar/abrir projeto,
@@ -66,7 +66,7 @@ supervisionáveis, sem substituir a direção criativa do Dev.
 - Contexto de projeto e Lia/acompanhamento em painéis recolhíveis. O painel
   mostra bloqueios, Sessions simuladas e atalhos para QA/feedback manual;
   **não há chat ou Agent real** nesta etapa.
-- Skills Workspace independente: consultar as quatro Skills distribuídas,
+- Skills Workspace independente: consultar as Skills distribuídas (quatro originais na UI.1),
   criar e editar Skills próprias em Markdown, buscar/organizar por Biblioteca e
   Minhas Skills. Skills distribuídas são só leitura e podem ser duplicadas.
   Skills não são obrigatórias para Agents; salvar não aplica nem executa nada.
@@ -192,7 +192,7 @@ Backups `.bak` não substituem cópias em outro disco; veja `docs/armazenamento-
   skills, provedores, execução simulada, QA, release, engines e conflitos).
 - `app/server.py` — API JSON + servidor HTTP (stdlib).
 - `app/static/` — interface (HTML/CSS/JS vanilla, sem build).
-- `.agents/skills/` — quatro skills documentais consultáveis; templates da Etapa 0
+- `.agents/skills/` — 16 skills documentais consultáveis; templates da Etapa 0
   ainda não são a fonte do gerador (decisão D1 pendente).
 - `planejamento/` — documentos de visão e handoffs.
 - `docs/` — documentação da entrega.

@@ -117,9 +117,11 @@ confirmou o aceite da Alpha, mas 11 testes de symlink foram pulados.
   Se Ollama não estiver ativo, a tela mostra indisponibilidade, sem alterar dados.
 
 ## Skills Workspace (independente dos projetos)
-Na Home ou barra superior, abra **Skills**. A **Biblioteca** reúne as quatro Skills
-distribuídas e as suas; **Minhas Skills** filtra as criadas por você. Busque por
-nome, clique **Criar Skill**, escreva nome e instruções, salve e reabra. Skills
+Na Home ou barra superior, abra **Skills**. A **Biblioteca** reúne 16 Skills
+distribuídas (quatro originais do Studio e 12 adaptações com atribuição MIT) e as
+suas; **Minhas Skills** filtra as criadas por você. Busque por nome ou finalidade,
+clique **Criar Skill**, escreva nome e instruções, salve e reabra. Veja o mapa de
+seleção e limites em `.agents/skills/README.md`. Skills
 distribuídas são somente leitura: use **Duplicar para editar**. Para Skills próprias,
 clique **Editar Skill** e **Salvar alterações**; se outra janela ou editor mudou o
 arquivo, recarregue antes de substituir. Os arquivos ficam em

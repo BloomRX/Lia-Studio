@@ -23,6 +23,28 @@ def _revision(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
+def _description(text: str) -> str:
+    """Resumo de frontmatter para escolha da Skill; nunca interpreta YAML/execução."""
+    lines = text.splitlines()
+    if not lines or lines[0] != "---":
+        return ""
+    for index, line in enumerate(lines[1:], 1):
+        if line == "---":
+            break
+        if not line.startswith("description:"):
+            continue
+        value = line.partition(":")[2].strip()
+        if value in (">", "|-", "|", ">-"):
+            fragments = []
+            for child in lines[index + 1:]:
+                if not child.startswith((" ", "\t")):
+                    break
+                fragments.append(child.strip())
+            value = " ".join(fragments)
+        return " ".join(value.strip('"\' ').split())[:240]
+    return ""
+
+
 def _entry(skill_id: str, path: Path, origin: str) -> Dict[str, str]:
     if path.is_symlink() or not path.is_file():
         raise StorageError("Skill indisponível ou link simbólico; revise os arquivos")
@@ -38,8 +60,8 @@ def _entry(skill_id: str, path: Path, origin: str) -> Dict[str, str]:
         _validate_content(text)  # corrupção/edição externa nunca vira Skill vazia
     title = next((line[2:].strip() for line in text.splitlines()
                   if line.startswith("# ") and line[2:].strip()), skill_id)
-    return {"id": skill_id, "title": title, "content": text,
-            "origin": origin, "revision": _revision(text)}
+    return {"id": skill_id, "title": title, "description": _description(text),
+            "content": text, "origin": origin, "revision": _revision(text)}
 
 
 def _metadata(skill_id: str, path: Path, origin: str) -> Dict[str, str]:
@@ -55,7 +77,8 @@ def _metadata(skill_id: str, path: Path, origin: str) -> Dict[str, str]:
         raise StorageError("Skill ilegível; revise o arquivo") from exc
     title = next((line[2:].strip() for line in prefix.splitlines()
                   if line.startswith("# ") and line[2:].strip()), skill_id)
-    return {"id": skill_id, "title": title, "origin": origin}
+    return {"id": skill_id, "title": title, "description": _description(prefix),
+            "origin": origin}
 
 
 def _user_root(storage: Storage) -> Path:
