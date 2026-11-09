@@ -1281,6 +1281,8 @@ async function projectAssets(pid, data) {
   try { records = (await api("GET", `/api/projects/${pid}/assets`)).assets; }
   catch(e) { return `<h1>Assets</h1><div class="banner danger">Catálogo indisponível: ${esc(e.message)}. Revise em Integridade; nada foi alterado.</div>`; }
   data._assets = records;
+  const forgeTasks = (data.modules || []).flatMap(m => (m.tasks || []).map(t =>
+    `<option value="${esc(m.id + ':' + t.id)}">${esc(m.name + ' → ' + t.name)}</option>`)).join('');
   const targets = (data.modules||[]).flatMap(m => [
     {ref:`module:${m.id}`, label:`Módulo ${m.name}`},
     ...(m.tasks||[]).map(t => ({ref:`task:${t.id}`, label:`Tarefa ${t.name}`})),
@@ -1304,6 +1306,17 @@ async function projectAssets(pid, data) {
       <label for="asset-note">Nota para a equipe</label><textarea id="asset-note" maxlength="600"></textarea>
       <div class="actions"><button type="button" id="asset-save">Registrar (sem importar)</button><button type="button" id="asset-cancel" class="ghost" hidden>Cancelar edição</button></div>
       <p id="asset-status" role="status" aria-live="polite" class="muted"></p>
+    </div>
+    <div class="card"><h3>Brief opcional para o Lia Forge</h3>
+      <p class="muted">O Studio organiza a Task; o Forge produz assets se você decidir usá-lo. Esta prévia não abre o Forge, não envia dados, não cria Job e não cadastra arquivo. Revise o texto antes de copiar manualmente.</p>
+      <label for="forge-task">Task vinculada</label><select id="forge-task"><option value="">Escolha uma Task</option>${forgeTasks}</select>
+      <label for="forge-kind">Etapa de asset desejada (disponibilidade no Forge não verificada)</label>
+      <select id="forge-kind"><option value="concept">Conceito visual</option><option value="model">Modelo 3D</option><option value="rig">Rig/animação</option><option value="spritesheet">Spritesheet</option></select>
+      <label for="forge-request">Pedido curto para o asset (não inclua segredos ou memória pessoal)</label>
+      <textarea id="forge-request" maxlength="400" placeholder="Ex.: personagem para protótipo, fundo transparente e revisão de silhueta"></textarea>
+      <div class="actions"><button type="button" id="forge-brief-preview">Preparar prévia local</button></div>
+      <p id="forge-brief-status" role="status" aria-live="polite" class="muted"></p>
+      <pre id="forge-brief-text" class="skill-content" hidden></pre>
     </div>`;
 }
 
@@ -1361,6 +1374,32 @@ function wireAssets(pid, data) {
     } catch(e) { get("asset-status").textContent = "Não foi possível salvar: " + e.message; }
     finally { button.disabled = false; }
   });
+  if (get("forge-brief-preview")) {
+    const text = get("forge-brief-text");
+    let previewVersion = 0;
+    const clear = () => { previewVersion++; text.hidden = true; text.textContent = ""; get("forge-brief-status").textContent = ""; };
+    for (const id of ["forge-task", "forge-kind", "forge-request"])
+      get(id).addEventListener(id === "forge-request" ? "input" : "change", clear);
+    get("forge-brief-preview").addEventListener("click", async () => {
+      clear();
+      const version = previewVersion;
+      const [module_id, task_id] = get("forge-task").value.split(":");
+      const request = get("forge-request").value.trim();
+      if (!module_id || !task_id || !request)
+        return (get("forge-brief-status").textContent = "Escolha uma Task e descreva o asset desejado.");
+      const button = get("forge-brief-preview");
+      button.disabled = true;
+      try {
+        const result = await api("POST", `/api/projects/${pid}/forge-brief/preview`,
+          {module_id, task_id, asset_kind:get("forge-kind").value, request});
+        if (version !== previewVersion) return; // não mostrar resposta de campos alterados durante a espera
+        text.textContent = result.content; // texto da Task nunca vira HTML
+        text.hidden = false;
+        get("forge-brief-status").textContent = result.warning;
+      } catch (e) { if (version === previewVersion) get("forge-brief-status").textContent = "Prévia indisponível: " + e.message; }
+      finally { button.disabled = false; }
+    });
+  }
 }
 
 /* ----- evidence: arquivos locais, sem executar testes ----- */

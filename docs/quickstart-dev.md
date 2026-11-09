@@ -116,6 +116,18 @@ confirmou o aceite da Alpha, mas 11 testes de symlink foram pulados.
   nomes que o serviço anuncia; não inicia modelo nem comprova se é local/gratuito.
   Se Ollama não estiver ativo, a tela mostra indisponibilidade, sem alterar dados.
 
+## Brief manual de asset para Lia Forge (opcional)
+Na aba **Assets** de um projeto com Task, escolha a Task, a etapa de asset
+pretendida e escreva um pedido curto. Clique **Preparar prévia local**, revise o
+texto e só então copie-o manualmente para o Forge, se desejar. O Studio não
+executa o Forge nem garante que a etapa esteja disponível na versão instalada.
+Depois de produzir e revisar o arquivo no Forge, copie ou importe a **mídia**
+explicitamente para dentro da pasta do projeto e registre seu caminho e origem
+na mesma aba Assets. Um manifesto JSON acompanhante não é asset de mídia; hash,
+prévia ou conclusão no Forge não aprovam Task, QA, importação na engine ou licença.
+O ZIP `docs/pacote-agentes.zip` é um guia de processo, não uma biblioteca de
+`SKILL.md` ou um worker instalado; o notebook Colab não foi executado.
+
 ## Skills Workspace (independente dos projetos)
 Na Home ou barra superior, abra **Skills**. A **Biblioteca** reúne 16 Skills
 distribuídas (quatro originais do Studio e 12 adaptações com atribuição MIT) e as

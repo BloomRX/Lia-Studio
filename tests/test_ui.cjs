@@ -685,11 +685,14 @@ assert.equal(reloads, 1);
     assetRequests.push({url,options});
     return {ok:true,json:async()=>({assets:[asset]})};
   };
-  const assetData = {modules:[]};
+  const assetData = {modules:[{id:'abcdef12',name:'Arte',tasks:[{id:'12345678',name:'Retrato'}]}]};
   const assetHtml = await context.projectAssets('project-1',assetData);
   assert.equal(assetRequests.at(-1).url,'/api/projects/project-1/assets');
   assert.match(assetHtml,/Assets do projeto/);
   assert.match(assetHtml,/licença\/engine NÃO verificadas/);
+  assert.match(assetHtml,/Brief opcional para o Lia Forge/);
+  assert.match(assetHtml,/value="abcdef12:12345678"/);
+  assert.match(assetHtml,/não abre o Forge, não envia dados/);
   assert.match(assetHtml,/&lt;img/);
   assert.doesNotMatch(assetHtml,/<img src=x/);
   assert.doesNotMatch(assetHtml,/<script>/);
@@ -697,7 +700,8 @@ assert.equal(reloads, 1);
   const assetActions = {};
   const assetFields = Object.fromEntries([
     'asset-path','asset-type','asset-source','asset-source-ref','asset-license',
-    'asset-target','asset-note','asset-form-title','asset-status','asset-save','asset-cancel'
+    'asset-target','asset-note','asset-form-title','asset-status','asset-save','asset-cancel',
+    'forge-task','forge-kind','forge-request','forge-brief-preview','forge-brief-status','forge-brief-text'
   ].map(id=>[id,{value:'',textContent:'',hidden:false,disabled:false,
                addEventListener:(_,fn)=>assetActions[id]=fn,focus(){}}]));
   const assetEditButton = {dataset:{assetEdit:'0'},addEventListener:(_,fn)=>assetActions.edit=fn};
@@ -736,6 +740,37 @@ assert.equal(reloads, 1);
   const sentAsset = JSON.parse(assetRequests.at(-1).options.body);
   assert.equal(sentAsset.expected_revision, asset.metadata_revision);
   assert.equal(sentAsset.path,undefined); // edição não altera arquivo ou hash
+  const beforeForge = assetRequests.length;
+  await assetActions['forge-brief-preview']();
+  assert.equal(assetRequests.length, beforeForge); // sem Task/pedido: nenhum preview
+  assetFields['forge-task'].value = 'abcdef12:12345678';
+  assetFields['forge-kind'].value = 'concept';
+  assetFields['forge-request'].value = 'Conceito curto';
+  context.fetch = async (url, options) => {
+    assetRequests.push({url,options});
+    return {ok:true,json:async()=>({content:'<img src=x onerror=alert(1)>',warning:'Prévia local'})};
+  };
+  await assetActions['forge-brief-preview']();
+  assert.equal(assetRequests.at(-1).url,'/api/projects/project-1/forge-brief/preview');
+  assert.deepEqual(JSON.parse(assetRequests.at(-1).options.body),
+    {module_id:'abcdef12',task_id:'12345678',asset_kind:'concept',request:'Conceito curto'});
+  assert.equal(assetFields['forge-brief-text'].textContent,'<img src=x onerror=alert(1)>');
+  assert.equal(assetFields['forge-brief-text'].hidden,false);
+  assetActions['forge-request']();
+  assert.equal(assetFields['forge-brief-text'].textContent,'');
+  assert.equal(assetFields['forge-brief-text'].hidden,true); // input alterado invalida prévia
+  let finishPreview;
+  context.fetch = (url, options) => new Promise(resolve => {
+    assetRequests.push({url,options});
+    finishPreview = () => resolve({ok:true,json:async()=>({content:'prévia antiga',warning:'ok'})});
+  });
+  const pendingPreview = assetActions['forge-brief-preview']();
+  assetFields['forge-request'].value = 'Novo pedido';
+  assetActions['forge-request']();
+  finishPreview();
+  await pendingPreview;
+  assert.equal(assetFields['forge-brief-text'].textContent,'');
+  assert.equal(assetFields['forge-brief-text'].hidden,true); // descarta resposta já obsoleta
   context.renderProject=originalProjectRender;
 
   // O loop é hipótese e relato manual; saída hostil deve ser texto, não HTML ativo.

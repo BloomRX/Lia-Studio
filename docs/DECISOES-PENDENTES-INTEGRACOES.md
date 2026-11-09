@@ -80,13 +80,15 @@ Decisões tomadas:
 
 **Situação:** `LIA-FORGE-NA-PIPELINE.md` mapeia a visão/estado da branch consultada
 para as fases do jogo. Studio cataloga arquivos existentes; Forge é ferramenta
-opcional para produzir assets. Não há protocolo Studio ↔ Forge, importação
+opcional para produzir assets. A área Assets oferece uma **prévia local/manual**
+de brief a partir de uma Task; não há protocolo Studio ↔ Forge, importação
 automática nem execução cruzada. A pesquisa de humanoides do Forge cita módulos
 que não estão na árvore auditada: reconciliar docs e commit antes de negociar API.
 
 **Antes de criar integração:**
-1. O primeiro corte é brief exportado + registro manual, ou há necessidade real
-   de bridge versionada? Quem aprova/inicia cada operação, e como funciona sem Forge?
+1. O primeiro corte (prévia local/manual + catálogo de arquivo existente) é
+   suficiente por enquanto? Se houver necessidade real de exportação persistida
+   ou bridge versionada, quem aprova/inicia cada operação e como funciona sem Forge?
 2. Qual projeto/workspace foi escolhido e como resolver caminhos, duplicatas,
    limites de tamanho e alterações de bytes sem escrever diretamente o
    `assets.json`/índice do outro produto ou seguir symlinks externos?
@@ -100,8 +102,9 @@ que não estão na árvore auditada: reconciliar docs e commit antes de negociar
    engine, na plataforma alvo, prova cada afirmação sem confundir hash/PNG/JSON
    com resultado do jogo?
 
-**Desbloqueia:** primeiro handoff **opcional** e, só após contrato/aceite,
-integração incremental com experiência guiada Task → Forge → arquivos → revisão.
+**Desbloqueia:** a prévia do primeiro handoff **opcional** já existe, sem envio;
+só após contrato/aceite, integração incremental com experiência guiada
+Task → Forge → arquivos → revisão.
 Forge completo não implica bridge pronta no Studio. **Até decidir:** nenhum launcher/MCP/adapter automático
 entre produtos, nenhum avanço de Task, QA ou gate por status do Forge.
 

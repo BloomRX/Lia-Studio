@@ -54,6 +54,7 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   sem grants locais, prompt, fonte ou diff. Handoff não envia dados nem executa
   código, e não substitui a revisão humana antes de compartilhar.
 - Biblioteca de 16 Skills locais consultáveis (quatro originais e 12 adaptadas de fontes MIT), separada dos projetos; busca por finalidade e editor de cópia. Aplicação por agente ainda não conectada.
+- Na aba Assets, prévia local e opcional de brief de Task para o Lia Forge, copiável após revisão; não conecta Forge, não envia dados nem substitui o catálogo ou QA. Ver `docs/LIA-FORGE-NA-PIPELINE.md`.
 
 ## Alpha UI.1 — aceita pelo Dev em 2026-10-05
 - Home como **launcher** separado dos projetos, com criar/abrir projeto,

@@ -29,6 +29,7 @@ from . import runtime_policy
 from . import engine_probe
 from . import draft_jobs
 from . import agent_cli  # transporte experimental sem rota/Session de Agent real
+from . import forge_brief  # prévia local/manual, não bridge com o Forge
 
 __all__ = [
     "storage",
@@ -54,4 +55,5 @@ __all__ = [
     "engine_probe",
     "draft_jobs",
     "agent_cli",
+    "forge_brief",
 ]

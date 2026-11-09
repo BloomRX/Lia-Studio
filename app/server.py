@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, gameplay_loop, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -293,6 +293,9 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
 
     if method == "GET" and sub == ["resume"]:
         return planning.build_resume(storage, pid)
+
+    if method == "POST" and sub == ["forge-brief", "preview"]:
+        return forge_brief.preview(storage, pid, body)
 
     if method == "GET" and sub == ["handoff"]:
         return handoff.get_saved(storage, pid)

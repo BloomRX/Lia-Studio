@@ -68,6 +68,20 @@ extração automática para pastas de Skills ativas.
   qualidade e dependências. O ZIP não trouxe um conjunto instalável dessa
   fonte. Ver [registro das duas fontes](GAMEDEV-SKILLS-FONTES-2026-10-17.md).
 
+## Aplicação limitada após a revisão do pacote
+
+A pedido do Dev, a aba Assets agora oferece **prévia local de brief** para uma
+Task escolhida e tipo de asset do Lia Forge, usando somente nome, objetivo,
+verificação planejada, IDs e pedido digitado. O formato de briefing do pacote
+foi referência de processo, **sem copiar seu `AGENTS_TEMPLATE.md`, criar uma
+segunda fila `jobs/`/`results/` ou executar `worker_colab.ipynb`**. O pacote
+não contém arquivos `SKILL.md` do Mr. Mak nem as skills citadas do MCP Market;
+as 12 skills adaptadas na biblioteca vêm de repositórios MIT separados com
+atribuição própria. `docs/LIA-FORGE-NA-PIPELINE.md` define o limite: Studio
+planeja/avalia, Forge opcional produz asset, Dev revisa, Studio cataloga arquivo
+existente e engine/QA validam o jogo depois. Preview não é handoff executado nem
+prova de mídia produzida.
+
 ## Sequência de desenvolvimento para o produto completo
 
 1. Manter a Alpha e resolver lacunas de decisões de produto/segurança antes de

@@ -68,6 +68,7 @@ CHECKS = {
     "draft_jobs": ("Jobs canceláveis de inferência com HTTP falso", [sys.executable, "tests/test_draft_jobs.py"]),
     "integration": ("Fluxo HTTP integrado sem promover gates", [sys.executable, "tests/test_integrated_flow.py"]),
     "assets": ("Assets locais: metadados, integridade e API", [sys.executable, "tests/test_assets.py"]),
+    "forge_brief": ("Brief manual Studio → Forge sem execução nem escrita", [sys.executable, "tests/test_forge_brief.py"]),
     "gameplay_loop": ("Hipótese, protótipos e relato manual sem promover gates", [sys.executable, "tests/test_gameplay_loop.py"]),
     "skills": ("Skills: metadados progressivos", [sys.executable, "tests/test_skills_progressive.py"]),
     "desktop": ("Shell desktop sem GUI (loopback e encerramento)", [sys.executable, "tests/test_desktop.py"]),
@@ -88,7 +89,7 @@ PARTS = (
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe", "engine_inspection")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation")),
     ("CLI/combo declarativo, serviço local falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "legacy_ids", "chat", "drafts", "draft_jobs")),
-    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "gameplay_loop", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
+    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "forge_brief", "gameplay_loop", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 
 

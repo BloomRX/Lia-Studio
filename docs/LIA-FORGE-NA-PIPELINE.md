@@ -42,9 +42,34 @@ commit e contrato antes de implementar.
 | Validação | PNG RGBA8, CRC e dimensões; JSON com grade, frames, nomes, pivôs e durações coerentes. `local-renderer-test/` prepara manifesto de procedência, checks de pixels/hashes e revisão no Windows. | **Testes de contrato/fixtures, não aceite visual.** O ensaio documenta que ainda não produziu PNG/render real com os personagens, nem prova execução em Windows. |
 | Visão futura | Cadeia completa prompt → vistas → 3D → rig → animações → 2D, rotas Code → 2D / Manequim → 2D, cenários e adapters alternativos. | **PLANEJADO/BLOCKED**, não serviço disponível. Em particular, `docs/humanoid-workflow-research.md` cita `electron/workflow-contracts.cjs`, `electron/workflow-run-store.cjs`, `electron/resume-workflow.cjs` e `src/asset-progress.js`; **esses arquivos não constam na árvore do commit auditado**. Não converter essas alegações em capacidade entregue sem reconciliar a branch/documento. |
 
-## Futuro contrato de passagem Studio ↔ Forge (a decidir, não implementado)
+## Primeiro corte entregue: brief manual, sem bridge
 
-1. **Abrir sob escolha, nunca exigir:** o Studio continua utilizável sem Forge. O Dev escolhe o projeto e inicia a tarefa de asset; não conectar agentes, MCP, GPU, pesos, pagamentos ou uploads por inferência do nome do ecossistema. Uma saída simples inicial é **exportar o brief e registrar manualmente o resultado**, antes de criar bridge/processo/API.
+Na área **Assets**, o Dev escolhe uma Task existente, indica a etapa de asset e
+escreve um pedido curto. O Studio prepara **somente uma prévia local**: IDs de
+projeto/módulo/Task, nome, objetivo, verificação planejada e pedido escolhido.
+Não lê GDD, arquivos, mídia, prompts anteriores, memórias ou chaves. A prévia
+possui hash de conteúdo para comparação manual, mas **não é Session, Job,
+aprovação, registro de asset ou prova de produção**. Alterar os campos limpa a
+prévia na interface. Nada é salvo/enviado automaticamente; o Dev revisa e copia
+o texto para o Forge, se quiser. Não há requisito de instalar o Forge para usar
+Studio, Task ou catálogo. O ZIP `docs/pacote-agentes.zip` ajudou a identificar
+campos de briefing, mas não trouxe uma Skill Forge nem executa esse fluxo.
+
+Quando houver saída real, o Dev decide se copia/importa mídia para a pasta do
+projeto, confere origem/licença e **registra explicitamente** o caminho no
+catálogo já existente. Arquivos JSON de manifesto permanecem acompanhantes,
+não são mídia do catálogo; uma etapa Forge ou hash intacto não aprovam visual,
+engine, QA ou Task. O Studio não gera arte, rig, animação ou spritesheet no lugar
+do Forge. O perfil de engine continua indecidido e nada aqui aciona um renderer.
+
+**Teste desta fatia:** serviço, HTTP e UI com dados temporários/falsos; não houve
+execução do Forge, importação de asset real nem teste de gameplay/Windows. Isso
+implementa só a passagem manual **Studio → pessoa → Forge**, não o retorno
+automático nem as demais condições da integração de ponta a ponta abaixo.
+
+## Futuro contrato de passagem Studio ↔ Forge (bridge ainda a decidir)
+
+1. **Abrir sob escolha, nunca exigir:** o Studio continua utilizável sem Forge. O Dev escolhe o projeto e inicia a tarefa de asset; não conectar agentes, MCP, GPU, pesos, pagamentos ou uploads por inferência do nome do ecossistema. A prévia de brief **já é local e copiável manualmente**; exportação com persistência, envio e retorno automatizado seguem pendentes de contrato, antes de qualquer bridge/processo/API.
 2. **Raízes diferentes, arquivos reais:** Forge mantém `.spriteforge/` no workspace que a pessoa escolher (`SPRITEFORGE_PROJECT_ROOT` pode apontar para o projeto do jogo); Studio guarda seus próprios Markdown/JSON sob a pasta do projeto. Seu `assets.json` e `.spriteforge/assets.json` têm **schemas e donos distintos**; o Forge não escreve o índice, gates, `qa.json` ou `assets.json` do Studio, e o Studio não reescreve o manifesto do Forge. Se os arquivos forem gerados fora da pasta do projeto Studio, pedir ao Dev cópia/importação explícita, com conflito de nome e licença revisados; não usar symlinks externos nem paths absolutos para contornar a contenção.
 3. **Vínculo mínimo sugerido:** ID/Task do Studio; ID/etapa/versão do contrato no Forge; paths relativos para outputs (PNG, manifesto JSON e fonte quando autorizada), tamanho e SHA-256 calculado **após** o arquivo existir; ferramenta/versão e limites do run; origem, termos/licença e permissões de redistribuição **declarados**, sem prometer revisão jurídica. Contrato versionado e negociação de alterações antes de importar: tarefa Forge v2, manifesto de spritesheet v1 e envelope JSON Studio v2 **não são intercambiáveis**. O catálogo Studio aceita **mídia** local de até 50 MB por arquivo (por exemplo, PNG e `.blend`), **não** cadastra `.json` como asset de mídia; preservar o manifesto JSON como arquivo acompanhante local e decidir seu vínculo/validação numa integração futura, sem inserir o JSON em `assets.json`. Outputs maiores exigem decisão de fluxo, não remoção silenciosa do limite.
 4. **Estados independentes:** `concept`, `model`, `rig`, `spritesheet` e checks do Forge descrevem etapas de arte; Studio mantém `arquivo registrado` → `integridade intacta/alterada/indisponível` → `revisão visual humana` → `import/teste na engine` → `QA/gameplay`, cada qual com evidência própria. Mudar bytes, versão ou procedência requer nova revisão; hash intacto sozinho não aprova o asset. Falha/cancelamento do Forge não altera estágio, Task, Session ou gate do Studio.
