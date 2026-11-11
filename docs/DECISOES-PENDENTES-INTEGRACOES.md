@@ -76,14 +76,23 @@ Decisões tomadas:
 
 **Desbloqueia:** implementação do Orchestrator e dos contratos de domínio. **Não é necessário criar uma árvore falsa de Sessions na simulação Alpha.**
 
-## D5 — Lia Forge na produção de assets (proposta; não é bridge existente)
+## D5 — Integração opcional com Lia Forge (fronteira decidida; bridge pendente)
 
-**Situação:** `LIA-FORGE-NA-PIPELINE.md` mapeia a visão/estado da branch consultada
-para as fases do jogo. Studio cataloga arquivos existentes; Forge é ferramenta
-opcional para produzir assets. A área Assets oferece uma **prévia local/manual**
-de brief a partir de uma Task; não há protocolo Studio ↔ Forge, importação
-automática nem execução cruzada. A pesquisa de humanoides do Forge cita módulos
-que não estão na árvore auditada: reconciliar docs e commit antes de negociar API.
+**Fronteira decidida pelo Dev:** Studio gere o **jogo** (GDD/Tasks, agentes de
+desenvolvimento, engine, QA, gates, build); Forge é uma **fábrica geral de
+assets** para jogo, Lia Desktop e outros consumidores (produção, transformação,
+validação técnica e proveniência). Não criar módulo de geração por destino nem
+copiar catálogo de providers/workflows do Forge para o Studio. O Forge não pode
+concluir Task de jogo, validar gameplay, engine ou release; o Studio não produz
+mídia no lugar dele. Cada app conserva estados, permissões e aprovação humana.
+
+**Situação da implementação:** `LIA-FORGE-NA-PIPELINE.md` compara o snapshot
+histórico `f274b015` com a arquitetura consolidada do Forge em `79d4b58`.
+Esta registra `Lia3DCreate`/`Lia3DSprite` como módulos internos, mas **não
+implementados** como fluxo geral. Seus Domain Contracts são
+`DRAFT_FOR_HUMAN_REVIEW — NOT AUTHORIZED FOR IMPLEMENTATION`; não há protocolo
+entre produtos. A área Assets do Studio oferece apenas **prévia local/manual**
+de brief a partir de uma Task; não há importação automática nem execução cruzada.
 
 **Antes de criar integração:**
 1. O primeiro corte (prévia local/manual + catálogo de arquivo existente) é
@@ -92,9 +101,11 @@ que não estão na árvore auditada: reconciliar docs e commit antes de negociar
 2. Qual projeto/workspace foi escolhido e como resolver caminhos, duplicatas,
    limites de tamanho e alterações de bytes sem escrever diretamente o
    `assets.json`/índice do outro produto ou seguir symlinks externos?
-3. Qual contrato tipado distingue task/etapa/arquivo/checks do Forge dos estados de
-   asset, QA/gameplay, evidência e gates do Studio? Que versão/schema cada lado
-   aceita e como falhar ao encontrar versão desconhecida ou output parcial?
+3. Após revisão humana dos Domain Contracts **do Forge**, qual envelope tipado
+   **entre produtos** distingue task/etapa/arquivo/checks técnicos do Forge dos
+   estados de asset, QA/gameplay, evidência e gates do Studio? Que versão/schema
+   cada lado aceita e como falhar em versão desconhecida ou output parcial?
+   O draft do Forge não é automaticamente a API/bridge do Studio.
 4. Quais licenças, origem, direitos de redistribuição, privacidade, custos,
    ferramentas, instalação e destino de prompt/referência foram revisados pelo
    Dev? Como ficam cancelamento, indisponibilidade e nenhum fallback pago?

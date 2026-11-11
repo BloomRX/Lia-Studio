@@ -1,6 +1,13 @@
-# Lia Forge na pipeline do Lia Studio — proposta de fronteira
+# Lia Forge na pipeline do Lia Studio — fronteira de produtos e bridge proposta
 
-**Leitura documental em 07/11/2026.** Fonte externa: branch
+**Decisão de produto do Dev:** Lia Studio decide e coordena o **jogo**; Lia Forge
+produz, transforma e valida tecnicamente **assets para qualquer consumidor**.
+Lia Desktop e jogos são destinos de utilização, não módulos de geração separados.
+A fronteira está definida; o protocolo/bridge entre apps **não** está aprovado
+nem implementado. Este documento altera somente a documentação do Studio, não o
+repositório, os contratos ou a implementação do Forge.
+
+**Leitura documental histórica em 07/11/2026.** Fonte externa: branch
 [`arena/649f88bd-3dspritesheet` do Lia Forge](https://github.com/BloomRX/Lia-Forge/tree/f274b015706f3cf2305678d6ee78d5ca4dc311b4),
 commit `f274b015706f3cf2305678d6ee78d5ca4dc311b4`. Fontes naquele commit:
 
@@ -13,15 +20,65 @@ commit `f274b015706f3cf2305678d6ee78d5ca4dc311b4`. Fontes naquele commit:
 - [schema de tarefa](https://github.com/BloomRX/Lia-Forge/blob/f274b015706f3cf2305678d6ee78d5ca4dc311b4/docs/asset-task.schema.json)
   e [renderer](https://github.com/BloomRX/Lia-Forge/blob/f274b015706f3cf2305678d6ee78d5ca4dc311b4/scripts/blender_spritesheet.py).
 
-**Esta é uma proposta de encaixe**, não integração existente, decisão de API ou
-teste de runtime. O Forge é desenvolvido em paralelo; confirmar novamente seu
-commit e contrato antes de implementar.
+**Snapshot adicional de escopo, não prova de execução:** na mesma branch do
+Forge, o commit
+[`79d4b58`](https://github.com/BloomRX/Lia-Forge/tree/79d4b58d04d31c13e0c220f3db0cb07c4e2bd992)
+registra a [proposta arquitetural consolidada](https://github.com/BloomRX/Lia-Forge/blob/79d4b58d04d31c13e0c220f3db0cb07c4e2bd992/docs/LIA-FORGE-CONSOLIDATED-ARCHITECTURE-PROPOSAL.md):
+Forge é fábrica geral de assets, `Lia3DCreate` e `Lia3DSprite` são módulos
+**internos** e Game Asset / Lia Desktop Asset são destinos consumidores. A
+arquitetura consta como aprovada, mas implementação/migração não autorizadas.
+A [especificação Domain Contracts](https://github.com/BloomRX/Lia-Forge/blob/79d4b58d04d31c13e0c220f3db0cb07c4e2bd992/docs/DOMAIN-CONTRACTS-IMPLEMENTATION-SPEC.md)
+segue `DRAFT_FOR_HUMAN_REVIEW — NOT AUTHORIZED FOR IMPLEMENTATION`, com decisões
+abertas. O README do Forge nesse commit ainda usa “Game Asset Studio” e descreve
+somente as fatias de conceito ComfyUI e spritesheet Blender; sua redação não é
+prova de que as capacidades propostas já funcionem. Confirmar novamente o
+commit e o contrato **aprovado** antes de desenhar transporte ou mapear schemas.
+
+A fronteira de responsabilidades abaixo é uma **decisão do Dev**; a passagem
+Studio ↔ Forge continua proposta, não integração existente, decisão de API ou
+teste de runtime.
 
 ## Papel de cada produto
 
-- **Lia Studio:** conduz a intenção do jogo (Brief/GDD, hipótese de loop, escopo), módulos e Tasks, revisão humana, catálogo de arquivos **já existentes**, QA de jogo e evidências separadas, gates, build e entrega. Mantém independência de ferramentas externas e de engine; a Alpha não produz jogo nem testa sua execução.
-- **Lia Forge:** ferramenta **autônoma e opcional** de *produção de assets*. A visão declarada é a pessoa escolher brief/referências, tipo, saída e ponto de entrada e, após iniciar explicitamente, a ferramenta coordenar adapters até entregar artefatos. A visão inclui permitir retomada de arquivos existentes sem recriar etapas anteriores; agentes são opcionais. O Forge não decide o gameplay, nem aprova uma Task ou gate do Studio.
-- **Engine e Dev:** importam/inspecionam os assets no **jogo real** e decidem qualidade visual, rig/movimento, licença, adequação ao GDD e aceite. Um PNG íntegro não prova jogabilidade, compatibilidade de engine ou direito de uso.
+- **Lia Studio — gestor do jogo:** conduz intenção (Brief/GDD, hipótese de loop, escopo), referências, prioridades e decisões; módulos, Tasks, dependências e aprovações; agentes/Skills e permissões para trabalho **do jogo**; integração na engine, QA/playtest, evidências, gates, build, release, Sessions e handoffs. Seu catálogo registra arquivos **já existentes** para o projeto, não executa workflows de produção de mídia. A Alpha ainda não produz jogo nem testa sua execução.
+- **Lia Forge — fábrica geral de assets:** responde pela produção, edição, transformação, comparação de workflows/providers, validação **técnica** dos arquivos, proveniência e exportação, com escolha e consentimento da pessoa. Isso inclui, como visão e rotas sujeitas a implementação, conceitos, peças de personagens 2D/2.5D/3D, camadas, rig/animação, cenários, texturas, materiais e spritesheets. Atende jogos, Lia Desktop, avatares e outros destinos **sem duplicar a geração por consumidor**. O Forge não decide gameplay, não integra na engine e não aprova Task, QA, build ou release do Studio; capacidades propostas não são entregas demonstradas.
+- **Consumidor e pessoa:** o jogo (via Studio) ou a Lia Desktop recebem/integram explicitamente os arquivos que lhes interessam. A pessoa avalia qualidade criativa, direitos e adequação ao destino; o consumidor verifica comportamento no seu próprio contexto. Validação técnica do Forge, hash íntegro ou aprovação artística do asset **não** provam compatibilidade na engine, gameplay ou direito comercial. O Studio só participa de assets da Lia Desktop se forem usados também em um projeto de jogo seu.
+
+### Fronteira direta, sem duplicação
+
+| Atividade | Responsável | Limite |
+|---|---|---|
+| Conceito, requisitos, GDD, Tasks e gates de um jogo | Studio + Dev | Forge recebe somente o brief de asset autorizado, não o projeto inteiro. |
+| Catálogo de ferramentas/modelos para asset, produção, transformação, validação técnica e proveniência | Forge + Dev | Ferramentas/providers/workflows internos do Forge não viram componentes do Studio. |
+| Destino de uso: jogo, personagem da Lia Desktop ou outro | Consumidor correspondente | Não criar linha de produção separada para cada destino; adaptar requisitos/formatos de entrega. |
+| Registro no projeto, import na engine, playtest, QA e release do jogo | Studio + Dev | Resultado `complete` no Forge não conclui Task nem aprova gate do jogo. |
+| Aprovação criativa e autorização de custo, direitos e envio de dados | Pessoa | Cada app mantém seus próprios estados, permissões e consentimentos. |
+
+Um mesmo asset pode ter múltiplos destinos de uso sem duplicar identidade ou
+origem no Forge. Cada consumidor ainda precisa declarar requisitos próprios e
+validar **a sua integração**; reutilização não é aprovação automática. Nem o
+catálogo/manifesto do Forge nem o `assets.json` do Studio substituem um ao outro.
+
+### Dois pedidos, a mesma fábrica
+
+- **Personagem do jogo:** Studio define papel, estilo, critérios e Task; Dev
+  revisa o brief; Forge produz arquivos e proveniência conforme capacidades
+  realmente disponíveis; Studio/Dev importam na engine e testam animação e
+  gameplay antes do aceite da Task.
+- **Personagem da Lia Desktop:** Lia Desktop/Dev definem expressões, roupas,
+  camadas, requisitos de performance e formatos de consumo; Forge produz e
+  valida tecnicamente os arquivos; Lia Desktop/Dev integram e testam a
+  apresentação. Studio **não** participa desse fluxo, a menos que o asset
+  também seja solicitado para um jogo. PSD/Live2D/VRM/GLB são capacidades a
+  verificar por ferramenta/versão, não suporte presumido.
+
+Ambos usam a mesma identidade/proveniência de asset no Forge, com destinos
+consumidores distintos; não se cria um `GameForge` ou `DesktopForge` paralelo.
+ArtCraft ou outra ferramenta de criação, se avaliada no futuro, pertence ao
+catálogo/experimentos do **Forge**, não à arquitetura de providers do Studio.
+O método de iteração jogável observado no Manus pode informar a UX de
+**desenvolvimento do jogo** no Studio, sem torná-lo produtor de assets nem
+copiar tooling interno de terceiros.
 
 ## Onde entra em cada fase do Studio
 
@@ -32,7 +89,11 @@ commit e contrato antes de implementar.
 | **Produção** | Tasks, priorização, catálogo, integração na engine, QA e revisão. | Produzir/retomar modelos, rig/clips e atlases por etapas; devolver arquivo(s), manifesto e limites para inspeção. O Studio registra caminho, hash dos bytes locais e procedência declarada, sem copiar os bytes ou recriar o renderer. | Etapa concluída no Forge não equivale a asset aprovado, rig correto, licença verificada ou import validado no Studio. |
 | **Finalização** | Build, licenças/créditos, testes em plataforma-alvo, decisão humana de entrega. | Artefatos e relato de procedência para a checklist de assets, se houver. | Build do Forge, hashes e previews não validam build/release do jogo. |
 
-## Estado observado na branch consultada (não a visão-alvo)
+## Estado observado no snapshot histórico `f274b015` (não a visão-alvo)
+
+Esta tabela conserva a auditoria técnica daquele commit; a proposta mais recente
+`79d4b58` **expande o escopo arquitetural**, mas não reclassifica automaticamente
+nenhum item abaixo como implementado ou testado.
 
 | Área | Código/documento presente | Limite e nível de evidência |
 |---|---|---|
@@ -68,6 +129,14 @@ implementa só a passagem manual **Studio → pessoa → Forge**, não o retorno
 automático nem as demais condições da integração de ponta a ponta abaixo.
 
 ## Futuro contrato de passagem Studio ↔ Forge (bridge ainda a decidir)
+
+A especificação Domain Contracts do Forge não é um protocolo Studio ↔ Forge:
+seus records e nomes concretos seguem em revisão humana. Não transportar os
+JSONs internos do Forge diretamente para o Studio, nem construir aqui um schema
+que antecipe essa aprovação. A passagem precisa de envelope mínimo, tipado e
+versionado **entre produtos**, com consentimento, origem e estados independentes,
+negociado somente após decisão explícita. Forge responde pela ferramenta e pelo
+workflow de produção; Studio não seleciona seus providers internos.
 
 1. **Abrir sob escolha, nunca exigir:** o Studio continua utilizável sem Forge. O Dev escolhe o projeto e inicia a tarefa de asset; não conectar agentes, MCP, GPU, pesos, pagamentos ou uploads por inferência do nome do ecossistema. A prévia de brief **já é local e copiável manualmente**; exportação com persistência, envio e retorno automatizado seguem pendentes de contrato, antes de qualquer bridge/processo/API.
 2. **Raízes diferentes, arquivos reais:** Forge mantém `.spriteforge/` no workspace que a pessoa escolher (`SPRITEFORGE_PROJECT_ROOT` pode apontar para o projeto do jogo); Studio guarda seus próprios Markdown/JSON sob a pasta do projeto. Seu `assets.json` e `.spriteforge/assets.json` têm **schemas e donos distintos**; o Forge não escreve o índice, gates, `qa.json` ou `assets.json` do Studio, e o Studio não reescreve o manifesto do Forge. Se os arquivos forem gerados fora da pasta do projeto Studio, pedir ao Dev cópia/importação explícita, com conflito de nome e licença revisados; não usar symlinks externos nem paths absolutos para contornar a contenção.
