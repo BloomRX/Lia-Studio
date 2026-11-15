@@ -66,7 +66,7 @@ function navigate(event) {
   if (first === "recovery") { setShellSpace("recovery", "Dados locais"); return renderRecovery(); }
   if (first === "project" && rest[0]) {
     setShellSpace("project", "Workspace de projeto");
-    return renderProject(rest[0], rest[1] || "stage", rest[2]);
+    return renderProject(rest[0], rest[1] || "stage", rest[2], rest.slice(3));
   }
   return renderHome();
 }
@@ -278,6 +278,7 @@ const SECTIONS = [
   ["gameplay-loop", "Loop do jogo"],
   ["handoff", "Handoff"],
   ["execute", "Execução"],
+  ["runs", "Histórico de execuções"],
   ["assets", "Assets"],
   ["qa", "QA / Playtest"],
   ["evidence", "Evidências"],
@@ -308,7 +309,7 @@ function togglePanel(which) {
   }
 }
 
-async function renderProject(pid, section, visualStage) {
+async function renderProject(pid, section, visualStage, historySelection = []) {
   const current = beginRender();
   let data;
   try { data = await api("GET", `/api/projects/${pid}`); }
@@ -351,7 +352,8 @@ async function renderProject(pid, section, visualStage) {
   else if (section === "plan") content = await projectPlan(pid, data);
   else if (section === "gameplay-loop") content = await projectGameplayLoop(pid, data);
   else if (section === "handoff") content = await projectHandoff(pid, data);
-  else if (section === "execute") content = await projectExecute(pid, data);
+  else if (section === "execute") content = projectExecute(pid, data, selectedStage);
+  else if (section === "runs") content = await projectRunHistory(pid, data, selectedStage, historySelection);
   else if (section === "qa") {
     try { data.slice_review = await api("GET", `/api/projects/${pid}/vertical-slice`); }
     catch (e) { data.slice_error = e.message; }
@@ -402,6 +404,7 @@ async function renderProject(pid, section, visualStage) {
   if (section === "gameplay-loop") wireGameplayLoop(pid, data);
   if (section === "handoff") wireHandoff(pid, data.modules, data.resume?.handoff);
   if (section === "execute") wireExecute(pid, data.modules);
+  if (section === "runs") wireRunHistory(pid, selectedStage, historySelection, current);
   if (section === "qa") wireQa(pid, data.slice_review);
   if (section === "assets") wireAssets(pid, data);
   if (section === "evidence") wireEvidence(pid);
@@ -934,8 +937,207 @@ function wireHandoff(pid, modules, existing = {}) {
   };
 }
 
+
+/* ----- persistent execution history ----- */
+const RUN_STATUS = new Map([
+  ["running", "Em andamento"], ["completed", "Concluída"], ["failed", "Falhou"],
+  ["cancelled", "Cancelada"], ["cancellation_pending", "Cancelamento solicitado"],
+  ["interrupted", "Interrompida; desfecho desconhecido"],
+]);
+const RUN_VALIDATION = new Map([
+  ["passed", "Verificação passou"], ["failed", "Verificação falhou"],
+  ["not_run", "Sem resultado de validação"],
+]);
+const RUN_RESULT = new Map([
+  ["syntax_ok", "Sintaxe válida"], ["syntax_error", "Erro de sintaxe"],
+  ["timeout", "Tempo limite excedido"], ["process_error", "Falha do processo"],
+  ["cancelled", "Cancelamento confirmado"],
+]);
+const RUN_INTEGRITY = new Map([
+  ["intact", "Hash confere"], ["changed", "Arquivo alterado"], ["unavailable", "Arquivo indisponível"],
+]);
+const RUN_EVIDENCE_KIND = new Map([["file", "Arquivo"], ["log", "Log"], ["screenshot", "Captura de tela"]]);
+const RUN_REVIEW_DECISION = new Map([
+  ["needs_review", "Necessita revisão"], ["approved", "Aprovado na revisão humana"], ["rejected", "Rejeitado na revisão humana"],
+]);
+
+function historyLink(pid, stage, ...selection) {
+  return `#/project/${encodeURIComponent(pid)}/runs/${stage}${selection.length ? "/" + selection.map(encodeURIComponent).join("/") : ""}`;
+}
+
+function runType(kind) {
+  return kind === "python-ast" ? "Análise sintática Python" : kind;
+}
+
+function historyTaskLabels(modules) {
+  return new Map((modules || []).flatMap(module => (module.tasks || []).map(task =>
+    [`${module.id}/${task.id}`, task.name])));
+}
+
+async function projectRunHistory(pid, data, stage, selection) {
+  const heading = '<h1>Histórico de execuções</h1>';
+  const base = `/api/projects/${encodeURIComponent(pid)}/runs`;
+  const [mode, first, second] = selection;
+  try {
+    if (mode === "run" && first) {
+      const detail = await api("GET", `${base}/${encodeURIComponent(first)}`);
+      return heading + runDetails(pid, data, stage, detail);
+    }
+    const { runs } = await api("GET", base);
+    const labels = historyTaskLabels(data.modules);
+    const taskKey = mode === "task" && first && second ? `${first}/${second}` : "";
+    for (const run of runs) {
+      const key = `${run.module_id}/${run.task_id}`;
+      if (!labels.has(key)) labels.set(key, `Task ${run.task_id}`);
+    }
+    if (taskKey && !labels.has(taskKey)) labels.set(taskKey, `Task ${second}`);
+    const rows = runs.filter(run => !taskKey || `${run.module_id}/${run.task_id}` === taskKey);
+    return `${heading}
+      <p>As execuções reais aparecem aqui. As simulações continuam em <a href="#/project/${esc(pid)}/execute/${stage}">Execução</a>.</p>
+      <label for="history-task">Filtrar por Task</label>
+      <select id="history-task"><option value="">Todas as Tasks</option>${[...labels].map(([key, label]) =>
+        `<option value="${esc(key)}"${key === taskKey ? " selected" : ""}>${esc(label)} (${esc(key)})</option>`).join("")}</select>
+      ${rows.length ? `<ul class="clean history-list">${rows.map(run => `<li class="card">
+        <strong>${esc(runType(run.kind))}</strong> ${pill(RUN_STATUS.get(run.status) || run.status)}
+        <div>${esc(labels.get(`${run.module_id}/${run.task_id}`))} · <code>${esc(run.id)}</code></div>
+        <div class="muted">${esc(run.started_at)}${run.finished_at ? " → " + esc(run.finished_at) : ""}</div>
+        <a href="${esc(historyLink(pid, stage, "run", run.id))}">Abrir detalhes <span class="muted">(${esc(run.id)})</span></a>
+      </li>`).join("")}</ul>` : '<p class="empty">Nenhuma execução neste filtro.</p>'}`;
+  } catch (e) {
+    return `${heading}<div class="banner danger" role="alert">Não foi possível consultar o histórico. ${esc(e.message)}</div>
+      <button id="history-retry" type="button" class="ghost">Tentar novamente</button>`;
+  }
+}
+
+function runEvidenceList(evidence) {
+  return evidence.length ? `<ul class="clean history-list">${evidence.map(item => `<li class="card">
+    <strong>${esc(RUN_EVIDENCE_KIND.get(item.kind) || item.kind)}</strong> ${pill(RUN_INTEGRITY.get(item.integrity) || item.integrity)}
+    <dl class="history-fields">
+      <dt>Registro</dt><dd><code>${esc(item.id)}</code></dd>
+      <dt>Arquivo</dt><dd><code>${esc(item.path)}</code></dd>
+      <dt>Origem</dt><dd>${esc(item.origin === "python-ast-input" ? "Entrada lida pelo parser Python" :
+        item.origin === "manual_local_file" ? "Arquivo local registrado manualmente" : item.origin)}</dd>
+      <dt>SHA-256 registrado</dt><dd><code>${esc(item.sha256)}</code></dd>
+      <dt>Tamanho registrado</dt><dd>${esc(item.bytes)} bytes</dd>
+      <dt>Data do registro</dt><dd>${esc(item.recorded_at)}</dd>
+    </dl>
+  </li>`).join("")}</ul>` : '<p class="empty">Nenhuma evidência registrada.</p>';
+}
+
+function runReviewList(reviews) {
+  return reviews.length ? `<ol class="clean history-list">${[...reviews].reverse().map(review => `<li class="card">
+    ${pill(RUN_REVIEW_DECISION.get(review.decision) || review.decision)}
+    <p>${esc(review.reviewer)} · ${esc(review.recorded_at)} · <code>${esc(review.id)}</code></p>
+    <p class="history-note">${esc(review.comment)}</p>
+    ${review.supersedes ? `<p class="muted">Revisão anterior <code>${esc(review.supersedes)}</code></p>` : ""}
+    ${review.evidence_ids?.length ? `<p class="muted">Evidências na revisão ${review.evidence_ids.map(id => `<code>${esc(id)}</code>`).join(", ")}</p>` : ""}
+  </li>`).join("")}</ol>` : '<p class="empty">Nenhuma revisão humana registrada.</p>';
+}
+
+function runDetails(pid, data, stage, {run, evidence, reviews}) {
+  const taskLabel = historyTaskLabels(data.modules).get(`${run.module_id}/${run.task_id}`) || run.task_id;
+  const allowWrite = Boolean(run.finished_at) && !data.entry.archived;
+  return `<a href="${esc(historyLink(pid, stage, "task", run.module_id, run.task_id))}">← Execuções desta Task</a>
+    <section class="card history-list">
+      <h2>${esc(runType(run.kind))}</h2>
+      <dl class="history-fields">
+        <dt>Execução</dt><dd><code>${esc(run.id)}</code></dd>
+        <dt>Task</dt><dd>${esc(taskLabel)} · <code>${esc(run.task_id)}</code></dd>
+        <dt>Estado da execução</dt><dd>${pill(RUN_STATUS.get(run.status) || run.status)}</dd>
+        <dt>Início</dt><dd>${esc(run.started_at)}</dd>
+        <dt>Término</dt><dd>${esc(run.finished_at || "Sem término registrado")}</dd>
+        <dt>Validação automática</dt><dd>${esc(RUN_VALIDATION.get(run.result?.validation_status) || "Sem resultado de validação")}</dd>
+        <dt>Resultado registrado</dt><dd>${esc(RUN_RESULT.get(run.result?.code) || run.result?.code || "Sem resultado registrado")}</dd>
+      </dl>
+      ${run.kind === "python-ast" ? '<p class="muted">O parser analisa a sintaxe do arquivo Python. O jogo não foi executado.</p>' : ""}
+    </section>
+    <h2>Evidências vinculadas</h2>
+    <p>Os hashes permitem conferir se o arquivo atual corresponde ao registro da execução.</p>
+    <div id="history-evidence-list">${runEvidenceList(evidence)}</div>
+    ${allowWrite ? `<form class="card history-form" id="history-evidence">
+      <h3>Vincular arquivo de evidência</h3>
+      <fieldset>
+        <label for="history-path">Caminho relativo dentro do projeto</label>
+        <input id="history-path" name="path" maxlength="240" required placeholder="qa/saida.log" />
+        <label for="history-kind">Tipo de evidência</label>
+        <select id="history-kind" name="kind">${[...RUN_EVIDENCE_KIND].map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}</select>
+        <button type="submit">Registrar evidência</button>
+      </fieldset>
+      <p role="status"></p>
+    </form>` : ""}
+    <h2>Revisão humana</h2>
+    <p>A decisão se aplica a esta execução. Cada revisão fica no histórico. Esta revisão não aprova a Task nem avança o projeto.</p>
+    <div id="history-review-list">${runReviewList(reviews)}</div>
+    ${allowWrite ? `<form class="card history-form" id="history-review">
+      <h3>Registrar revisão</h3>
+      <fieldset>
+        <label for="history-reviewer">Responsável (nome declarado)</label>
+        <input id="history-reviewer" name="reviewer" maxlength="120" required />
+        <label for="history-decision">Decisão</label>
+        <select id="history-decision" name="decision">${[...RUN_REVIEW_DECISION].map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}</select>
+        <label for="history-comment">Comentário</label>
+        <textarea id="history-comment" name="comment" maxlength="4000" required></textarea>
+        <button type="submit">Salvar revisão humana</button>
+      </fieldset>
+      <p role="status"></p>
+    </form>` : ""}`;
+}
+
+function wireRunHistory(pid, stage, selection, current) {
+  const retry = document.getElementById("history-retry");
+  if (retry) retry.onclick = () => renderProject(pid, "runs", stage, selection);
+  const filter = document.getElementById("history-task");
+  if (filter) filter.onchange = () => {
+    const task = filter.value ? ["task", ...filter.value.split("/")] : [];
+    location.hash = historyLink(pid, stage, ...task);
+  };
+  const [mode, id] = selection;
+  if (mode !== "run" || !id) return;
+  const base = `/api/projects/${encodeURIComponent(pid)}/runs/${encodeURIComponent(id)}`;
+  const forms = [
+    ["history-evidence", "evidence", ["path", "kind"], "Evidência registrada."],
+    ["history-review", "reviews", ["reviewer", "decision", "comment"], "Revisão registrada."],
+  ];
+  let submitting = false;
+  for (const [formId, endpoint, fields, message] of forms) {
+    const form = document.getElementById(formId);
+    if (!form) continue;
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const controls = form.querySelector("fieldset");
+      if (submitting || !current()) return;
+      const status = form.querySelector("[role=status]");
+      const payload = Object.fromEntries(fields.map(field => [field, form.elements.namedItem(field).value.trim()]));
+      if (fields.some(field => !payload[field])) {
+        status.textContent = "Preencha todos os campos.";
+        return;
+      }
+      submitting = controls.disabled = true;
+      status.textContent = "Salvando…";
+      try {
+        await api("POST", `${base}/${endpoint}`, payload);
+        if (!current()) return;
+        form.reset();
+        status.textContent = message;
+        try {
+          const { evidence, reviews } = await api("GET", base);
+          if (!current()) return;
+          document.getElementById("history-evidence-list").innerHTML = runEvidenceList(evidence);
+          document.getElementById("history-review-list").innerHTML = runReviewList(reviews);
+        } catch (e) {
+          status.textContent = message + " Reabra o histórico para atualizar a lista.";
+        }
+      } catch (e) {
+        status.textContent = "Não foi possível registrar. " + e.message;
+      } finally {
+        submitting = controls.disabled = false;
+      }
+    };
+  }
+}
+
 /* ----- execute ----- */
-function projectExecute(pid, data) {
+function projectExecute(pid, data, stage = "preparation") {
   const modules = data.modules || [];
   const policy = data.runtime_policy || {revision:"", project:{allow:[],deny:[]}, tasks:{},capabilities:{}};
   const caps = Object.entries(policy.capabilities || {});
@@ -961,6 +1163,7 @@ function projectExecute(pid, data) {
       <div><b>Objetivo:</b> ${esc(t.objective||"—")}</div>
       <div><b>Verificar:</b> ${esc(t.verify||"—")}</div>
       <div class="row" style="margin-top:10px">
+        <a class="btn small" href="${esc(historyLink(pid, stage, "task", m.id, t.id))}">Histórico da Task</a>
         <button onclick="previewTask('${esc(pid)}','${m.id}','${t.id}')">Ver proposta</button>
         <button id="approve-${esc(t.id)}" disabled onclick="execTask('${esc(pid)}','${m.id}','${t.id}')">Aprovar e simular</button>
       </div>

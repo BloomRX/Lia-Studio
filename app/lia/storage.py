@@ -342,6 +342,17 @@ class Storage:
         if touch:
             self._touch(project_id)
 
+    def write_history(self, project_id: str, name: str, data: Any) -> None:
+        """Persiste histórico sem escritas adicionais no índice de projetos."""
+        with self.stage_lock:
+            try:
+                self.write_structured(project_id, name, data, touch=False)
+            except OSError:
+                # A cópia inicial pode falhar depois da troca do arquivo principal.
+                # Confira o commit antes de sugerir que o usuário repita a operação.
+                if self.read_structured(project_id, name) != data:
+                    raise
+
     # ---- configuração global do app (nível da raiz de projetos) ----
     def read_structured_global(self, name: str) -> Any:
         if name not in GLOBAL_FILES:

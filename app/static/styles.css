@@ -424,3 +424,19 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
 .task-editor textarea { min-height: 64px; }
 .task-editor [role=status] { margin-inline-start: 8px; }
 .task-editor summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+
+
+.history-list > .card, .history-form, .card.history-list { margin-block: 10px; }
+.history-list, .history-fields { overflow-wrap: anywhere; }
+.history-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 14px; }
+.history-fields dt { color: var(--muted); }
+.history-fields dd { margin: 0; }
+.history-note { white-space: pre-wrap; }
+.history-form fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.history-form textarea { min-height: 90px; }
+.history-form button { margin-top: 12px; }
+.history-form [role=status]:empty { margin: 0; }
+@media (max-width: 640px) {
+  .history-fields { grid-template-columns: minmax(0, 1fr); }
+  .history-fields dd { margin-bottom: 6px; }
+}

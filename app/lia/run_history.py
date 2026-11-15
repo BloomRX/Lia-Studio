@@ -1,9 +1,11 @@
 """Histórico de execuções reais e avaliações humanas, sem alterar Tasks ou gates."""
 from __future__ import annotations
 
+import hashlib
 import stat
 import uuid
 from datetime import datetime, timezone
+from pathlib import PurePosixPath
 
 from . import evidence, validation_sessions
 from .storage import MARKDOWN_DOCS, STRUCTURED_FILES, StorageError
@@ -107,8 +109,10 @@ def _run_context(storage, pid, run_id):
         return runs[run_id], _events(storage, pid, runs)
 
 
-def _hash(storage, pid, path):
-    relative = _relative_path(path)
+def _hash(storage, pid, path, *, source=False):
+    if source and not validation_sessions._safe_path(path):
+        raise StorageError("caminho de entrada sintática inválido")
+    relative = PurePosixPath(path) if source else _relative_path(path)
     candidate = storage.project_path(pid)
     try:
         paths = [*reversed(candidate.parents), candidate]
@@ -119,6 +123,9 @@ def _hash(storage, pid, path):
             info = item.lstat()
             if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
                 raise StorageError("links e pontos de redirecionamento não são permitidos como evidência")
+        if source:
+            data = validation_sessions._source(storage, pid, path)
+            return hashlib.sha256(data).hexdigest(), len(data)
         return evidence._hash_file(evidence._file(storage, pid, path))
     except OSError as exc:
         raise StorageError("arquivo de evidência ausente ou inacessível") from exc
@@ -126,7 +133,7 @@ def _hash(storage, pid, path):
 
 def _with_integrity(storage, pid, record):
     try:
-        digest, size = _hash(storage, pid, record["path"])
+        digest, size = _hash(storage, pid, record["path"], source=record["origin"] == "python-ast-input")
         integrity = "intact" if (digest, size) == (record["sha256"], record["bytes"]) else "changed"
     except StorageError:
         integrity = "unavailable"
@@ -169,13 +176,7 @@ def _append(storage, pid, run_id, event_type, data):
             ])
         events.append(event)
         validate_entries(events)
-        try:
-            storage.write_structured(pid, NAME, events, touch=False)
-        except OSError:
-            # A primeira gravação cria o backup depois de trocar o arquivo principal.
-            # Se a troca já ocorreu, não induzir o usuário a repetir o evento.
-            if storage.read_structured(pid, NAME) != events:
-                raise
+        storage.write_history(pid, NAME, events)
     return event
 
 

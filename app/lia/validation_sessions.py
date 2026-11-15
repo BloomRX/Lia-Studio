@@ -186,7 +186,7 @@ def run_syntax_check(storage: Storage, project_id: str, module_id: str,
                   "validation_status": "not_run", "result_code": "none", "simulated": False,
                   "verified_result": False, "started_at": _now(), "finished_at": None}
         records.append(record)
-        storage.write_structured(project_id, NAME, records)
+        storage.write_history(project_id, NAME, records)
         with _process_lock:
             _active_runs.add((project_id, sid))
 
@@ -232,7 +232,7 @@ def run_syntax_check(storage: Storage, project_id: str, module_id: str,
             current.update(state=state, validation_status=OUTCOMES[state][0],
                            result_code=OUTCOMES[state][1], finished_at=_now())
             validate_entries(records, expected_project_id=project_id)
-            storage.write_structured(project_id, NAME, records)
+            storage.write_history(project_id, NAME, records)
             return {**current, "display_state": state}
 
     finally:
@@ -256,7 +256,7 @@ def request_cancel(storage: Storage, project_id: str, session_id: str, confirmed
             _cancel_requests.add((project_id, session_id))
         record.update(state="cancellation_pending", result_code="cancel_requested")
         try:
-            storage.write_structured(project_id, NAME, records)
+            storage.write_history(project_id, NAME, records)
         except Exception:
             with _process_lock:
                 _cancel_requests.discard((project_id, session_id))

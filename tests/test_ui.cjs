@@ -937,5 +937,80 @@ assert.equal(reloads, 1);
   assert.equal(loopRequests.at(-1).url,'/api/projects/project-1/bootstrap');
   assert.equal(JSON.parse(loopRequests.at(-1).options.body).answers.origin,'brincar de mapas');
   context.location.hash=oldHash;
+
+  // New execution history is backed by the project API, with scoped routes and independent records.
+  const historyData = { entry: {archived:false}, modules: [{id:'m', tasks:[{id:'t', name:'<Task>'}]}] };
+  const run = {id:'run-1', module_id:'m', task_id:'t', kind:'python-ast', status:'completed',
+    started_at:'2026-11-15T12:00:00Z', finished_at:'2026-11-15T12:01:00Z',
+    result:{code:'syntax_ok', validation_status:'passed'}};
+  const runDetail = {
+    run,
+    evidence:[{id:'evidence-1', path:'<screenshot>.png', kind:'screenshot', origin:'manual_local_file',
+      sha256:'a'.repeat(64), bytes:128, integrity:'unavailable', recorded_at:'2026-11-15T12:02:00Z'}],
+    reviews:[{id:'review-1', decision:'rejected', reviewer:'Dev', comment:'<observação>', recorded_at:'2026-11-15T12:03:00Z'},
+      {id:'review-2', decision:'approved', reviewer:'Dev 2', comment:'Reavaliado', recorded_at:'2026-11-15T12:04:00Z',
+        supersedes:'review-1', evidence_ids:['evidence-1']}],
+  };
+  const runRequests = [];
+  const runHost = '/api/projects/project-1/runs';
+  context.fetch = async (url, options) => {
+    runRequests.push({url, options});
+    if (url === runHost) return {ok:true, json:async () => ({runs:[{...run, id:'elsewhere', task_id:'other'}, run]})};
+    if (url === runHost+'/run-1') return {ok:true, json:async () => runDetail};
+    if (url.endsWith('/not-found')) return {ok:false, json:async () => ({error:'<Inexistente>'})};
+    if (url.endsWith('/reviews')) return {ok:true, json:async () => ({id:'review-3'})};
+    return {ok:false, json:async () => ({error:'Arquivo ausente'})};
+  };
+  const runListHtml = await context.projectRunHistory('project-1', historyData, 'mvp', ['task','m','t']);
+  assert.match(runListHtml, /&lt;Task&gt;/);
+  assert.match(runListHtml, /\/runs\/mvp\/run\/run-1/);
+  assert.doesNotMatch(runListHtml, /elsewhere/);
+  const allRunsHtml = await context.projectRunHistory('project-1', historyData, 'mvp', []);
+  assert.ok(allRunsHtml.indexOf('<code>elsewhere</code>') < allRunsHtml.indexOf('<code>run-1</code>'));
+  const runDetailsHtml = await context.projectRunHistory('project-1', historyData, 'mvp', ['run','run-1']);
+  assert.match(runDetailsHtml, /Sintaxe válida/);
+  assert.match(runDetailsHtml, /Arquivo indisponível/);
+  assert.match(runDetailsHtml, /&lt;screenshot&gt;\.png/);
+  assert.match(runDetailsHtml, /&lt;observação&gt;/);
+  assert.match(runDetailsHtml, /Revisão anterior <code>review-1<\/code>/);
+  assert.match(runDetailsHtml, /Evidências na revisão <code>evidence-1<\/code>/);
+  assert.match(runDetailsHtml, /id="history-review"/);
+  assert.doesNotMatch(context.runDetails('project-1', historyData, 'mvp',
+    {...runDetail, run:{...run, status:'interrupted', finished_at:null, result:null}}), /id="history-review"/);
+  const missingRun = await context.projectRunHistory('project-1', historyData, 'mvp', ['run','not-found']);
+  assert.match(missingRun, /role="alert".*&lt;Inexistente&gt;/);
+
+  function historyForm(fields) {
+    const status = {};
+    const controls = {};
+    return {status, controls, resets:0, reset() { this.resets++; },
+      querySelector: selector => selector === '[role=status]' ? status : controls,
+      elements:{namedItem:key => ({value:fields[key]})},
+    };
+  }
+  const reviewForm = historyForm({reviewer:'Dev', decision:'needs_review', comment:'Rever'});
+  const evidenceForm = historyForm({path:'qa/ausente.log', kind:'log'});
+  const reviewList = {}, evidenceList = {};
+  context.document.getElementById = id => ({
+    'history-review':reviewForm, 'history-evidence':evidenceForm,
+    'history-review-list':reviewList, 'history-evidence-list':evidenceList,
+  })[id] ?? originalGet(id);
+  context.wireRunHistory('project-1', 'mvp', ['run','run-1'], () => true);
+  await evidenceForm.onsubmit({preventDefault() {}});
+  assert.match(evidenceForm.status.textContent, /Arquivo ausente/);
+  assert.equal(evidenceForm.controls.disabled, false);
+  assert.equal(evidenceForm.resets, 0);
+  const reviewing = reviewForm.onsubmit({preventDefault() {}});
+  await evidenceForm.onsubmit({preventDefault() {}});
+  await reviewing;
+  assert.equal(runRequests.at(-2).url, runHost+'/run-1/reviews');
+  assert.deepEqual(JSON.parse(runRequests.at(-2).options.body), {reviewer:'Dev', decision:'needs_review', comment:'Rever'});
+  assert.match(reviewForm.status.textContent, /Revisão registrada/);
+  assert.match(reviewList.innerHTML, /review-2/);
+  assert.match(evidenceList.innerHTML, /evidence-1/);
+  assert.equal(reviewForm.resets, 1);
+  assert.equal(evidenceForm.resets, 0);
+  context.document.getElementById = originalGet;
+  context.fetch = originalFetch;
   console.log('UI regression: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });

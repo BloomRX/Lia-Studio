@@ -71,6 +71,32 @@ class TestRunHistory(unittest.TestCase):
         log.unlink()
         self.assertEqual(run_history.run_detail(restarted, self.pid, rid)["evidence"][1]["integrity"], "unavailable")
 
+    def test_parser_input_uses_its_own_path_contract(self):
+        folder = self.folder / ".scripts"
+        folder.mkdir()
+        (folder / "check.py").write_bytes(b"pass")
+        planning.update_task(self.store, self.pid, self.mid, self.tid, {"files": [".scripts/check.py"]})
+        record = validation_sessions.run_syntax_check(self.store, self.pid, self.mid, self.tid,
+                                                     ".scripts/check.py", True)
+        detail = run_history.run_detail(self.store, self.pid, record["id"])
+        self.assertEqual(detail["evidence"][0]["integrity"], "intact")
+
+    def test_parser_finishes_after_first_backup_failure(self):
+        real_write = storage.Storage._atomic_write
+        failed = False
+
+        def fail_first_backup(path, content):
+            nonlocal failed
+            if path.name == validation_sessions.NAME + ".bak" and not failed:
+                failed = True
+                raise OSError("falha ao copiar o primeiro registro")
+            real_write(path, content)
+
+        with patch.object(self.store, "_atomic_write", side_effect=fail_first_backup):
+            first = self.execute_run()
+        self.assertTrue(failed)
+        self.assertEqual(run_history.run_detail(self.store, self.pid, first)["run"]["status"], "completed")
+
     def test_rejects_missing_run_outside_path_and_internal_file(self):
         rid = self.execute_run()
         for path in ("../outside.txt", "unknown.log", ".env", "validation_sessions.json", "run_history.json.bak"):
