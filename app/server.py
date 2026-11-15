@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -235,6 +235,15 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         if set(body) != {"proposal_id", "confirm"}:
             raise StorageError("envie proposta e confirmação")
         return code_drafts.apply(storage, pid, body["proposal_id"], body["confirm"]), 201
+    if method == "GET" and sub == ["runs"]:
+        return {"runs": run_history.list_runs(storage, pid)}
+    if method == "GET" and len(sub) == 2 and sub[0] == "runs":
+        return run_history.run_detail(storage, pid, sub[1])
+    if method == "POST" and len(sub) == 3 and sub[0] == "runs":
+        if sub[2] == "evidence":
+            return run_history.register_evidence(storage, pid, sub[1], body), 201
+        if sub[2] == "reviews":
+            return run_history.add_review(storage, pid, sub[1], body), 201
     if method == "GET" and sub == ["validation-sessions"]:
         return {"sessions": validation_sessions.list_sessions(storage, pid)}
     if method == "POST" and len(sub) == 3 and sub[0] == "validation-sessions" and sub[2] == "cancel":

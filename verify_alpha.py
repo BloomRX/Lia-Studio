@@ -66,6 +66,7 @@ CHECKS = {
     "chat": ("Chat serviço local opt-in com serviço falso", [sys.executable, "tests/test_local_model_chat.py"]),
     "drafts": ("Edição de código com diff, aceite e backup", [sys.executable, "tests/test_code_drafts.py"]),
     "draft_jobs": ("Jobs canceláveis de inferência com HTTP falso", [sys.executable, "tests/test_draft_jobs.py"]),
+    "run_history": ("Histórico persistente de execuções", [sys.executable, "tests/test_run_history.py"]),
     "integration": ("Fluxo HTTP integrado sem promover gates", [sys.executable, "tests/test_integrated_flow.py"]),
     "assets": ("Assets locais: metadados, integridade e API", [sys.executable, "tests/test_assets.py"]),
     "forge_brief": ("Brief manual Studio → Forge sem execução nem escrita", [sys.executable, "tests/test_forge_brief.py"]),
@@ -87,7 +88,7 @@ PARTS = (
     ("HTTP: jornada, documentos, evidências e provedores", ("core-5",)),
     ("HTTP: Sessions, recuperação e descoberta local", ("core-6",)),
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe", "engine_inspection")),
-    ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation")),
+    ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation", "run_history")),
     ("CLI/combo declarativo, serviço local falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "legacy_ids", "chat", "drafts", "draft_jobs")),
     ("Integração, desktop falso, compilação e UI", ("integration", "assets", "forge_brief", "gameplay_loop", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )

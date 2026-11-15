@@ -42,6 +42,7 @@ STRUCTURED_FILES = [
     "evidence.json",
     "sessions.json",
     "attempt_events.json",  # histórico opcional de tentativas, sem alterar Sessions simuladas
+    "run_history.json",  # evidências e revisões de execuções
     "validation_sessions.json",  # processos de análise sintática, separados da simulação
     "code_changes.json",  # alterações assistidas após diff e confirmação
     "draft_jobs.json",  # metadados de inferência local cancelável, sem prompts
@@ -92,7 +93,7 @@ def _decode_json(text: str, name: str) -> Any:
         if type(raw.get("schema_version")) is not int or raw["schema_version"] != SCHEMA_VERSION or "data" not in raw:
             raise StorageError(f"versão ou formato incompatível em {name}")
         raw = raw["data"]
-    expected = list if name in {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json"} else dict
+    expected = list if name in {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json", "run_history.json"} else dict
     if not isinstance(raw, expected):
         raise StorageError(f"estrutura inválida em {name} (esperado {expected.__name__})")
     return raw
@@ -302,7 +303,7 @@ class Storage:
         return sorted(p.name for p in proj_dir.glob("*.md") if p.is_file() and not p.is_symlink())
 
     # ---- dados estruturados ----
-    _LIST_FILES = {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json"}
+    _LIST_FILES = {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json", "run_history.json"}
 
     def read_structured(self, project_id: str, name: str) -> Any:
         if name not in STRUCTURED_FILES:
@@ -332,13 +333,14 @@ class Storage:
         elif backup.exists():
             raise StorageError(f"{name} ausente mas possui backup; recupere antes de gravar")
 
-    def write_structured(self, project_id: str, name: str, data: Any) -> None:
+    def write_structured(self, project_id: str, name: str, data: Any, *, touch: bool = True) -> None:
         if name not in STRUCTURED_FILES:
             raise StorageError(f"arquivo estruturado inválido: {name}")
         proj_dir = self.project_path(project_id)
         proj_dir.mkdir(parents=True, exist_ok=True)
         self._write_json(proj_dir / name, data)
-        self._touch(project_id)
+        if touch:
+            self._touch(project_id)
 
     # ---- configuração global do app (nível da raiz de projetos) ----
     def read_structured_global(self, name: str) -> Any:
@@ -407,6 +409,9 @@ class Storage:
         if path.name in ("attempt_events.json", "attempt_events.json.bak"):
             from . import attempt_history
             attempt_history.validate_entries(data, expected_project_id=project_id)
+        if path.name in ("run_history.json", "run_history.json.bak"):
+            from . import run_history
+            run_history.validate_entries(data)
         if path.name in ("validation_sessions.json", "validation_sessions.json.bak"):
             from . import validation_sessions
             validation_sessions.validate_entries(data, expected_project_id=project_id)

@@ -46,6 +46,7 @@ PARSER = ("import ast,sys\n"
 _process_lock = threading.RLock()
 _processes: Dict[tuple[str, str], subprocess.Popen] = {}
 _cancel_requests: set[tuple[str, str]] = set()
+_active_runs: set[tuple[str, str]] = set()
 
 
 def _now() -> str:
@@ -98,6 +99,11 @@ def _load(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
     return records
 
 
+def is_active(project_id: str, session_id: str) -> bool:
+    with _process_lock:
+        return (project_id, session_id) in _active_runs
+
+
 def list_sessions(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
     # A sessão running após reload é incerta, nunca aprovada nem retomada.
     records = _load(storage, project_id)
@@ -111,8 +117,7 @@ def list_sessions(storage: Storage, project_id: str) -> List[Dict[str, Any]]:
             integrity = "intact" if current_hash == r["sha256"] else "changed"
         except StorageError:
             integrity = "unavailable"
-        with _process_lock:
-            active = (project_id, r["id"]) in _processes
+        active = is_active(project_id, r["id"])
         if r["state"] == "cancellation_pending":
             display = "cancel_requested" if active else "interrupted_or_running"
         elif r["state"] == "running":
@@ -182,50 +187,57 @@ def run_syntax_check(storage: Storage, project_id: str, module_id: str,
                   "verified_result": False, "started_at": _now(), "finished_at": None}
         records.append(record)
         storage.write_structured(project_id, NAME, records)
+        with _process_lock:
+            _active_runs.add((project_id, sid))
 
-    proc = None
     try:
-        proc = subprocess.Popen([sys.executable, "-I", "-S", "-B", "-c", PARSER],
-                                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL)
-        with _process_lock:
-            _processes[(project_id, sid)] = proc
+        proc = None
         try:
-            proc.communicate(data, timeout=TIMEOUT)
+            proc = subprocess.Popen([sys.executable, "-I", "-S", "-B", "-c", PARSER],
+                                    stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL)
             with _process_lock:
-                cancelled = (project_id, sid) in _cancel_requests
-            if cancelled and proc.returncode != 0:
-                state = "cancelled"
-            else:
-                state = ("completed" if proc.returncode == 0 else
-                         "failed" if proc.returncode == 2 else "error")
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.communicate()
-            state = "timed_out"
-    except (OSError, ValueError):
-        state = "error"
-    finally:
-        if proc is not None and proc.poll() is None:
+                _processes[(project_id, sid)] = proc
             try:
+                proc.communicate(data, timeout=TIMEOUT)
+                with _process_lock:
+                    cancelled = (project_id, sid) in _cancel_requests
+                if cancelled and proc.returncode != 0:
+                    state = "cancelled"
+                else:
+                    state = ("completed" if proc.returncode == 0 else
+                             "failed" if proc.returncode == 2 else "error")
+            except subprocess.TimeoutExpired:
                 proc.kill()
-                proc.communicate(timeout=1)
-            except (OSError, subprocess.TimeoutExpired):
-                pass  # resultado incerto; o histórico running não vira sucesso
+                proc.communicate()
+                state = "timed_out"
+        except (OSError, ValueError):
+            state = "error"
+        finally:
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.kill()
+                    proc.communicate(timeout=1)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass  # resultado incerto; o histórico running não vira sucesso
+            with _process_lock:
+                _processes.pop((project_id, sid), None)
+                _cancel_requests.discard((project_id, sid))
+        with storage.stage_lock:
+            records = _load(storage, project_id)
+            current = next((r for r in records if r["id"] == sid), None)
+            if (current is None or current["state"] not in ("running", "cancellation_pending")
+                or any(current[k] != record[k] for k in FIELDS - {"state", "validation_status", "result_code"})):
+                raise StorageError("registro mudou durante a validação; não repita sem inspeção")
+            current.update(state=state, validation_status=OUTCOMES[state][0],
+                           result_code=OUTCOMES[state][1], finished_at=_now())
+            validate_entries(records, expected_project_id=project_id)
+            storage.write_structured(project_id, NAME, records)
+            return {**current, "display_state": state}
+
+    finally:
         with _process_lock:
-            _processes.pop((project_id, sid), None)
-            _cancel_requests.discard((project_id, sid))
-    with storage.stage_lock:
-        records = _load(storage, project_id)
-        current = next((r for r in records if r["id"] == sid), None)
-        if (current is None or current["state"] not in ("running", "cancellation_pending")
-            or any(current[k] != record[k] for k in FIELDS - {"state", "validation_status", "result_code"})):
-            raise StorageError("registro mudou durante a validação; não repita sem inspeção")
-        current.update(state=state, validation_status=OUTCOMES[state][0],
-                       result_code=OUTCOMES[state][1], finished_at=_now())
-        validate_entries(records, expected_project_id=project_id)
-        storage.write_structured(project_id, NAME, records)
-        return {**current, "display_state": state}
+            _active_runs.discard((project_id, sid))
 
 
 def request_cancel(storage: Storage, project_id: str, session_id: str, confirmed: bool) -> Dict[str, str]:
