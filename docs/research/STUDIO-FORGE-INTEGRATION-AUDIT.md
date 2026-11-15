@@ -15,7 +15,11 @@ Como contornei, sem trocar de branch e sem tocar em outra branch:
 - os 32 arquivos da base documental foram comparados por hash de blob com a branch de desenvolvimento: 30 são **idênticos**, um difere e não foi usado, e um só existe na base documental (§2). Tudo o que este relatório cita com `S:` foi lido na branch de desenvolvimento;
 - este arquivo é a única mudança, e ele não depende de nada que só exista na base documental.
 
-Consequência para o Agent 0: esta branch **não deve ser mesclada inteira** na linha de desenvolvimento (ela descende da base documental). O commit desta sessão adiciona um único arquivo novo e pode ser levado sozinho (por exemplo, `git cherry-pick <sha>` ou `git checkout <sha> -- docs/research/STUDIO-FORGE-INTEGRATION-AUDIT.md`); `docs/research/` já existe na branch de desenvolvimento e não há arquivo homônimo lá.
+Consequência para o Agent 0: esta branch **não deve ser mesclada inteira** na linha de desenvolvimento (ela descende da base documental). Os dois commits desta sessão só tocam um arquivo novo, que pode ser levado sozinho (por exemplo, `git checkout <sha-da-ponta> -- docs/research/STUDIO-FORGE-INTEGRATION-AUDIT.md`); `docs/research/` já existe na branch de desenvolvimento e não há arquivo homônimo lá.
+
+## Aviso sobre a ponta da branch do Forge
+
+A branch `arena/649f88bd-3dspritesheet` do Forge está ativa e **avançou três commits durante esta sessão**: de `afbd410`, o SHA auditado, para `35b207f`. A leitura de código, as citações `F:` e as contagens deste relatório valem para `afbd410`. Na ponta nova repeti só o que é automático: o experimento E1, com as mesmas 60 verificações e a mesma saída, e 20 smokes, todos com saída 0. O conteúdo dos três commits **não foi auditado**. Detalhes no §2.1.
 
 ## Como ler os rótulos de evidência
 
@@ -56,6 +60,7 @@ Para evitar a confusão que a própria documentação do Forge registra (`F:docs
 8. **Há 17 decisões para o Dev** (§17). As que travam a fatia são: topologia de pastas (D-01), aceitar ou não ler o manifesto atual do Forge como formato observado (D-03), destino e engine (D-04) e onde o Studio persiste o pedido (D-08). A execução no Windows depende de D-14.
 9. **Testes executados nesta sessão (Linux):** as 10 partes de `verify_alpha.py` do Studio, uma por chamada, todas com saída 0 (259 testes Python, mais compilação, regressão de UI em Node e sintaxe JS); 20 smokes do Forge executados sem instalar dependências (19 com saída 0; 1 terminou com saída 1 porque inicia o servidor Vite, que não existe sem `node_modules`); e o experimento E1 (5 comandos, 60 verificações, todas conferem).
 10. **Windows:** nada foi executado. O roteiro PowerShell do §15 está **escrito, não executado**.
+11. **A branch do Forge andou durante a sessão.** O SHA auditado é `afbd410`; no fechamento a ponta era `35b207f`, três commits à frente. Nela, o E1 e os smokes dão o mesmo resultado. O conteúdo desses commits não foi auditado (§2.1).
 
 ---
 
@@ -125,12 +130,45 @@ Um documento do Studio ficou para trás: `S:docs/LIA-FORGE-NA-PIPELINE.md` ancor
 | Base da sessão (documental) | `BloomRX/Lia-Studio`, `arena/6957d4de-lia-studio`, criada de `arena/studio-docs` | `095dbb0401a86c74d5895ea9fa066b9be2490355` | "docs: document base selection for Arena sessions" |
 | **Código do Studio analisado** | `BloomRX/Lia-Studio`, `arena/01a0f4ab-lia-gamedev` | `4868a18e8cc4d3e35c5a8313adac7e0e7911a1ce` | 2026-11-15T00:43:47Z, "Establish evidence-based coordination register for specialist sessions" |
 | **Forge analisado** | `BloomRX/Lia-Forge`, `arena/649f88bd-3dspritesheet` | `afbd410c781c93fb4c6802206907b998e6581440` | 2026-11-14T23:51:47Z, "docs(assets): alinhar a tabela de recusas e o transporte ao codigo" |
+| Ponta do Forge no fechamento, **não auditada** (§2.1) | `BloomRX/Lia-Forge`, `arena/649f88bd-3dspritesheet` | `35b207f7b1ae5bc0c104fbdd0e9cf6ae83944692` | 2026-11-15T02:11:52Z, "Plano: total de divergentes conferido por medicao; gerador grava gabarito medido" |
 
 Outras referências observadas em 2026-11-15 e **não analisadas**: Studio `main` em `ba70d224359b84a8e114f87b545d83f260f2deb1`; `refs/pull/1/head` do Studio igual a `4868a18`. Forge `main` em `6bd9a5a7006c7c6ccf5edcb5d577283d61a39949`; branches de pesquisa `arena/6113e868-lia-forge` (`3aabf99`), `arena/624582f5-lia-forge` (`76b1b24`), `arena/ca5fcc8f-lia-forge` (`6aee194`), `arena/e209a742-lia-forge` (`84aeca4`) e `arena/ee48e1c5-lia-forge` (`a4fc756`).
 
 Comparação por hash de blob (`git hash-object`) entre os 32 arquivos versionados da base documental e a branch de desenvolvimento em `4868a18`: 30 idênticos, entre eles `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/LIA-FORGE-NA-PIPELINE.md`, `docs/DECISOES-PENDENTES-INTEGRACOES.md`, `docs/PLANO-DE-CONCLUSAO-LIA-STUDIO.md`, `docs/armazenamento-privacidade.md` e `docs/seguranca-permissoes.md`; um diferente, `planejamento/handoff-primeira-slice-para-outra-sessao.md`, que não foi usado; e um que só existe na base documental, `docs/ARENA-SESSION-BASES.md`.
 
-Ambiente em que tudo foi medido: Debian GNU/Linux 12, kernel 6.1.158+, Python 3.11.2, Node v22.22.3, sem PowerShell, sem interface gráfica, rede limitada ao GitHub. Os dois clones de referência terminaram a sessão com `git status` limpo.
+Ambiente em que tudo foi medido: Debian GNU/Linux 12, kernel 6.1.158+, Python 3.11.2, Node v22.22.3, sem PowerShell, sem interface gráfica, rede limitada ao GitHub. Os clones de referência (um do Studio e dois do Forge, um por SHA) terminaram a sessão com `git status` limpo.
+
+### 2.1 A branch do Forge avançou durante a sessão
+
+Conferido com `git ls-remote` pela última vez em 2026-11-15, às 02:20 UTC. A branch é de uma frente ativa e pode ter avançado de novo depois disso. A branch de desenvolvimento do Studio continuava em `4868a18`.
+
+| Commit | Data (UTC) | Assunto | O que toca |
+|---|---|---|---|
+| `b0bb5e7` | 2026-11-15T00:46:54Z | "Comparison Lab: comparacao de versoes registradas e duplicatas por conteudo" | Código do produto (serviço, IPC, HTTP de desenvolvimento, interface), testes e documentos: 14 arquivos, +3208 −22 |
+| `c9531e0` | 2026-11-15T02:09:36Z | "Preparacao da validacao no Windows: plano executavel + gerador e verificador" | Só documentos e `scripts/validation/`: 6 arquivos, +1934 |
+| `35b207f` | 2026-11-15T02:11:52Z | "Plano: total de divergentes conferido por medicao; gerador grava gabarito medido" | Só o plano e `scripts/validation/`: 2 arquivos, +31 −4 |
+
+**Repetido em `35b207f`, no Linux**, com as mesmas ressalvas do §14.1:
+
+- E1, com os scripts do Apêndice B: cinco saídas 0 e 60 verificações `OK`. Fora os identificadores e hashes que mudam a cada execução, a saída é igual, linha a linha, à do Apêndice F.
+- Smokes, um por vez: os 19 que tinham saída 0 em `afbd410` e o novo `asset-comparison`, todos com saída 0. `http-api-policy` não foi repetido.
+- Os rótulos de interface citados no Bloco 4.3 do §15 aparecem com o mesmo número de ocorrências nos dois SHAs. É busca por texto, não execução.
+
+**O que muda em relação ao que este relatório descreve** (lido no diff, não auditado):
+
+- Os canais `lia-forge:studio:*` passam de 34 para 37. Os três novos são de leitura: `assets:compare-versions`, `assets:duplicates` e `assets:artifact-file`.
+- O HTTP de desenvolvimento ganha três rotas `GET`: `/assets/compare-versions`, `/assets/duplicates` e `/asset-file`. A última devolve bytes de arquivo. Segundo o próprio commit, só de imagem declarada no registro de assets e até 6 MB (`DOC`; não verifiquei).
+- `npm test` passa de 40 para 41 suítes.
+- O Forge passa a apontar conteúdo repetido dentro do próprio catálogo. L-20 é do lado do Studio e continua igual.
+
+**O que não muda, pelo que foi conferido:** em `shared/services/studio-service.mjs` há 537 linhas acrescentadas e nenhuma alterada ou removida; o diff desse arquivo não toca a exportação; as linhas acrescentadas nos três commits não mencionam o Lia Studio, handoff nem envelope. HTTP e IPC continuam internos ao Forge (§6.2), e continua sem existir contrato público entre os aplicativos.
+
+**Plano de validação no Windows da frente do Forge.** `docs/WINDOWS-VALIDATION-PLAN-CATALOG-RECONCILIATION-COMPARISON.md` em `35b207f`, 773 linhas, das quais li o cabeçalho e as seções 3, 4.3, 4.4, 14, 15 e 19. O estado declarado é `PLANO EXECUTÁVEL — NENHUMA EXECUÇÃO WINDOWS REGISTRADA`. Trata de catálogo, reconciliação e Comparison Lab, não da passagem entre os produtos. Quatro pontos tocam esta frente:
+
+- O **FIND-05** do plano descreve o mesmo comportamento de L-04: o projeto lembrado vence `SPRITEFORGE_PROJECT_ROOT`. Lá também foi achado por inspeção de código; segue sem execução.
+- O **FIND-02** diz que `saveInput` não filtra nomes reservados do Win32, como `CON.png`. Interessa a todo arquivo que saia do Studio e entre no Forge por essa entrada, como as referências a partir da etapa B. O `brief.md` do experimento não é nome reservado (`DOC`; não verifiquei).
+- O plano pede `git checkout` da ponta da branch e `npm ci`, que baixa o binário do Electron. É a mesma preparação de que o Bloco 4 do §15 depende (D-14).
+- Se os dois roteiros rodarem na mesma máquina, o projeto lembrado por um aparece ao abrir o outro (L-04). O plano do Forge usa pastas em `%USERPROFILE%\Lia\`; o roteiro do §15 usa uma pasta nova em `%TEMP%`. Os dois mandam conferir o painel **Projeto** antes de continuar.
 
 ---
 
@@ -217,7 +255,7 @@ Interfaces que existem, mas **são internas do Forge e não devem ser tratadas c
 | L-01 | Não existe descoberta de instalação em nenhum dos dois produtos. O "bilhete" `%APPDATA%\Lia\lia.json` e o registro `HKCU\Software\Lia` são desenho. | `DOC` `S:docs/PADRAO-DA-MARCA.md`, "O que não foi verificado": "ainda não existe em lugar nenhum"; `F:memory-bank/decisoes.md` nº 10, `em aberto`; busca nos dois códigos por `lia.json`, `HKCU` e `Software\Lia` sem leitura alguma. O Studio usa `~/LiaStudioProjects` (`S:app/lia/storage.py:65-69`) e não conhece `LIA_HOME`. |
 | L-02 | Não há instalação empacotada do Forge para descobrir: o `.exe` nunca foi produzido. Hoje só existe checkout de desenvolvimento. | `DOC` `F:README.md`; `F:memory-bank/estado.md` |
 | L-03 | O Forge não trata argumentos de linha de comando, não tem instância única e não registra protocolo de URL. O Studio não tem como pedir "abra neste projeto" nem "abra este pedido". | `CODE-PRESENT`: nenhuma ocorrência de `process.argv`, `requestSingleInstanceLock`, `second-instance`, `setAsDefaultProtocolClient` ou `open-url` em `F:electron/`, `src/`, `shared/`, `scripts/` |
-| L-04 | `SPRITEFORGE_PROJECT_ROOT` não garante o workspace: depois da primeira abertura, o último projeto lembrado em `userData/last-project.json` substitui o valor resolvido. | `CODE-PRESENT` `F:electron/main.cjs:1469` e `:1491-1493`. Leitura estática; `NOT-TESTED` em execução. |
+| L-04 | `SPRITEFORGE_PROJECT_ROOT` não garante o workspace: depois da primeira abertura, o último projeto lembrado em `userData/last-project.json` substitui o valor resolvido. | `CODE-PRESENT` `F:electron/main.cjs:1469` e `:1491-1493`. Leitura estática; `NOT-TESTED` em execução. O plano Windows do próprio Forge registra o mesmo comportamento como FIND-05 (§2.1). |
 | L-05 | Nenhuma superfície informa versão de aplicativo ou de contrato. O `overview` do serviço só tem `schemaVersion: 1`; `doctor --json` não traz versão do Forge; o Studio não tem constante de versão. | `EXPERIMENTO-E1` C13; `CODE-PRESENT` `F:scripts/spriteforge_launcher.py:883-935`; `S:app/__init__.py` |
 | L-06 | O único jeito de abrir o Forge de desenvolvimento (`lia-forge.cmd`) executa antes uma preparação que **pode instalar** Node, dependências npm e, com confirmação, Blender e Krita. Não serve como "abrir" automático. | `DOC` `F:README.md` ("Podem instalar as dependências fixadas no lockfile"); `CODE-PRESENT` `F:spriteforge.cmd`, `F:scripts/spriteforge_launcher.py:978-990,1205-1215` |
 
@@ -306,7 +344,7 @@ Nada disto foi alterado. São comportamentos observados que afetam quem consome 
 
 | Interface | Para quem foi feita | Por que não é contrato entre os produtos | Evidência |
 |---|---|---|---|
-| IPC `lia-forge:studio:*` (34 canais) | A interface "Forge Studio" falando com o processo principal do próprio Forge | "Studio" aqui é o módulo de apresentação do Forge. Cada handler exige que o emissor seja a janela principal em origem confiável. | `CODE-PRESENT` `F:src/lia-forge-api.js:1-14`, `F:electron/preload.cjs:31-68`, `F:electron/ipc-guard.cjs:1-11`; `AUTOMATED-PASS` `F:tests/ipc-coherence-smoke.cjs`; `DOC` `F:docs/PRODUCT-ARCHITECTURE.md` ("Três 'Studio' diferentes") |
+| IPC `lia-forge:studio:*` (34 canais em `afbd410`; 37 na ponta, §2.1) | A interface "Forge Studio" falando com o processo principal do próprio Forge | "Studio" aqui é o módulo de apresentação do Forge. Cada handler exige que o emissor seja a janela principal em origem confiável. | `CODE-PRESENT` `F:src/lia-forge-api.js:1-14`, `F:electron/preload.cjs:31-68`, `F:electron/ipc-guard.cjs:1-11`; `AUTOMATED-PASS` `F:tests/ipc-coherence-smoke.cjs`; `DOC` `F:docs/PRODUCT-ARCHITECTURE.md` ("Três 'Studio' diferentes") |
 | HTTP `/api/lia-forge/studio/*` | A mesma interface rodando no navegador durante o desenvolvimento | Só existe em `configureServer` do Vite; o aplicativo empacotado carrega a página por arquivo. ADR-002 D2: "superfície de desenvolvimento, não caminho de produto". Configurar provider, autorizar, revisar e confirmar reconciliação são recusados por HTTP. | `CODE-PRESENT` `F:vite.config.js` (quatro `configureServer`, nenhum `configurePreviewServer`), `F:electron/main.cjs:919-921`, `F:shared/http/api-policy.mjs:85-117` |
 | Token `x-lia-forge-token` | Proteger a página contra requisição forjada por outro site | É servido a qualquer requisição com `Host` permitido e sem `Sec-Fetch-Site` de outro site. Qualquer processo local o obtém. Não identifica aplicativo. | `CODE-PRESENT` `F:shared/http/api-policy.mjs:323-328`, `F:vite.config.js:317-345` |
 | HTTP `/api/spriteforge/assets` | Interface legada | Lê e sobrescreve o store legado inteiro. | `CODE-PRESENT` `F:vite.config.js:31-160` |
@@ -782,6 +820,8 @@ Também conferi por HTTP, contra o servidor real em loopback, a sequência que o
 
 Total: 60 verificações, todas `OK`; nenhuma `DIVERGE`, nenhuma `NAO EXEC.`. Há ainda sete linhas informativas (A4, B5, os três arquivos do manifesto, C14 e C15). A saída literal da última execução está no Apêndice F.
 
+**(d) Repetição na ponta nova do Forge** (`35b207f`, §2.1). E1 com os mesmos scripts: cinco saídas 0, 60 verificações `OK`, mesma saída do Apêndice F fora os valores que mudam a cada execução. Smokes, um por vez: os 19 de (b) e o novo `asset-comparison`, todos com saída 0.
+
 O que E1 **é**: funções públicas reais dos dois produtos, nos SHAs auditados, encadeadas por um script que faz o papel da pessoa (copiar o brief, copiar o pacote). O que E1 **não é**: os aplicativos, a interface, o IPC, o Windows, uma ponte. A cópia e a conferência de hashes em E1 são procedimento manual roteirizado; o Studio não tem esse código.
 
 **Como reproduzir no Linux**
@@ -866,7 +906,7 @@ Os testes novos precisam entrar na partição de `verify_alpha.py`; `S:tests/tes
 - **Não altera arquivos versionados.** Tudo é criado em uma pasta temporária nova. O Bloco 1 faz `git fetch` no checkout do Studio só para ler este relatório; quem preferir pode copiar o `.md` à mão para `$Report` e pular o `fetch`.
 - **Sem credenciais e sem serviço pago.** A única conexão de rede é o `git fetch`.
 - Cole **um bloco por vez**, na mesma janela do PowerShell (5.1 ou 7), na ordem.
-- Os resultados valem para os SHAs que o Bloco 0 imprimir. Se forem diferentes dos auditados, diga isso ao devolver.
+- Os resultados valem para os SHAs que o Bloco 0 imprimir. Se forem diferentes dos auditados, diga isso ao devolver. No Forge é provável que sejam: a ponta da branch já era `35b207f` no fechamento desta sessão (§2.1). No Linux, o E1 deu o mesmo resultado nos dois SHAs.
 - Os Blocos 0 a 3 não abrem nenhum aplicativo. O Bloco 4 abre os dois e tem passos manuais.
 
 | Bloco | O que responde | Abre aplicativo? |
@@ -1165,7 +1205,7 @@ O que devolver: a transcrição; as anotações dos passos 4.3 (pasta em que o F
 | **Agent 3 — QA e gameplay** | Como revisão humana de asset e teste de engine viram registro (hoje o alvo é texto livre; sugestão: marcador estável por asset). O que é evidência proporcional. **Como uma Task de asset chega a concluída** (L-22). Garantia de que pacote, hash e "exportado" nunca abrem gate. | `app/lia/qa.py`, `app/lia/vertical_slice.py` |
 | **Agent 4 — UI/UX** | Lugar do fluxo na área Assets; nomes dos estados do pedido; tela "O que sai do Studio"; texto das recusas (L-31). Nenhum botão de abrir o Forge antes da decisão D-09. | `app/static/app.js`, estilos, `tests/test_ui.cjs` |
 | **Agent 0 — coordenação** | Levar este arquivo para a linha de desenvolvimento; registrar as decisões tomadas em `docs/arquitetura-decisoes.md` antes de qualquer código (L-29); atualizar o glossário (L-28) e o retrato do Forge em `LIA-FORGE-NA-PIPELINE.md` (L-30). Arbitrar os arquivos compartilhados que a etapa B tocaria. | `app/server.py`, `app/lia/__init__.py`, `app/lia/storage.py`, `app/static/app.js`, `verify_alpha.py`, `tests/test_verify_parts.py` |
-| **Frente do Lia Forge** (outro repositório) | **Nenhuma mudança de código para as etapas A e B.** Para a etapa C: aceitar o pedido, emitir a entrega com tipo, versão e eco do pedido, dar precedência a um pedido explícito de workspace, instância única, descritor de capacidades, decisão do MCP (DEC-L do Forge) e pacote Windows validado. As observações O-F1 a O-F7 são para conhecimento dela (D-15). | — |
+| **Frente do Lia Forge** (outro repositório) | **Nenhuma mudança de código para as etapas A e B.** Para a etapa C: aceitar o pedido, emitir a entrega com tipo, versão e eco do pedido, dar precedência a um pedido explícito de workspace, instância única, descritor de capacidades, decisão do MCP (DEC-L do Forge) e pacote Windows validado. As observações O-F1 a O-F7 são para conhecimento dela (D-15). Depois do SHA auditado, essa frente publicou um plano próprio de validação no Windows, que pede a mesma preparação do Forge (§2.1). | — |
 | **Dev, na máquina Windows** | Executar o roteiro do §15; decidir se prepara o Forge de desenvolvimento, o que pode instalar dependências (D-14); responder ao §17. | — |
 
 O que as outras frentes precisam saber desta: a etapa B não inicia processo, não usa rede, não lê fora do projeto e não muda Task, QA nem gate. Se alguma dessas afirmações deixar de valer durante a implementação, a fatia saiu do escopo proposto aqui.
@@ -1195,7 +1235,7 @@ Nenhuma destas está decidida por constar aqui. A coluna "Recomendação" é a o
 | D-11 | Versões e sidecars no catálogo do Studio | (a) pasta por run, nota "substituído por" e manifesto como evidência, tudo possível hoje; (b) vínculos estruturados de substituição e de sidecar; (c) operação de re-hash | **(a)** na etapa B; (b) na etapa C. Não recomendo (c): um registro que acompanha o arquivo editado deixa de ancorar o que foi revisado | Etapa B |
 | D-12 | Arquivos grandes | manter 50 MB e recusar; definir fluxo para modelos e fontes maiores | Manter na etapa B (o sheet tem 27 KB). Decidir antes de qualquer fatia 3D (L-23) | Fatias 3D |
 | D-13 | Onde mora o contrato público e quem aprova mudança | documento normativo com amostras; repositório próprio; pacote de schema | Documento normativo com amostras, sem código compartilhado; cada versão aprovada pelo Dev. É decisão separada das alternativas A, B e C de identidade visual do Forge | Etapa C |
-| D-14 | Executar a etapa A no Windows | (a) só os blocos que não abrem aplicativo (0 a 3 e 6); (b) também os Blocos 4 e 5, que exigem o Forge de desenvolvimento preparado | **(b)**, se o Dev autorizar a preparação do Forge, que pode instalar as dependências do lockfile (DEC-P do Forge). Sem o Bloco 4 a etapa A não fecha | Etapa A |
+| D-14 | Executar a etapa A no Windows | (a) só os blocos que não abrem aplicativo (0 a 3 e 6); (b) também os Blocos 4 e 5, que exigem o Forge de desenvolvimento preparado | **(b)**, se o Dev autorizar a preparação do Forge, que pode instalar as dependências do lockfile (DEC-P do Forge). O plano Windows da frente do Forge pede a mesma preparação (§2.1): uma autorização serve aos dois roteiros. Sem o Bloco 4 a etapa A não fecha | Etapa A |
 | D-15 | Levar as observações O-F1 a O-F7 à frente do Forge | (a) agora, como observações com evidência; (b) só na etapa C | **(a)**. O-F1, O-F2 e O-F4 afetam o caminho manual que já existe. Dizer se são defeitos cabe à frente do Forge | Etapa C |
 | D-16 | Código de correlação digitado no nome do asset ao guardar no Forge | adotar como convenção opcional; não adotar | Opcional. Não depender dele (§7.6) | — |
 | D-17 | Documentação e governança | levar este arquivo para `arena/01a0f4ab-lia-gamedev`; registrar as decisões tomadas em `docs/arquitetura-decisoes.md` antes de qualquer código; padronizar "Lia Studio" e "Forge Studio" e incluir "Task", `assets.json` e "run" no glossário; atualizar o retrato do Forge em `LIA-FORGE-NA-PIPELINE.md` | Sim para os quatro (L-28 a L-30) | Coordenação |
@@ -1835,9 +1875,12 @@ Também em parte: `docs/README.md`, `docs/ASSET-MANAGEMENT.md`, `docs/T13-IMPLEM
 
 **Lia Forge, não lidos:** `src/App.jsx`; os adapters de geração (Blender e ComfyUI), embora o pedido liste adapters de geração e exportação: do lado da exportação li os perfis de destino e os trechos de exportação do serviço; os demais documentos de `docs/`; e o código-fonte da maioria dos testes, que foram executados (§14.1) e não lidos.
 
+**Lia Forge depois de `afbd410`** (§2.1): li as estatísticas dos três commits, as 22 linhas removidas no primeiro, os nomes dos canais e das rotas novas, parte do adendo de `memory-bank/estado.md` e as seções do plano Windows citadas no §2.1. Não li as linhas acrescentadas ao código do produto (cerca de 2,2 mil) e aos testes (cerca de 950), nem os dois scripts de `scripts/validation/` (cerca de 1,1 mil).
+
 ### D.2 O que não foi verificado
 
 - **Windows:** nada. Nem os aplicativos, nem o empacotamento, nem o roteiro PowerShell.
+- **Commits do Forge posteriores a `afbd410`:** não auditados. Neles só foram repetidos o E1 e os smokes (§2.1).
 - **Aplicativos:** nenhum dos dois foi aberto. A interface do Studio só foi exercitada pelo teste Node que já existe e por chamadas HTTP; a do Forge, nunca.
 - **Electron, IPC real e aplicativo instalado do Forge:** não executados. O que se afirma sobre o conteúdo do pacote vem de `package.json`.
 - **Blender, ComfyUI e qualquer engine de jogo:** não executados.
@@ -1850,10 +1893,10 @@ Também em parte: `docs/README.md`, `docs/ASSET-MANAGEMENT.md`, `docs/T13-IMPLEM
 
 ## Apêndice E — Ficha de entrega (contrato do Agent 0)
 
-1. **Origem.** Repositório `BloomRX/Lia-Studio`; branch da sessão `arena/6957d4de-lia-studio`; base `arena/studio-docs` em `095dbb0401a86c74d5895ea9fa066b9be2490355` (ver o aviso no início). Um commit. O SHA da ponta está na mensagem de entrega da sessão, porque um arquivo não pode conter o hash do próprio commit.
+1. **Origem.** Repositório `BloomRX/Lia-Studio`; branch da sessão `arena/6957d4de-lia-studio`; base `arena/studio-docs` em `095dbb0401a86c74d5895ea9fa066b9be2490355` (ver o aviso no início). Dois commits, em ordem: `904e7edb2e724ec310872f573239ed3ee7c86776`, com o relatório, e um segundo, que registra o avanço da branch do Forge e a repetição na ponta nova (§2.1). O SHA da ponta está na mensagem de entrega da sessão, porque um arquivo não pode conter o hash do próprio commit.
 2. **Mudanças.** Um arquivo novo: este. Nenhum código, contrato, dado, dependência ou configuração. Reversão: reverter o commit ou apagar o arquivo; não há dado a migrar.
 3. **Evidência.** §14.1, com plataforma, versões, contagens e o que não foi executado. Classes usadas: `CODE-PRESENT`, `AUTOMATED-PASS`, `EXPERIMENTO-E1`, `DOC`, `NOT-TESTED`, `BLOCKED`. Nenhum `RUNTIME-PASS`.
-4. **Segurança e custos.** Sem credenciais, sem serviço pago, sem instalação de dependências. Rede usada só para clonar os dois repositórios do GitHub. Os clones de referência tiveram a URL de push desabilitada e terminaram limpos. Efeitos locais restritos a pastas temporárias; a pasta `~/LiaStudioProjects`, criada vazia quando os testes importam `app.server`, foi removida.
+4. **Segurança e custos.** Sem credenciais, sem serviço pago, sem instalação de dependências. Rede usada só com o GitHub: clonar e consultar os dois repositórios e enviar esta branch. Os clones de referência tiveram a URL de push desabilitada e terminaram limpos. Efeitos locais restritos a pastas temporárias; a pasta `~/LiaStudioProjects`, criada vazia quando os testes importam `app.server`, foi removida.
 5. **Decisões abertas.** §17. Nenhuma proposta deste relatório está aprovada por estar escrita ou por ter sido experimentada.
 6. **Aceite.** §13. Separação entre Linux e Windows no §14.2; passos para o Windows no §15.
 
