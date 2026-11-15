@@ -26,6 +26,9 @@ não as apresenta. Não interpretar o registro histórico como estado atual.
    Não configura bridge nem altera gates do Studio.
 6. `docs/PLANO-DE-CONCLUSAO-LIA-STUDIO.md`: marcos propostos e pré-condições de
    validação real; não é comprovação de execução nem decisão de engine/Runtime.
+7. `docs/COORDENACAO-AGENTES-LIA-STUDIO.md`: registro operacional do Agent 0
+   para receber e confrontar as cinco sessões especialistas. Não aprova propostas,
+   não substitui relatórios nem autoriza integração de commits.
 
 ## Históricos que não são documentação ativa de contrato
 
