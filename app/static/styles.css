@@ -417,3 +417,10 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
   transform: translateY(calc(-100% - 16px));
 }
 .skip-link:focus { transform: none; }
+
+.task-editor { margin: 8px 0 14px; }
+.task-editor summary { cursor: pointer; }
+.task-editor form { margin-top: 8px; }
+.task-editor textarea { min-height: 64px; }
+.task-editor [role=status] { margin-inline-start: 8px; }
+.task-editor summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }

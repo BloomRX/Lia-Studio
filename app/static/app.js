@@ -767,7 +767,24 @@ function moduleCard(m, modules = [], blockers = []) {
   const depProblems = blockers.filter(b => b.code === "DEPENDENCY_NOT_READY" || b.code === "DEPENDENCY_INVALID");
   const completable = (m.tasks||[]).length && (m.acceptance||[]).length &&
     m.tasks.every(t => t.status === "concluído" && t.validation_status === "passed" && t.review_status === "approved");
-  const tasks = (m.tasks||[]).map(t => `<li>${pill(t.status)} ${esc(t.name)} — ${esc(t.objective||"")} <button class="ghost small" onclick="resetTask('${m.id}','${t.id}')">↺ pendente</button></li>`).join("") || "<li class='muted'>sem tarefas</li>";
+  const tasks = (m.tasks || []).map(t => {
+    const edit = t.status === "concluído" ? "" : `
+      <details class="task-editor">
+        <summary>Editar tarefa</summary>
+        <form onsubmit="event.preventDefault(); updateTask(this)" data-module="${esc(m.id)}" data-task="${esc(t.id)}">
+          <label>Nome <input name="name" required value="${esc(t.name)}" /></label>
+          <label>Objetivo <textarea name="objective">${esc(t.objective || "")}</textarea></label>
+          <label>Arquivos relativos ao projeto (um por linha)
+            <textarea name="files">${esc((t.files || []).join("\n"))}</textarea>
+          </label>
+          <label>Como verificar <textarea name="verify">${esc(t.verify || "")}</textarea></label>
+          <button type="submit" class="small">Salvar tarefa</button>
+          <span role="status"></span>
+        </form>
+      </details>`;
+    return `<li>${pill(t.status)} <span data-task-description>${esc(t.name)} — ${esc(t.objective || "")}</span>
+      <button class="ghost small" onclick="resetTask('${esc(m.id)}','${esc(t.id)}')">↺ pendente</button>${edit}</li>`;
+  }).join("") || "<li class='muted'>sem tarefas</li>";
   return `<div class="card"><h3>${esc(m.name)} ${pill(m.status)}</h3>
     <div class="muted">${esc(m.description||"")} · ID: ${esc(m.id)}</div>
     ${blockers.length ? `<div class="banner warn">${blockers.map(b=>esc(b.message)).join(" · ")}</div>` : ""}
@@ -788,6 +805,33 @@ function moduleCard(m, modules = [], blockers = []) {
   </div>`;
 }
 async function wirePlan(pid, modules) {
+  window.updateTask = async function (form) {
+    const field = name => form.elements.namedItem(name).value.trim();
+    const files = field("files").split("\n").map(line => line.trim()).filter(Boolean);
+    const status = form.querySelector("[role=status]");
+    const name = field("name");
+    if (!name) {
+      status.textContent = "Informe o nome da tarefa.";
+      return;
+    }
+    if (files.some(file => /^[\\\\/]|:/.test(file) || file.split(/[\\\\/]/).includes(".."))) {
+      status.textContent = "Informe caminhos relativos dentro do projeto.";
+      return;
+    }
+    const button = form.querySelector("[type=submit]");
+    button.disabled = true;
+    status.textContent = "Salvando tarefa…";
+    try {
+      const saved = await api("PUT", `/api/projects/${pid}/modules/${encodeURIComponent(form.dataset.module)}/tasks/${encodeURIComponent(form.dataset.task)}`,
+        { name, objective: field("objective"), files, verify: field("verify") });
+      form.closest("li").querySelector("[data-task-description]").textContent = `${saved.name} — ${saved.objective || ""}`;
+      status.textContent = "Tarefa salva.";
+    } catch (e) {
+      status.textContent = "Não foi possível salvar a tarefa: " + e.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
   window.addModule = async function (pid) {
     const name = document.getElementById("m-name").value.trim();
     if (!name) return toast("Nome do módulo obrigatório.");
@@ -1193,11 +1237,11 @@ function projectQa(pid, data) {
     { ref: `module:${m.id}`, label: `Módulo: ${m.name} (${m.id})` },
     ...(m.tasks||[]).map(t => ({ref: `task:${t.id}`, label: `Tarefa: ${t.name} (${t.id})`}))
   ]);
-  const rows = qa.length ? `<table><tr><th>ID</th><th>Alvo</th><th>Critério</th><th>Ferramenta</th><th>Comando</th><th>Data</th><th>Evidência (relato)</th><th>Resultado</th></tr>${
+  const rows = qa.length ? `<table><tr><th>ID</th><th>Alvo</th><th>Critério</th><th>Ferramenta</th><th>Comando</th><th>Data</th><th>Evidência (relato)</th><th>Resultado relatado</th></tr>${
     qa.map(q=>`<tr><td><code>${esc(q.id)}</code></td><td>${esc(q.target)} ${q.target_ref ? `<small>(${esc(q.target_ref)})</small>` : ""}</td><td>${esc(q.criteria)}</td><td>${esc(q.tool)}</td><td><code>${esc(q.command)}</code></td><td>${esc(q.date)}</td><td>${esc(q.evidence)}</td><td>${pill(q.result)}</td></tr>`).join("")}</table>` :
     `<div class="empty">Nenhuma verificação registrada.</div>`;
   return `<h1>QA / Playtest</h1>
-    <div class="banner info">Registre resultados reais feitos pelo Dev: executado, aprovado e falhou exigem critério, ferramenta e evidência. O Studio não executa nem confere o teste; não marque como aprovado sem revisar o resultado.</div>
+    <div class="banner info"><strong>Registros manuais de QA.</strong> Registre resultados observados pelo Dev: executado, aprovado e falhou exigem critério, ferramenta e evidência. O Studio não executa nem confere o teste; não marque como aprovado sem revisar o resultado.</div>
     ${renderSliceReview(pid, data.slice_review, data.slice_error)}
     ${rows}
     <p><a href="#/project/${esc(pid)}/evidence">Ver arquivos de evidência locais</a> (hash de bytes não equivale a teste aprovado).</p>

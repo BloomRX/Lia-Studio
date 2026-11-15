@@ -99,6 +99,37 @@ assert.equal(reloads, 1);
 
   context.document.getElementById = originalGet;
   context.fetch = originalFetch;
+
+  const editMarkup = context.moduleCard({id:'m', tasks:[{id:'t', name:'Teste', status:'pendente'}]});
+  assert.match(editMarkup, /onsubmit="event.preventDefault\(\); updateTask\(this\)"/);
+  assert.doesNotMatch(context.moduleCard({id:'m', tasks:[{id:'t', name:'Final', status:'concluído'}]}), /Editar tarefa/);
+  await context.wirePlan('p', []);
+  const taskFields = {name:'Novo nome', objective:'Objetivo', files:'../fora.py', verify:'Revisar'};
+  const taskStatus = {};
+  const taskSubmit = {};
+  const taskDescription = {};
+  const taskForm = {
+    dataset:{module:'m', task:'t'},
+    elements:{namedItem: name => ({value:taskFields[name]})},
+    querySelector: selector => selector === '[role=status]' ? taskStatus : taskSubmit,
+    closest: () => ({querySelector: () => taskDescription}),
+  };
+  let taskRequest;
+  context.fetch = async (url, options) => {
+    taskRequest = {url, method:options.method, body:JSON.parse(options.body)};
+    return {ok:true, json:async () => taskRequest.body};
+  };
+  await context.window.updateTask(taskForm);
+  assert.match(taskStatus.textContent, /caminhos relativos/);
+  assert.equal(taskRequest, undefined);
+  taskFields.files = 'game/loop.py\nnotes.md';
+  await context.window.updateTask(taskForm);
+  assert.deepEqual(taskRequest, {
+    url:'/api/projects/p/modules/m/tasks/t', method:'PUT',
+    body:{name:'Novo nome', objective:'Objetivo', files:['game/loop.py','notes.md'], verify:'Revisar'},
+  });
+  assert.equal(taskDescription.textContent, 'Novo nome — Objetivo');
+  context.fetch = originalFetch;
   const html = context.projectExecute('project-1', {
     modules: [{ id: 'module-1', name: 'Módulo', tasks: [{ id: 'task', status: 'pendente', name: 'Tarefa' }] }],
   });
