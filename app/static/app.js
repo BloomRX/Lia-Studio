@@ -46,10 +46,18 @@ function setShellSpace(space, label) {
   const context = document.getElementById("shell-context");
   if (context) context.textContent = label;
 }
-function navigate() {
+let renderVersion = 0;
+function beginRender() {
+  const version = ++renderVersion;
+  const hash = location.hash;
+  return () => version === renderVersion && location.hash === hash;
+}
+
+function navigate(event) {
   const hash = location.hash.replace(/^#\//, "");
   const parts = hash.split("/").filter(Boolean);
-  view.innerHTML = `<div class="loading">Carregando…</div>`;
+  view.innerHTML = `<div class="loading" role="status">Carregando…</div>`;
+  if (event) view.focus();
   if (parts.length === 0) return renderHome();
   const [first, ...rest] = parts;
   if (first === "home") return renderHome();
@@ -66,11 +74,13 @@ window.addEventListener("hashchange", navigate);
 
 /* ----------------------- HOME ----------------------- */
 async function renderHome() {
+  const current = beginRender();
   setShellSpace("home", "Launcher");
   let projects = [];
   try { projects = (await api("GET", "/api/projects")).projects; }
-  catch (e) { view.innerHTML = `<div class="banner danger">Erro ao carregar projetos: ${esc(e.message)}. Os dados não foram recriados.</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
+  catch (e) { if (!current()) return; view.innerHTML = `<div class="banner danger">Erro ao carregar projetos: ${esc(e.message)}. Os dados não foram recriados.</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
 
+  if (!current()) return;
   const cards = projects.length
     ? `<div class="recent-list">${projects.map(p => projectCard(p)).join("")}</div>`
     : `<div class="empty">Ainda não há projetos aqui. Crie o primeiro para começar.</div>`;
@@ -104,7 +114,7 @@ function projectCard(p) {
     <p>${esc(STAGE_LABELS[p.stage] || "Preparação")} · ${esc(p.next_step || "Retomar projeto")}</p></div>
     <div class="project-tile-actions">${pill(p.status)}
       <a class="btn small" href="#/project/${esc(p.id)}/stage">Abrir →</a>
-      <button class="ghost small" onclick="archiveProject('${esc(p.id)}')">${p.archived ? "Reabrir" : "Arquivar"}</button>
+      <button class="ghost small" onclick="archiveProject('${esc(p.id)}', ${Boolean(p.archived)}, this)">${p.archived ? "Reabrir" : "Arquivar"}</button>
       <button class="danger small" onclick="deleteProject('${esc(p.id)}')">Excluir</button></div>
   </article>`;
 }
@@ -124,8 +134,19 @@ async function loadExample() {
   try { const p = await api("POST", "/api/example", {}); toast("Exemplo carregado."); location.hash = `#/project/${p.id}/overview`; }
   catch (e) { toast("Erro: " + e.message); }
 }
-async function archiveProject(id) {
-  try { await api("POST", `/api/projects/${id}/archive`); renderHome(); } catch (e) { toast(e.message); }
+async function archiveProject(id, archived, button) {
+  const hash = location.hash;
+  const action = archived ? "reopen" : "archive";
+  if (button) button.disabled = true;
+  try {
+    await api("POST", `/api/projects/${id}/${action}`);
+    toast(archived ? "Projeto reaberto." : "Projeto arquivado.");
+    if (location.hash === hash) await renderHome();
+  } catch (e) {
+    toast("Não foi possível " + (archived ? "reabrir" : "arquivar") + " o projeto: " + e.message);
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 async function deleteProject(id) {
   if (!confirm("Excluir este projeto e todos os seus documentos? Esta ação é destrutiva e não pode ser desfeita.")) return;
@@ -135,6 +156,7 @@ async function deleteProject(id) {
 
 /* ----------------------- SKILLS (workspace global, independente do projeto) ----------------------- */
 async function renderSkills(selected, mode) {
+  const current = beginRender();
   setShellSpace("skills", "Workspace de Skills");
   try {
     const { skills } = await api("GET", "/api/skills");
@@ -143,6 +165,7 @@ async function renderSkills(selected, mode) {
     const onlyMine = selected === "mine";
     const active = creating ? null : onlyMine ? userSkills[0]?.id : (selected || skills[0]?.id);
     const item = active ? await api("GET", `/api/skills/${encodeURIComponent(active)}`) : null;
+    if (!current()) return;
     const nav = (onlyMine ? userSkills : skills).map(skill => `<a data-skill-entry data-search="${esc((skill.title || "") + " " + (skill.description || ""))}" href="#/skills/${esc(skill.id)}" class="${skill.id===active ? "active" : ""}"><span>${esc(skill.title)}</span><small>${skill.origin === "user" ? "MINHA SKILL" : "DO STUDIO"}</small></a>`).join("");
     let detail = "";
     if (creating) {
@@ -206,13 +229,15 @@ async function renderSkills(selected, mode) {
         location.hash = `#/skills/${copy.id}/edit`;
       } catch (e) { toast("Não foi possível duplicar: " + e.message); }
     };
-  } catch (e) { view.innerHTML = `<div class="banner danger">Erro ao carregar Skills: ${esc(e.message)}</div><a href="#/home">Voltar à Home</a>`; }
+  } catch (e) { if (!current()) return; view.innerHTML = `<div class="banner danger">Erro ao carregar Skills: ${esc(e.message)}</div><a href="#/home">Voltar à Home</a>`; }
 }
 
 /* ----------------------- INTEGRIDADE DE DADOS ----------------------- */
 async function renderRecovery() {
+  const current = beginRender();
   try {
     const { issues } = await api("GET", "/api/storage/health");
+    if (!current()) return;
     const items = issues.length ? issues.map((issue, i) => `<div class="card">
       <h3>${esc(issue.name)} ${issue.project_id ? `(projeto ${esc(issue.project_id)})` : "(global)"}</h3>
       <p>${esc(issue.message)}</p>
@@ -236,7 +261,7 @@ async function renderRecovery() {
         } catch (e) { toast("Recuperação falhou: " + e.message); }
       };
     });
-  } catch (e) { view.innerHTML = `<div class="banner danger">Não foi possível verificar dados: ${esc(e.message)}</div>`; }
+  } catch (e) { if (!current()) return; view.innerHTML = `<div class="banner danger">Não foi possível verificar dados: ${esc(e.message)}</div>`; }
 }
 
 /* ----------------------- PROJECT ----------------------- */
@@ -284,9 +309,11 @@ function togglePanel(which) {
 }
 
 async function renderProject(pid, section, visualStage) {
+  const current = beginRender();
   let data;
   try { data = await api("GET", `/api/projects/${pid}`); }
-  catch (e) { view.innerHTML = `<div class="banner danger">Erro ao abrir projeto: ${esc(e.message)}</div><a class="btn" href="#/home">Voltar à Home</a> <a class="btn ghost" href="#/recovery">Verificar integridade</a>`; return; }
+  catch (e) { if (!current()) return; view.innerHTML = `<div class="banner danger">Erro ao abrir projeto: ${esc(e.message)}</div><a class="btn" href="#/home">Voltar à Home</a> <a class="btn ghost" href="#/recovery">Verificar integridade</a>`; return; }
+  if (!current()) return;
   const entry = data.entry;
   const gate = data.stage_gate;
   setShellSpace("project", entry.name);
@@ -335,6 +362,7 @@ async function renderProject(pid, section, visualStage) {
   else if (section === "release") content = await projectRelease(pid, data);
   else if (section === "config") content = await projectConfig(pid, data);
 
+  if (!current()) return;
   const recent = data.recent_sessions || [];
   const right = `<aside class="lia-panel" aria-label="Lia e acompanhamento">
     <div class="panel-top"><span class="panel-mini">LIA · ACOMPANHAMENTO</span><button id="toggle-right" class="icon-button" aria-expanded="${!PANEL_PREFS.right}" aria-label="${PANEL_PREFS.right ? "Expandir" : "Recolher"} painel da Lia" title="Recolher / expandir Lia" onclick="togglePanel('right')">✦</button></div>
@@ -368,7 +396,7 @@ async function renderProject(pid, section, visualStage) {
     <p class="mobile-stage-hint">Deslize para ver todas as fases →</p>
     <div class="workbench">${left}<section class="workspace-canvas" aria-label="Área de trabalho da fase">${section !== "stage" ? `<div class="canvas-breadcrumb"><a href="#/project/${esc(pid)}/stage/${selectedStage}">${esc(STAGE_LABELS[selectedStage])}</a><span> / ${esc(SECTIONS.find(([s]) => s === section)?.[1] || "Área")}</span></div>` : ""}${content}</section>${right}</div>
   </div>`;
-  if (section === "docs") wireDocs(pid, data.docs);
+  if (section === "docs") wireDocs(pid);
   if (section === "decisions") wireDecisions(pid, data);
   if (section === "plan") wirePlan(pid, data.modules);
   if (section === "gameplay-loop") wireGameplayLoop(pid, data);
@@ -553,18 +581,18 @@ function projectBootstrap(pid, data) {
   return `<h1>Etapa 0 — preparação do jogo</h1>
     <div class="banner info">Conversa guiada. Não exigimos vocabulário técnico e não reduzimos sua ambição. Campos não preenchidos viram <b>[em aberto]</b>. Nenhum código de jogo é escrito aqui.</div>
     <div class="card">
-      <label>Ideia em uma frase *</label><input id="b-idea" type="text" placeholder="Ex.: um jogo calmo onde você cultiva ilhas flutuantes" />
-      <label>Origem da ideia (o que inspirou o jogo?)</label><input id="b-origin" type="text" placeholder="Ex.: explorar com calma, inspirado por jogos pequenos de aventura" />
-      <label>Experiência pretendida (como o jogador deve se sentir)</label><input id="b-exp" type="text" placeholder="Ex.: paz, curiosidade" />
+      <label for="b-idea">Ideia em uma frase *</label><input id="b-idea" type="text" placeholder="Ex.: um jogo calmo onde você cultiva ilhas flutuantes" />
+      <label for="b-origin">Origem da ideia (o que inspirou o jogo?)</label><input id="b-origin" type="text" placeholder="Ex.: explorar com calma, inspirado por jogos pequenos de aventura" />
+      <label for="b-exp">Experiência pretendida (como o jogador deve se sentir)</label><input id="b-exp" type="text" placeholder="Ex.: paz, curiosidade" />
       <div class="row">
-        <div><label>Público</label><input id="b-aud" type="text" placeholder="Ex.: casuais, 12+" /></div>
-        <div><label>Plataforma</label><input id="b-plat" type="text" placeholder="Ex.: PC (Windows)" /></div>
+        <div><label for="b-aud">Público</label><input id="b-aud" type="text" placeholder="Ex.: casuais, 12+" /></div>
+        <div><label for="b-plat">Plataforma</label><input id="b-plat" type="text" placeholder="Ex.: PC (Windows)" /></div>
       </div>
-      <label>Pilares (um por linha — o que define o jogo)</label><textarea id="b-pillars" style="min-height:90px" placeholder="Exploração calma\nMistérios leves"></textarea>
-      <label>Restrições conhecidas</label><input id="b-rest" type="text" placeholder="Ex.: time de 1 pessoa" />
-      <label>Referências (opcional — uma por linha: nome | origem | uso)</label><textarea id="b-ref" style="min-height:70px" placeholder="Stardew Valley | ConcernedApe | loop calmo"></textarea>
-      <label>Vertical slice sugerida (opcional)</label><input id="b-vs" type="text" placeholder="Demo: uma ilha, colher, um mistério" />
-      <label>Engine/perfil (opcional — núcleo é agnóstico)</label><input id="b-eng" type="text" placeholder="deixe em branco" />
+      <label for="b-pillars">Pilares (um por linha — o que define o jogo)</label><textarea id="b-pillars" style="min-height:90px" placeholder="Exploração calma\nMistérios leves"></textarea>
+      <label for="b-rest">Restrições conhecidas</label><input id="b-rest" type="text" placeholder="Ex.: time de 1 pessoa" />
+      <label for="b-ref">Referências (opcional — uma por linha: nome | origem | uso)</label><textarea id="b-ref" style="min-height:70px" placeholder="Stardew Valley | ConcernedApe | loop calmo"></textarea>
+      <label for="b-vs">Vertical slice sugerida (opcional)</label><input id="b-vs" type="text" placeholder="Demo: uma ilha, colher, um mistério" />
+      <label for="b-eng">Engine/perfil (opcional — núcleo é agnóstico)</label><input id="b-eng" type="text" placeholder="deixe em branco" />
       <div class="row" style="margin-top:12px"><button onclick="runBootstrap('${esc(pid)}')">Gerar documentos da Etapa 0</button></div>
     </div>`;
 }
@@ -649,36 +677,75 @@ function wireDecisions(pid, data) {
 }
 
 /* ----- docs ----- */
+const documentDrafts = new Map();
+
 function projectDocs(pid, data) {
   const docs = data.docs.length ? data.docs : ["PROJECT_BRIEF.md","GDD.md","SCOPE.md","DECISIONS.md","REFERENCIAS.md"];
   return `<h1>Documentos do projeto</h1>
-    <div class="row"><div><label>Documento</label><select id="doc-sel">${docs.map(d=>`<option>${esc(d)}</option>`).join("")}</select></div></div>
-    <label>Conteúdo (Markdown editável)</label>
-    <textarea id="doc-content"></textarea>
-    <div class="row" style="margin-top:10px"><button onclick="saveDoc('${esc(pid)}')">Salvar</button><span class="tag" id="doc-status"></span></div>`;
+    <div class="row"><div><label for="doc-sel">Documento</label><select id="doc-sel">${docs.map(d=>`<option>${esc(d)}</option>`).join("")}</select></div></div>
+    <label for="doc-content">Conteúdo (Markdown editável)</label>
+    <textarea id="doc-content" aria-describedby="doc-status" disabled></textarea>
+    <div class="row" style="margin-top:10px"><button id="doc-save" disabled>Salvar</button>
+      <button id="doc-retry" class="ghost" hidden>Tentar carregar novamente</button>
+      <span id="doc-status" role="status"></span></div>`;
 }
-async function wireDocs(pid, docs) {
-  const sel = document.getElementById("doc-sel");
-  const load = async () => {
-    const doc = sel.value;
-    const d = await api("GET", `/api/projects/${pid}/docs/${encodeURIComponent(doc)}`);
-    document.getElementById("doc-content").value = d.content || "";
-    document.getElementById("doc-status").textContent = "";
-  };
-  sel.onchange = load;
-  sel._load = load;
-  await load();
-  window.saveDoc = async function (pid) {
-    const doc = document.getElementById("doc-sel").value;
-    const content = document.getElementById("doc-content").value;
-    await api("PUT", `/api/projects/${pid}/docs/${encodeURIComponent(doc)}`, { content });
-    document.getElementById("doc-status").textContent = "salvo ✓";
-    toast("Documento salvo.");
-  };
-}
-async function saveDocDelegated() { /* no-op: real impl em wireDocs */ }
 
-/* ----- plan ----- */
+function wireDocs(pid) {
+  const sel = document.getElementById("doc-sel");
+  const editor = document.getElementById("doc-content");
+  const save = document.getElementById("doc-save");
+  const retry = document.getElementById("doc-retry");
+  const status = document.getElementById("doc-status");
+  const path = () => `/api/projects/${pid}/docs/${encodeURIComponent(sel.value)}`;
+  let loadVersion = 0;
+
+  async function load() {
+    const url = path();
+    const version = ++loadVersion;
+    retry.hidden = true;
+    save.disabled = editor.disabled = true;
+    editor.value = "";
+    status.textContent = "Carregando documento…";
+    try {
+      const draft = documentDrafts.get(url);
+      const content = draft ?? (await api("GET", url)).content;
+      if (version !== loadVersion) return;
+      editor.value = content ?? "";
+      editor.disabled = false;
+      save.disabled = draft === undefined;
+      status.textContent = draft === undefined ? "Documento carregado." : "Rascunho não salvo.";
+    } catch (e) {
+      if (version !== loadVersion) return;
+      status.textContent = "Não foi possível carregar o documento: " + e.message;
+      retry.hidden = false;
+    }
+  }
+
+  sel.onchange = retry.onclick = load;
+  editor.oninput = () => {
+    documentDrafts.set(path(), editor.value);
+    save.disabled = false;
+    status.textContent = "Rascunho não salvo.";
+  };
+  save.onclick = async () => {
+    const url = path();
+    const content = editor.value;
+    sel.disabled = editor.disabled = save.disabled = true;
+    status.textContent = "Salvando documento…";
+    try {
+      await api("PUT", url, { content });
+      if (documentDrafts.get(url) === content) documentDrafts.delete(url);
+      status.textContent = "Documento salvo.";
+    } catch (e) {
+      status.textContent = "Não foi possível salvar. O rascunho foi mantido: " + e.message;
+      save.disabled = false;
+    } finally {
+      sel.disabled = editor.disabled = false;
+    }
+  };
+  return load();
+}
+
 function projectPlan(pid, data) {
   const modules = data.modules || [];
   const modHtml = modules.length ? modules.map(m => moduleCard(m, modules, (data.module_blockers||{})[m.id]||[])).join("") :
@@ -687,10 +754,10 @@ function projectPlan(pid, data) {
     <div class="banner info">Converta os documentos aprovados em módulos/tarefas com critérios de aceite. Nada é implementado aqui.</div>
     ${modHtml}
     <div class="card"><h3>Novo módulo</h3>
-      <label>Nome</label><input id="m-name" type="text" />
-      <label>Descrição</label><textarea id="m-desc" style="min-height:60px"></textarea>
-      <label>Critérios de aceite (um por linha)</label><textarea id="m-acc" style="min-height:60px"></textarea>
-      <label>Depende dos módulos (opcional; Ctrl/Cmd para vários)</label>
+      <label for="m-name">Nome</label><input id="m-name" type="text" />
+      <label for="m-desc">Descrição</label><textarea id="m-desc" style="min-height:60px"></textarea>
+      <label for="m-acc">Critérios de aceite (um por linha)</label><textarea id="m-acc" style="min-height:60px"></textarea>
+      <label for="m-deps">Depende dos módulos (opcional; Ctrl/Cmd para vários)</label>
       <select id="m-deps" multiple size="${Math.max(2, Math.min(6, modules.length))}">${modules.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} (${esc(x.id)})</option>`).join("")}</select>
       <div class="row" style="margin-top:10px"><button onclick="addModule('${esc(pid)}')">Adicionar módulo</button></div>
     </div>`;
@@ -704,7 +771,7 @@ function moduleCard(m, modules = [], blockers = []) {
   return `<div class="card"><h3>${esc(m.name)} ${pill(m.status)}</h3>
     <div class="muted">${esc(m.description||"")} · ID: ${esc(m.id)}</div>
     ${blockers.length ? `<div class="banner warn">${blockers.map(b=>esc(b.message)).join(" · ")}</div>` : ""}
-    <label>Dependências (Ctrl/Cmd para várias; identificadas por ID)</label>
+    <label for="md-${esc(m.id)}">Dependências (Ctrl/Cmd para várias; identificadas por ID)</label>
     <select id="md-${esc(m.id)}" multiple size="${Math.max(2, Math.min(6, deps.length))}">${deps.map(x=>`<option value="${esc(x.id)}" ${(m.depends_on||[]).includes(x.id)?"selected":""}>${esc(x.name)} (${esc(x.id)})</option>`).join("")}</select>
     <button class="ghost small" onclick="setModuleDeps('${esc(m.id)}')">Salvar dependências</button>
     <div class="row" style="margin-top:8px">
@@ -775,7 +842,7 @@ async function projectHandoff(pid, data) {
     <div class="card"><h3>Arquivo atual</h3><p>${esc(state)}</p>
       <pre class="skill-content">${esc(saved.content || "(nenhum arquivo)")}</pre></div>
     <div class="card"><h3>Gerar nova prévia</h3>
-      <label>Tarefa (ID estável)</label><select id="handoff-task" onchange="resetHandoffPreview()">${options || '<option value="">Nenhuma tarefa</option>'}</select>
+      <label for="handoff-task">Tarefa (ID estável)</label><select id="handoff-task" onchange="resetHandoffPreview()">${options || '<option value="">Nenhuma tarefa</option>'}</select>
       <div class="row" style="margin-top:10px"><button onclick="previewHandoff('${esc(pid)}')" ${tasks.length ? "" : "disabled"}>Ver prévia</button>
       <button id="handoff-save" onclick="saveHandoff('${esc(pid)}')" disabled>Confirmar e salvar HANDOFF.md</button></div>
       <p id="handoff-status" class="muted" aria-live="polite"></p>
@@ -1135,16 +1202,16 @@ function projectQa(pid, data) {
     ${rows}
     <p><a href="#/project/${esc(pid)}/evidence">Ver arquivos de evidência locais</a> (hash de bytes não equivale a teste aprovado).</p>
     <div class="card"><h3>Nova verificação</h3>
-      <label>Alvo (descrição livre/critério)</label><input id="q-target" />
-      <label>Vincular a módulo ou tarefa por ID estável (opcional)</label>
+      <label for="q-target">Alvo (descrição livre/critério)</label><input id="q-target" />
+      <label for="q-target-ref">Vincular a módulo ou tarefa por ID estável (opcional)</label>
       <select id="q-target-ref"><option value="">Sem vínculo (critério livre)</option>${targets.map(x=>`<option value="${esc(x.ref)}">${esc(x.label)}</option>`).join("")}</select>
-      <label>Critério</label><input id="q-crit" />
+      <label for="q-crit">Critério</label><input id="q-crit" />
       <div class="row">
-        <div><label>Ferramenta</label><input id="q-tool" placeholder="ex.: Unity Test, pytest" /></div>
-        <div><label>Comando</label><input id="q-cmd" placeholder="ex.: pytest -k slice" /></div>
+        <div><label for="q-tool">Ferramenta</label><input id="q-tool" placeholder="ex.: Unity Test, pytest" /></div>
+        <div><label for="q-cmd">Comando</label><input id="q-cmd" placeholder="ex.: pytest -k slice" /></div>
       </div>
-      <label>Evidência / saída</label><textarea id="q-ev" style="min-height:60px"></textarea>
-      <label>Resultado</label><select id="q-res">${["planejado","executado","aprovado_dev","falhou"].map(s=>`<option>${s}</option>`).join("")}</select>
+      <label for="q-ev">Evidência / saída</label><textarea id="q-ev" style="min-height:60px"></textarea>
+      <label for="q-res">Resultado</label><select id="q-res">${["planejado","executado","aprovado_dev","falhou"].map(s=>`<option>${s}</option>`).join("")}</select>
       <div class="row" style="margin-top:10px"><button onclick="addQa('${esc(pid)}')">Registrar</button></div>
     </div>`;
 }
@@ -1421,10 +1488,10 @@ async function projectEvidence(pid, data) {
     <div class="banner warn">Registro manual de arquivos existentes na pasta do projeto no computador que executa o Studio (no preview remoto, é o servidor, não o seu navegador). O Studio calcula o hash dos bytes, mas não executa comandos, não verifica critérios e nunca muda tarefa ou QA automaticamente. Não envia o arquivo ao navegador nem a terceiros; revise seu conteúdo antes de exportar/compartilhar.</div>
     ${list}
     <div class="card"><h3>Registrar arquivo local</h3>
-      <label>Alvo por ID</label><select id="ev-target">${targets.map(x=>`<option value="${esc(x.ref)}">${esc(x.label)}</option>`).join("")}</select>
-      <label>ID de verificação QA (opcional, deve ter o mesmo alvo)</label><select id="ev-qa"><option value="">Sem vínculo QA</option>${checks.map(q=>`<option value="${esc(q.id)}">${esc(q.id)} — ${esc(q.target_ref)} (${esc(q.result)})</option>`).join("")}</select>
-      <label>Caminho relativo à pasta do projeto (ex.: logs/teste.txt; não aceita links simbólicos)</label><input id="ev-path" type="text" />
-      <label>Nota de origem (não comprova aprovação)</label><input id="ev-note" type="text" />
+      <label for="ev-target">Alvo por ID</label><select id="ev-target">${targets.map(x=>`<option value="${esc(x.ref)}">${esc(x.label)}</option>`).join("")}</select>
+      <label for="ev-qa">ID de verificação QA (opcional, deve ter o mesmo alvo)</label><select id="ev-qa"><option value="">Sem vínculo QA</option>${checks.map(q=>`<option value="${esc(q.id)}">${esc(q.id)} — ${esc(q.target_ref)} (${esc(q.result)})</option>`).join("")}</select>
+      <label for="ev-path">Caminho relativo à pasta do projeto (ex.: logs/teste.txt; não aceita links simbólicos)</label><input id="ev-path" type="text" />
+      <label for="ev-note">Nota de origem (não comprova aprovação)</label><input id="ev-note" type="text" />
       <p class="muted">Limite por arquivo: 50 MB. O arquivo permanece na pasta do projeto; não há upload nesta tela.</p>
       <button onclick="registerEvidence('${esc(pid)}')" ${targets.length ? "" : "disabled"}>Registrar hash do arquivo</button>
     </div>`;
@@ -1456,7 +1523,7 @@ function projectRelease(pid, data) {
     <div class="card"><h3>Checklist</h3>${checklist||"<div class='muted'>vazio</div>"}</div>
     <div class="card"><h3>Créditos e licenças</h3><textarea id="rel-cred">${esc(rel.credits||"")}</textarea></div>
     <div class="card"><h3>Notas de versão</h3><textarea id="rel-notes">${esc(rel.version_notes||"")}</textarea>
-      <label>Estado documental (nenhum build verificado)</label><select id="rel-state">${rel.unverified_claim ? `<option value="" selected disabled>Reclassificar declaração anterior: ${esc(rel.state)}</option>` : ""}${["preparando","pronto_para_build"].map(s=>`<option ${!rel.unverified_claim && s===rel.state?"selected":""}>${s}</option>`).join("")}</select>
+      <label for="rel-state">Estado documental (nenhum build verificado)</label><select id="rel-state">${rel.unverified_claim ? `<option value="" selected disabled>Reclassificar declaração anterior: ${esc(rel.state)}</option>` : ""}${["preparando","pronto_para_build"].map(s=>`<option ${!rel.unverified_claim && s===rel.state?"selected":""}>${s}</option>`).join("")}</select>
       <div class="row" style="margin-top:10px"><button onclick="saveRelease('${esc(pid)}')">Salvar</button></div>
     </div>
     <div class="banner info">Publicação pelo Studio: <b>não disponível</b>. ${rel.unverified_claim ? "Declaração antiga não verificada." : "Nenhum artefato de build registrado pelo Studio."}</div>`;
@@ -1622,13 +1689,15 @@ function comboDeclarationPanel(payload) {
 
 /* ----- global config ----- */
 async function renderGlobalConfig() {
+  const current = beginRender();
   let settings, catalog, comboDeclarations, gateway;
   try {
     settings = await api("GET", "/api/providers/settings");
     catalog = (await api("GET", "/api/providers")).catalog;
     comboDeclarations = await api("GET", "/api/combos/declarations");
     gateway = await api("GET", "/api/gateway/connection");
-  } catch (e) { view.innerHTML = `<div class="banner danger">Erro: ${esc(e.message)}</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
+  } catch (e) { if (!current()) return; view.innerHTML = `<div class="banner danger">Erro: ${esc(e.message)}</div><a class="btn" href="#/recovery">Verificar integridade dos dados</a>`; return; }
+  if (!current()) return;
   const cat = catalog.map(c => `<div class="card">
     <h3>${esc(c.name)} ${pill(c.kind)}</h3>
     <p class="muted">Status: ${esc(c.status)} · simulado: ${c.simulated?"sim":"não"}</p>

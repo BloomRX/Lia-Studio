@@ -68,7 +68,7 @@ button.small { padding: 6px 10px; font-size: 13px; }
 
 /* forms */
 label { display: block; margin: 12px 0 4px; color: var(--muted); font-size: 13px; }
-input[type=text], input[type=number], textarea, select {
+input:not([type]), input[type=text], input[type=number], input[type=url], input[type=password], textarea, select {
   width: 100%; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line);
   border-radius: 9px; padding: 10px; font: inherit;
 }
@@ -405,3 +405,15 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
 /* A ação de recarga só aparece na janela desktop, após pywebviewready. */
 .desktop-reload { white-space:nowrap; font-size:12px; padding:7px 10px; }
 @media(max-width:690px) { .desktop-reload { margin-left:auto; } }
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 12px;
+  background: #17111c;
+  color: #fff;
+  transform: translateY(calc(-100% - 16px));
+}
+.skip-link:focus { transform: none; }

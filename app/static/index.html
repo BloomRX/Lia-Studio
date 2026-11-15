@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body data-space="home">
+  <a class="skip-link" href="#view" onclick="event.preventDefault(); document.getElementById('view').focus()">Ir para o conteúdo</a>
   <header class="topbar">
     <a class="brand" href="#/home" aria-label="Lia Studio — voltar ao launcher">
       <span class="badge" aria-hidden="true">✿</span>
@@ -25,8 +26,8 @@
             onclick="reloadDesktop()">↻ Recarregar</button>
   </header>
 
-  <main id="view" class="view">
-    <div class="loading">Carregando…</div>
+  <main id="view" class="view" tabindex="-1">
+    <div class="loading" role="status">Carregando…</div>
   </main>
 
   <footer class="foot"><span>Lia Studio · local-first · você decide o próximo passo</span><span>Alpha UI.1 · Agents e execução real não conectados</span></footer>

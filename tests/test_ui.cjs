@@ -41,6 +41,64 @@ context.reloadDesktop();
 assert.equal(reloads, 1);
 
 (async () => {
+
+  const originalFetch = context.fetch;
+  const originalHome = context.renderHome;
+  context.renderHome = async () => {};
+  const button = {};
+  let archiveRequest;
+  context.fetch = async (url, options) => {
+    archiveRequest = { url, method: options.method };
+    return { ok: true, json: async () => ({}) };
+  };
+  assert.match(context.projectCard({id:'p', archived:true}), /archiveProject\('p', true, this\).*Reabrir/);
+  await context.archiveProject('p', true, button);
+  assert.deepEqual(archiveRequest, {url:'/api/projects/p/reopen', method:'POST'});
+  assert.equal(button.disabled, false);
+  context.fetch = async () => ({ ok: false, json: async () => ({error:'Bloqueado'}) });
+  await context.archiveProject('p', true, button);
+  assert.match(toast.textContent, /reabrir.*Bloqueado/);
+  context.renderHome = originalHome;
+
+  const selectDoc = {value:'GDD.md'};
+  const editor = {};
+  const save = {};
+  const retry = {};
+  const status = {};
+  const originalGet = context.document.getElementById;
+  context.document.getElementById = id => ({
+    'doc-sel':selectDoc, 'doc-content':editor, 'doc-save':save,
+    'doc-retry':retry, 'doc-status':status,
+  })[id] ?? originalGet(id);
+  let finishFirstLoad;
+  context.fetch = (url, options) => {
+    if (options.method === 'PUT') return Promise.resolve({ok:false, json:async () => ({error:'Bloqueado'})});
+    if (url.endsWith('GDD.md')) return new Promise(resolve => { finishFirstLoad = resolve; });
+    if (url.endsWith('SCOPE.md')) return Promise.resolve({ok:false, json:async () => ({error:'Indisponivel'})});
+    return Promise.resolve({ok:true, json:async () => ({content:'Brief'})});
+  };
+  const firstLoad = context.wireDocs('p');
+  selectDoc.value = 'BRIEF.md';
+  await selectDoc.onchange();
+  finishFirstLoad({ok:true, json:async () => ({content:'GDD antigo'})});
+  await firstLoad;
+  assert.equal(editor.value, 'Brief');
+  editor.value = 'Meu rascunho';
+  editor.oninput();
+  await save.onclick();
+  assert.match(status.textContent, /rascunho foi mantido/);
+  selectDoc.value = 'SCOPE.md';
+  await selectDoc.onchange();
+  assert.equal(retry.hidden, false);
+  assert.equal(save.disabled, true);
+  assert.match(status.textContent, /Indisponivel/);
+  selectDoc.value = 'BRIEF.md';
+  await context.wireDocs('p');
+  assert.equal(editor.value, 'Meu rascunho');
+  assert.equal(save.disabled, false);
+
+  context.document.getElementById = originalGet;
+  context.fetch = originalFetch;
   const html = context.projectExecute('project-1', {
     modules: [{ id: 'module-1', name: 'Módulo', tasks: [{ id: 'task', status: 'pendente', name: 'Tarefa' }] }],
   });
