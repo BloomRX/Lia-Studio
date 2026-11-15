@@ -1,4 +1,4 @@
-# Lia GameDev — visão de produto, fluxo e plano de entregas
+# Lia Studio — visão de produto, fluxo e plano de entregas
 
 **Versão de planejamento:** 0.1 — rascunho para revisão, não especificação de implementação.
 
@@ -6,22 +6,22 @@
 
 ## 1. Visão em uma frase
 
-**Lia GameDev é a área técnica da Lia para ajudar uma pessoa — inclusive sem experiência de programação — a preparar, construir, testar, documentar e retomar projetos de jogos com agentes supervisionáveis, sem substituir a direção criativa do Dev.**
+**Lia Studio é a área técnica da Lia para ajudar uma pessoa — inclusive sem experiência de programação — a preparar, construir, testar, documentar e retomar projetos de jogos com agentes supervisionáveis, sem substituir a direção criativa do Dev.**
 
-A Lia GameDev é uma ferramenta independente, utilizável diretamente por pessoas que nunca usaram a Lia Waifu. Também poderá ser chamada pela Lia Waifu como ferramenta técnica. Para manter a marca, pode compartilhar escolhas visuais específicas do launcher da Waifu (por exemplo, elementos de identidade visual aprovados), mas não personalidade de convivência nem memórias pessoais. O método documental do GameDevPipeline é usado na Etapa 0; não é o nome do produto nem uma fase de implementação.
+A Lia Studio é uma ferramenta independente, utilizável diretamente por pessoas que nunca usaram a Lia Waifu. Também poderá ser chamada pela Lia Waifu como ferramenta técnica. Para manter a marca, pode compartilhar escolhas visuais específicas do launcher da Waifu (por exemplo, elementos de identidade visual aprovados), mas não personalidade de convivência nem memórias pessoais. O método documental do GameDevPipeline é usado na Etapa 0; não é o nome do produto nem uma fase de implementação.
 
 ## 2. Requisitos confirmados pelo Dev
 
-- A Lia GameDev é uma ferramenta própria, autônoma para uso humano, que também poderá ser usada/chamada pela Lia Waifu como capacidade técnica.
-- Reaproveitar apenas as escolhas artísticas do launcher da Lia Waifu necessárias à continuidade da marca; manter personalidade de convivência e memórias pessoais fora da Lia GameDev.
-- Manter separadas as memórias pessoais/de convivência da Lia Waifu e as memórias técnicas de cada projeto da Lia GameDev.
+- A Lia Studio é uma ferramenta própria, autônoma para uso humano, que também poderá ser usada/chamada pela Lia Waifu como capacidade técnica.
+- Reaproveitar apenas as escolhas artísticas do launcher da Lia Waifu necessárias à continuidade da marca; manter personalidade de convivência e memórias pessoais fora da Lia Studio.
+- Manter separadas as memórias pessoais/de convivência da Lia Waifu e as memórias técnicas de cada projeto da Lia Studio.
 - A versão completa pretendida cobre o ciclo de desenvolvimento de jogos; slices de construção menores não reduzem o escopo final.
 - O usuário escolheu manter MIT para código/documentação de software: terceiros podem fazer forks e modificar suas próprias cópias. Nome, personagem Lia, identidade visual, logos e assets de marca precisam de política separada; forks não devem se apresentar como oficiais nem reivindicar propriedade da personagem.
 - Uma regra contra denegrir a personagem não vem automaticamente da licença MIT; se desejada, precisa ser tratada em política de marca/comunidade separada e revisada juridicamente.
-- O usuário pretende apagar e recriar o repositório público `BloomRX/Lia-GameDev` com o mesmo nome para começar com histórico novo. A outra sessão não deve apagar nem recriar o repositório; o usuário fará isso.
+- O nome público do produto é Lia Studio; o repositório de código e a branch de trabalho têm gestão própria.
 - A plataforma inicial será Windows, como aplicativo executável.
-- O núcleo da Lia GameDev deve ser agnóstico a engine; perfis e conectores de Godot, Unity, MonoGame ou outras engines entram como módulos.
-- Dados de jogo e registros da Lia GameDev serão local-first: no computador do usuário; Git/sincronização externa ficam opcionais e sob controle do Dev.
+- O núcleo da Lia Studio deve ser agnóstico a engine; perfis e conectores de Godot, Unity, MonoGame ou outras engines entram como módulos.
+- Dados de jogo e registros da Lia Studio serão local-first: no computador do usuário; Git/sincronização externa ficam opcionais e sob controle do Dev.
 - A Etapa 0 de cada jogo é uma preparação conversacional e documental baseada no `game-project-bootstrap` do GameDevPipeline. Ela registra ideia, GDD, escopo, referências, direção e decisões; **não implementa o jogo**.
 - O Dev mantém a direção criativa. O agente trabalha em tarefas delegadas e delimitadas; o Dev pode interromper, ajustar ou redirecionar.
 - Guardar processos, decisões, tarefas, testes e capturas para retomar trabalho e acompanhar aprendizado.
@@ -127,6 +127,7 @@ As memórias pessoais da Lia Waifu ficam fora desses quatro grupos e não devem 
 - **Stefan3D — workspace:** projetos, arquivos, sessões retomáveis, skills e conexões numa experiência visual são úteis. O README do Mr. Mak também deixa claras algumas barreiras: exige CLI externo, tem foco em Windows x64, e contas/serviços de voz ou provedores são externos/opcionais. A Lia deve ser mais acessível no onboarding e tratar essas integrações como adaptadores, não pré-requisitos. [Workspace](https://github.com/witnesstodark/mr-mak-workspace)
 - **MagmaDev — direção e processo:** o Dev define a direção criativa; documentação e tarefas ajudam continuidade; módulos demais geram sobrecarga. Testes devem comparar o resultado com requisitos e evidências, não confiar apenas na autocrítica do agente que implementou. [Comparação de workflows](https://youtu.be/m7jtTTOWUU4) · [uso de IA no desenvolvimento](https://youtu.be/tibV8bHCTcQ)
 - **Workflow de assets:** conceito aprovado, mesh, rig/animação, exportação e funcionamento dentro da engine são etapas diferentes. Gerar um asset ou conseguir exportá-lo não prova que esteja pronto para jogo. [Personagens e animações](https://youtu.be/UBjgJM6D18A) · [animação de criatura](https://youtu.be/h_mR2BRibZ8)
+- **Lia Forge na pipeline:** app autônomo e opcional para produzir/retomar assets de personagem/item. Quando ambos os produtos estiverem aptos, a experiência desejada parte de uma Task no Studio, pede autorização para passar um brief mínimo, acompanha a produção no Forge e retorna arquivos para cadastro e revisão no Studio; isso exige um contrato/bridge ainda não implementado. Na revisão do commit `f274b01`, há adapters de conceito e de spritesheet de modelo existente, mas a cadeia 3D/rig/animação e o E2E real continuam pendentes. O Studio recebe arquivos locais após escolha do Dev e mantém planejamento, integração na engine, QA e gates. Divisão de responsabilidades, estado e contrato futuro: [`docs/LIA-FORGE-NA-PIPELINE.md`](../docs/LIA-FORGE-NA-PIPELINE.md).
 - **Limite de pesquisa:** o episódio do MagmaDev sobre criação de skills é restrito a membros; o conteúdo integral não foi avaliado. Não criar conclusões sobre ele.
 
 ### Estratégia provisória para IA gratuita — pesquisa de 29/09/2026
@@ -205,12 +206,13 @@ Não duplicar a mesma instrução em várias skills sem motivo: cada skill deve 
 - pausa/ajuste e confirmação para efeitos colaterais;
 - testes e relatórios verificáveis;
 - revisão/playtest iterativo, comparação com os critérios do jogo e registro das limitações.
+- testar hipóteses do loop (sensação pretendida, ação repetida, desafio/recompensa, escopo inegociável) com protótipos descartáveis; registrar observações humanas e limites de aleatoriedade, sem converter relato em gameplay verificado.
 
 ### Fase D — Ciclo completo e preparação de entrega
 
 - deixar todas as etapas centrais acessíveis na experiência: preparação, planejamento, execução, QA/playtest, iteração, registro/retomada e preparação de build/entrega/release;
 - skills próprias para testes, playtest, build/empacotamento, checklist de release, handoff final e revisão pós-entrega;
-- conectar engines e ferramentas por adaptadores quando escolhidos; geração de mídia e ditado permanecem extras opcionais;
+- conectar engines e ferramentas por adaptadores quando escolhidos; Lia Forge é rota opcional de produção de assets, não requisito do Studio nem substituto de integração/QA na engine; geração de mídia e ditado permanecem extras opcionais;
 - oferecer caminho básico completo sem API paga, com custo/limitações explicados para recursos externos.
 
 **Decisão do Dev para a primeira slice:** começar pela fundação/criação das skills, antes de integrar a Etapa 0 à experiência visual. Essa ordem é só a primeira entrega: a Etapa 0 e o ciclo completo continuam obrigatórios para a versão completa.
@@ -256,7 +258,7 @@ A primeira slice está definida: fundação/criação de skills antes de integra
 
 ## 11. Pacote para a outra sessão
 
-O prompt para entregar a primeira slice à outra sessão está preparado em `LiaGameDev-planejamento/handoff-primeira-slice-para-outra-sessao.md`. Ele condensa as decisões aprovadas e autoriza somente a implementação das quatro skills iniciais quando for enviado pelo Dev. Não autoriza construir o aplicativo completo, mexer na Lia Waifu, publicar, usar serviços pagos ou alterar `main`.
+O prompt para entregar a primeira slice à outra sessão está preparado em `planejamento/handoff-primeira-slice-para-outra-sessao.md`. Ele condensa as decisões aprovadas e autoriza somente a implementação das quatro skills iniciais quando for enviado pelo Dev. Não autoriza construir o aplicativo completo, mexer na Lia Waifu, publicar, usar serviços pagos ou alterar `main`.
 
 A visão do produto e o inventário das 14 skills permanecem nos documentos desta pasta. Escolhas fora da primeira slice (framework desktop, fornecedores exatos, integração técnica com Waifu e conectores de engine) continuam abertas e não devem ser antecipadas pela outra sessão.
 

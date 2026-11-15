@@ -1,4 +1,4 @@
-# Lia GameDev — especificação de planejamento da primeira slice de skills
+# Lia Studio — especificação de planejamento da primeira slice de skills
 
 **Status:** proposta de planejamento, ainda não implementada. Não é autorização para alterar o repositório.
 
@@ -6,7 +6,7 @@
 
 ## 1. Objetivo da slice
 
-Criar uma pequena biblioteca de skills próprias da Lia GameDev, legível para iniciantes e reutilizável por diferentes agentes. A primeira biblioteca deve permitir preparar um jogo, planejar módulos e retomar/transferir trabalho sem implementar gameplay nem depender de uma interface completa.
+Criar uma pequena biblioteca de skills próprias da Lia Studio, legível para iniciantes e reutilizável por diferentes agentes. A primeira biblioteca deve permitir preparar um jogo, planejar módulos e retomar/transferir trabalho sem implementar gameplay nem depender de uma interface completa.
 
 A slice deve testar os **procedimentos** antes de construir o aplicativo Windows. As skills devem poder ser usadas por um humano em um agente de código, e projetadas para uma futura integração técnica com a Lia Waifu. A execução real da integração Waifu não faz parte desta slice.
 

@@ -1,12 +1,12 @@
-# Lia GameDev — inventário das skills e recomendações de adaptação
+# Lia Studio — inventário das skills e recomendações de adaptação
 
 **Status:** documento de planejamento. Nenhum código, branch ou repositório foi alterado por esta sessão.
 
-**Objetivo:** avaliar as skills públicas de `witnesstodark/mr-mak-workspace`, indicar encaixes prováveis na Lia GameDev e registrar regras para eventual integração e revisão.
+**Objetivo:** avaliar as skills públicas de `witnesstodark/mr-mak-workspace`, indicar encaixes prováveis na Lia Studio e registrar regras para eventual integração e revisão.
 
 ## 1. Conclusão executiva
 
-Sim: o Mr. Mak publica **14 skills de projeto**. Há bons componentes reutilizáveis, sobretudo para planejamento, handoff, referências visuais, organização e produção de assets. A recomendação não é incorporar tudo de uma vez: usar cada skill como módulo revisado, adaptando linguagem, escopo, custos, ferramentas e critérios de aceitação à Lia GameDev.
+Sim: o Mr. Mak publica **14 skills de projeto**. Há bons componentes reutilizáveis, sobretudo para planejamento, handoff, referências visuais, organização e produção de assets. A recomendação não é incorporar tudo de uma vez: usar cada skill como módulo revisado, adaptando linguagem, escopo, custos, ferramentas e critérios de aceitação à Lia Studio.
 
 A Lia precisa também de skills próprias que não aparecem cobertas pelo índice do Mr. Mak: preparação documental do jogo na Etapa 0, execução segura de tarefas, testes/playtests, retomada de sessões e revisão explícita de lições antes de torná-las reutilizáveis.
 
@@ -46,7 +46,7 @@ O índice afirma que `.agents/skills` é a fonte mantida para as skills e `.clau
 
 ## 3. Regras para integração
 
-- A Lia Waifu conserva memória pessoal/de convivência; a Lia GameDev mantém memória técnica separada por jogo.
+- A Lia Waifu conserva memória pessoal/de convivência; a Lia Studio mantém memória técnica separada por jogo.
 - GameDevPipeline é uma skill de preparação da **Etapa 0**, não um segundo produto, um segundo wizard concorrente ou uma fase de implementação.
 - Uma skill instalada não significa que sua ferramenta, conta, MCP, modelo ou engine esteja instalada/conectada.
 - Ser capaz de chamar uma API não comprova qualidade do asset; separar conclusão técnica de aprovação visual e de integração na engine.
@@ -54,7 +54,7 @@ O índice afirma que `.agents/skills` é a fonte mantida para as skills e `.clau
 - Criar perfis simples e avançados pode evitar sobrecarregar iniciantes com os controles de produção 3D.
 - Preservar os exemplos e a mídia originais do Mr. Mak em contexto separado e com seus avisos de origem; não os rebatizar como criações originais da Lia.
 - A licença raiz do Mr. Mak é MIT, mas o próprio repositório informa licenças/avisos de terceiros. `img2threejs` tem licença Apache-2.0. Conferir `THIRD_PARTY_NOTICES.md` e os notices de cada recurso antes de integrar código ou mídia. [Avisos de terceiros](https://github.com/witnesstodark/mr-mak-workspace/blob/main/THIRD_PARTY_NOTICES.md) · [Licença raiz](https://github.com/witnesstodark/mr-mak-workspace/blob/main/LICENSE)
-- O usuário escolheu MIT para código/documentação da Lia GameDev e proteção separada para a personagem, nome, logo e identidade visual. MIT permite forks e modificações de código; não protege por si só a personagem contra uso de marca/persona ou conduta denegridora. Manter uma política distinta e revisar juridicamente antes de publicar assets de marca.
+- O usuário escolheu MIT para código/documentação da Lia Studio e proteção separada para a personagem, nome, logo e identidade visual. MIT permite forks e modificações de código; não protege por si só a personagem contra uso de marca/persona ou conduta denegridora. Manter uma política distinta e revisar juridicamente antes de publicar assets de marca.
 
 ## 4. Escopo de pesquisa efetivamente realizado
 
