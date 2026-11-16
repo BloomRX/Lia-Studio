@@ -278,6 +278,7 @@ const SECTIONS = [
   ["gameplay-loop", "Loop do jogo"],
   ["handoff", "Handoff"],
   ["execute", "Execução"],
+  ["godot", "Godot"],
   ["runs", "Histórico de execuções"],
   ["assets", "Assets"],
   ["qa", "QA / Playtest"],
@@ -353,6 +354,7 @@ async function renderProject(pid, section, visualStage, historySelection = []) {
   else if (section === "gameplay-loop") content = await projectGameplayLoop(pid, data);
   else if (section === "handoff") content = await projectHandoff(pid, data);
   else if (section === "execute") content = projectExecute(pid, data, selectedStage);
+  else if (section === "godot") content = await projectGodot(pid, data, selectedStage);
   else if (section === "runs") content = await projectRunHistory(pid, data, selectedStage, historySelection);
   else if (section === "qa") {
     try { data.slice_review = await api("GET", `/api/projects/${pid}/vertical-slice`); }
@@ -362,7 +364,7 @@ async function renderProject(pid, section, visualStage, historySelection = []) {
   else if (section === "assets") content = await projectAssets(pid, data);
   else if (section === "evidence") content = await projectEvidence(pid, data);
   else if (section === "release") content = await projectRelease(pid, data);
-  else if (section === "config") content = await projectConfig(pid, data);
+  else if (section === "config") content = await projectConfig(pid, data, selectedStage);
 
   if (!current()) return;
   const recent = data.recent_sessions || [];
@@ -404,6 +406,7 @@ async function renderProject(pid, section, visualStage, historySelection = []) {
   if (section === "gameplay-loop") wireGameplayLoop(pid, data);
   if (section === "handoff") wireHandoff(pid, data.modules, data.resume?.handoff);
   if (section === "execute") wireExecute(pid, data.modules);
+  if (section === "godot") wireGodot(pid, selectedStage, current);
   if (section === "runs") wireRunHistory(pid, selectedStage, historySelection, current);
   if (section === "qa") wireQa(pid, data.slice_review);
   if (section === "assets") wireAssets(pid, data);
@@ -938,6 +941,174 @@ function wireHandoff(pid, modules, existing = {}) {
 }
 
 
+
+/* ----- Godot ----- */
+function godotLink(pid, stage) {
+  return `#/project/${encodeURIComponent(pid)}/godot/${stage}`;
+}
+
+function godotInspectionMessage(inspection) {
+  const status = new Map([
+    ["unconfigured", "Selecione um executável Godot 4.x e o descritor do projeto."],
+    ["configured", "Configuração carregada. Consulte a versão para conferir o executável."],
+    ["needs_selection", "Selecione um executável Godot para consultar a versão."],
+    ["not_found", "Nenhum executável Godot foi encontrado."],
+    ["invalid_project", "Confira o caminho do arquivo project.godot."],
+    ["ready", "Godot 4.x detectado."],
+  ]);
+  return [inspection.message || status.get(inspection.status),
+    inspection.version && `Versão ${inspection.version}`,
+    inspection.project_name && `Projeto ${inspection.project_name}`
+  ].filter(Boolean).join(" · ") || "Sem diagnóstico.";
+}
+
+async function projectGodot(pid, data, stage) {
+  const heading = '<h1>Godot 4.x</h1>';
+  let config, inspection;
+  try {
+    ({ config, inspection } = await api("GET", `/api/projects/${encodeURIComponent(pid)}/godot`));
+  } catch (e) {
+    return `${heading}<p role="alert" class="banner danger">Não foi possível carregar a configuração do Godot. ${esc(e.message)}</p>
+      <button type="button" id="godot-retry" class="ghost">Tentar novamente</button>`;
+  }
+  config ||= {};
+  inspection ||= {};
+  const tasks = historyTaskLabels(data.modules);
+  const configured = Boolean(config.executable && config.project_path && config.revision);
+  const options = (inspection.candidates || []).map(candidate => {
+    const path = typeof candidate === "string" ? candidate : candidate.path;
+    return `<option value="${esc(path)}">${esc(path)}</option>`;
+  }).join("");
+  const archived = data.entry.archived;
+  return `${heading}
+    <p><a href="${esc(historyLink(pid, stage))}">Ver histórico de execuções</a></p>
+    ${archived ? '<p class="banner info">Reabra o projeto para salvar a configuração ou iniciar o Godot.</p>' : ""}
+    <section class="card godot-section">
+      <h2>Executável e projeto</h2>
+      <form id="godot-config" aria-describedby="godot-inspection" data-revision="${esc(config.revision)}">
+        <fieldset>
+          ${options ? `<label for="godot-pick">Executáveis encontrados</label>
+            <select id="godot-pick"><option value="">Selecione um caminho ou digite abaixo</option>${options}</select>` : ""}
+          <label for="godot-executable">Caminho absoluto do executável Godot</label>
+          <input id="godot-executable" value="${esc(config.executable)}" required spellcheck="false" />
+          <label for="godot-project-path">Caminho do arquivo project.godot</label>
+          <input id="godot-project-path" value="${esc(config.project_path)}" required spellcheck="false" placeholder="game/project.godot" />
+          <p class="muted">Use um caminho relativo ao projeto do Studio ou o caminho absoluto de um projeto local.</p>
+          <div class="godot-actions">
+            <button type="button" class="ghost" id="godot-inspect">Consultar versão</button>
+            <button type="submit" id="godot-save"${archived ? " disabled" : ""}>Salvar configuração</button>
+          </div>
+        </fieldset>
+      </form>
+      <p id="godot-inspection" class="muted" role="status">${esc(godotInspectionMessage(inspection))}</p>
+    </section>
+    <section class="card godot-section">
+      <h2>Abrir editor ou rodar jogo</h2>
+      <p>O Godot usa as permissões desta conta do sistema. Prossiga com um executável e um projeto que você controla e confia. Finalize pelo Godot ou pelo histórico do Studio.</p>
+      <fieldset id="godot-launch"${configured && !archived ? "" : " disabled"}>
+        <label for="godot-task">Vincular a uma Task (opcional)</label>
+        <select id="godot-task"><option value="">Sem Task</option>${[...tasks].map(([key, name]) =>
+          `<option value="${esc(key)}">${esc(name)} · ${esc(key)}</option>`).join("")}</select>
+        <div class="godot-actions">
+          <button type="button" id="godot-editor" class="ghost">Abrir no editor</button>
+          <button type="button" id="godot-run">Rodar jogo</button>
+        </div>
+      </fieldset>
+      <p id="godot-launch-status" class="muted" role="status">${configured ? "" : "Salve o executável e o descritor para iniciar."}</p>
+    </section>`;
+}
+
+function wireGodot(pid, stage, current) {
+  const get = id => document.getElementById(id);
+  const retry = get("godot-retry");
+  if (retry) {
+    retry.onclick = () => renderProject(pid, "godot", stage);
+    return;
+  }
+  const form = get("godot-config");
+  if (!form) return;
+  const executable = get("godot-executable");
+  const projectPath = get("godot-project-path");
+  const configControls = form.querySelector("fieldset");
+  const save = get("godot-save");
+  const archived = save.disabled;
+  const launch = get("godot-launch");
+  const message = get("godot-inspection");
+  const launchMessage = get("godot-launch-status");
+  const base = `/api/projects/${encodeURIComponent(pid)}/godot`;
+  const selection = () => ({executable: executable.value.trim(), project_path: projectPath.value.trim()});
+  let saved = {...selection(), revision: form.dataset.revision};
+  let busy = false;
+
+  function updateLaunch() {
+    const draft = selection();
+    const same = draft.executable === saved.executable && draft.project_path === saved.project_path;
+    launch.disabled = busy || archived || !same || !saved.executable || !saved.project_path || !saved.revision;
+  }
+
+  function onChange() {
+    message.textContent = "Confira a versão ou salve a configuração.";
+    launchMessage.textContent = "Salve a configuração antes de iniciar se os caminhos foram alterados.";
+    updateLaunch();
+  }
+  executable.oninput = projectPath.oninput = onChange;
+  const pick = get("godot-pick");
+  if (pick) pick.onchange = () => {
+    if (!pick.value) return;
+    executable.value = pick.value;
+    onChange();
+  };
+
+  async function withBusy(status, pending, action) {
+    if (!current() || busy) return;
+    busy = configControls.disabled = true;
+    updateLaunch();
+    status.textContent = pending;
+    try { await action(); }
+    catch (e) { if (current()) status.textContent = e.message; }
+    finally {
+      busy = configControls.disabled = false;
+      updateLaunch();
+    }
+  }
+
+  get("godot-inspect").onclick = () => {
+    if (busy || !current() || !form.reportValidity()) return;
+    const draft = selection();
+    if (!confirm(`Consultar a versão do executável selecionado? ${draft.executable} será iniciado com --version usando as permissões desta conta.`)) return;
+    return withBusy(message, "Consultando versão…", async () => {
+      const inspection = await api("POST", `${base}/inspect`, draft);
+      if (current()) message.textContent = godotInspectionMessage(inspection);
+    });
+  };
+  form.onsubmit = event => {
+    event.preventDefault();
+    if (archived) return;
+    return withBusy(message, "Salvando configuração…", async () => {
+      const result = await api("PUT", base, selection());
+      if (!current()) return;
+      saved = result;
+      executable.value = saved.executable;
+      projectPath.value = saved.project_path;
+      message.textContent = "Configuração salva.";
+      launchMessage.textContent = "";
+    });
+  };
+
+  function run(action, label) {
+    if (launch.disabled || !current()) return;
+    if (!confirm(`${label} com ${saved.executable}?\nProjeto: ${saved.project_path}\n\nO executável e o projeto podem executar código com as permissões desta conta. Prossiga apenas se confiar nos dois.`)) return;
+    const task = get("godot-task").value;
+    const [module_id, task_id] = task ? task.split("/") : ["", ""];
+    return withBusy(launchMessage, "Solicitando início…", async () => {
+      const result = await api("POST", `${base}/runs`, {action, module_id, task_id, revision:saved.revision, confirm:true});
+      if (current()) location.hash = historyLink(pid, stage, "run", result.id);
+    });
+  }
+  get("godot-editor").onclick = () => run("editor", "Abrir editor");
+  get("godot-run").onclick = () => run("run", "Rodar jogo");
+  updateLaunch();
+}
 /* ----- persistent execution history ----- */
 const RUN_STATUS = new Map([
   ["running", "Em andamento"], ["completed", "Concluída"], ["failed", "Falhou"],
@@ -951,6 +1122,8 @@ const RUN_VALIDATION = new Map([
 const RUN_RESULT = new Map([
   ["syntax_ok", "Sintaxe válida"], ["syntax_error", "Erro de sintaxe"],
   ["timeout", "Tempo limite excedido"], ["process_error", "Falha do processo"],
+  ["exit_zero", "Processo encerrado com código 0"], ["exit_nonzero", "Processo encerrado com erro"],
+  ["start_error", "Falha ao iniciar o Godot"], ["supervision_error", "Falha no acompanhamento do processo"],
   ["cancelled", "Cancelamento confirmado"],
 ]);
 const RUN_INTEGRITY = new Map([
@@ -965,7 +1138,8 @@ function historyLink(pid, stage, ...selection) {
   return `#/project/${encodeURIComponent(pid)}/runs/${stage}${selection.length ? "/" + selection.map(encodeURIComponent).join("/") : ""}`;
 }
 
-function runType(kind) {
+function runType(kind, action) {
+  if (kind === "godot") return action === "editor" ? "Editor Godot" : "Execução no Godot";
   return kind === "python-ast" ? "Análise sintática Python" : kind;
 }
 
@@ -988,7 +1162,7 @@ async function projectRunHistory(pid, data, stage, selection) {
     const taskKey = mode === "task" && first && second ? `${first}/${second}` : "";
     for (const run of runs) {
       const key = `${run.module_id}/${run.task_id}`;
-      if (!labels.has(key)) labels.set(key, `Task ${run.task_id}`);
+      if (run.task_id && !labels.has(key)) labels.set(key, `Task ${run.task_id}`);
     }
     if (taskKey && !labels.has(taskKey)) labels.set(taskKey, `Task ${second}`);
     const rows = runs.filter(run => !taskKey || `${run.module_id}/${run.task_id}` === taskKey);
@@ -998,8 +1172,8 @@ async function projectRunHistory(pid, data, stage, selection) {
       <select id="history-task"><option value="">Todas as Tasks</option>${[...labels].map(([key, label]) =>
         `<option value="${esc(key)}"${key === taskKey ? " selected" : ""}>${esc(label)} (${esc(key)})</option>`).join("")}</select>
       ${rows.length ? `<ul class="clean history-list">${rows.map(run => `<li class="card">
-        <strong>${esc(runType(run.kind))}</strong> ${pill(RUN_STATUS.get(run.status) || run.status)}
-        <div>${esc(labels.get(`${run.module_id}/${run.task_id}`))} · <code>${esc(run.id)}</code></div>
+        <strong>${esc(runType(run.kind, run.action))}</strong> ${pill(RUN_STATUS.get(run.status) || run.status)}
+        <div>${esc(run.task_id ? labels.get(`${run.module_id}/${run.task_id}`) : "Sem Task")} · <code>${esc(run.id)}</code></div>
         <div class="muted">${esc(run.started_at)}${run.finished_at ? " → " + esc(run.finished_at) : ""}</div>
         <a href="${esc(historyLink(pid, stage, "run", run.id))}">Abrir detalhes <span class="muted">(${esc(run.id)})</span></a>
       </li>`).join("")}</ul>` : '<p class="empty">Nenhuma execução neste filtro.</p>'}`;
@@ -1016,6 +1190,7 @@ function runEvidenceList(evidence) {
       <dt>Registro</dt><dd><code>${esc(item.id)}</code></dd>
       <dt>Arquivo</dt><dd><code>${esc(item.path)}</code></dd>
       <dt>Origem</dt><dd>${esc(item.origin === "python-ast-input" ? "Entrada lida pelo parser Python" :
+        item.origin === "godot-descriptor" ? "Descritor usado para iniciar o Godot" :
         item.origin === "manual_local_file" ? "Arquivo local registrado manualmente" : item.origin)}</dd>
       <dt>SHA-256 registrado</dt><dd><code>${esc(item.sha256)}</code></dd>
       <dt>Tamanho registrado</dt><dd>${esc(item.bytes)} bytes</dd>
@@ -1035,20 +1210,26 @@ function runReviewList(reviews) {
 }
 
 function runDetails(pid, data, stage, {run, evidence, reviews}) {
-  const taskLabel = historyTaskLabels(data.modules).get(`${run.module_id}/${run.task_id}`) || run.task_id;
+  const taskLabel = historyTaskLabels(data.modules).get(`${run.module_id}/${run.task_id}`) || run.task_id || "Sem Task";
   const allowWrite = Boolean(run.finished_at) && !data.entry.archived;
-  return `<a href="${esc(historyLink(pid, stage, "task", run.module_id, run.task_id))}">← Execuções desta Task</a>
+  const godot = run.kind === "godot";
+  const backLink = run.task_id ? historyLink(pid, stage, "task", run.module_id, run.task_id) :
+    godot ? godotLink(pid, stage) : historyLink(pid, stage);
+  const backText = run.task_id ? "Execuções desta Task" : godot ? "Godot" : "Histórico de execuções";
+  return `<a href="${esc(backLink)}">← ${backText}</a>
     <section class="card history-list">
-      <h2>${esc(runType(run.kind))}</h2>
+      <h2>${esc(runType(run.kind, run.action))}</h2>
       <dl class="history-fields">
         <dt>Execução</dt><dd><code>${esc(run.id)}</code></dd>
-        <dt>Task</dt><dd>${esc(taskLabel)} · <code>${esc(run.task_id)}</code></dd>
+        <dt>Task</dt><dd>${esc(taskLabel)}${run.task_id ? ` · <code>${esc(run.task_id)}</code>` : ""}</dd>
+        ${godot && run.project_path ? `<dt>Descritor</dt><dd><code>${esc(run.project_path)}</code></dd>` : ""}
         <dt>Estado da execução</dt><dd>${pill(RUN_STATUS.get(run.status) || run.status)}</dd>
         <dt>Início</dt><dd>${esc(run.started_at)}</dd>
         <dt>Término</dt><dd>${esc(run.finished_at || "Sem término registrado")}</dd>
         <dt>Validação automática</dt><dd>${esc(RUN_VALIDATION.get(run.result?.validation_status) || "Sem resultado de validação")}</dd>
         <dt>Resultado registrado</dt><dd>${esc(RUN_RESULT.get(run.result?.code) || run.result?.code || "Sem resultado registrado")}</dd>
       </dl>
+      ${godot ? godotRunControls(run) : ""}
       ${run.kind === "python-ast" ? '<p class="muted">O parser analisa a sintaxe do arquivo Python. O jogo não foi executado.</p>' : ""}
     </section>
     <h2>Evidências vinculadas</h2>
@@ -1083,6 +1264,51 @@ function runDetails(pid, data, stage, {run, evidence, reviews}) {
     </form>` : ""}`;
 }
 
+
+function godotRunControls(run) {
+  const result = run.result;
+  const active = run.status === "running" || run.status === "cancellation_pending";
+  const output = result || (active ? run.live : null);
+  return `<p class="muted">O histórico registra o processo Godot. O código de saída não confirma gameplay nem aprova a Task.</p>
+    ${active ? `<div class="godot-actions">
+      <button type="button" class="ghost" id="godot-refresh-run">Atualizar estado e saída</button>
+      <button type="button" class="danger" id="godot-stop-run">${run.status === "cancellation_pending" ? "Tentar encerrar novamente" : "Encerrar processo"}</button>
+      </div><p id="godot-stop-status" role="status"></p>` : ""}
+    ${output ? `<h3>${result ? "Saída registrada" : "Saída parcial"}</h3>
+    <dl class="history-fields">
+      ${result ? `<dt>Código de saída</dt><dd>${esc(result.exit_code ?? "Indisponível")}</dd>` : ""}
+      <dt>Avisos na saída capturada</dt><dd>${esc(output.warnings ?? 0)}</dd>
+      <dt>Erros na saída capturada</dt><dd>${esc(output.errors ?? 0)}</dd>
+    </dl>
+    ${output.truncated ? '<p class="banner warn">A saída excedeu o limite de captura e foi truncada.</p>' : ""}
+    <details class="godot-output"><summary>Saída padrão</summary><pre>${esc(output.stdout || "Nenhuma saída registrada.")}</pre></details>
+    <details class="godot-output"><summary>Saída de erros</summary><pre>${esc(output.stderr || "Nenhuma saída registrada.")}</pre></details>` : ""}`;
+}
+
+function wireGodotRunControls(pid, stage, selection, current) {
+  const refresh = document.getElementById("godot-refresh-run");
+  if (!refresh) return;
+  refresh.onclick = () => renderProject(pid, "runs", stage, selection);
+  const stop = document.getElementById("godot-stop-run");
+  if (!stop) return;
+  const status = document.getElementById("godot-stop-status");
+  stop.onclick = async () => {
+    if (stop.disabled || !current()) return;
+    if (!confirm("Encerrar o processo Godot? Alterações não salvas no editor podem ser perdidas.")) return;
+    const [, id] = selection;
+    stop.disabled = refresh.disabled = true;
+    status.textContent = "Solicitando encerramento…";
+    try {
+      await api("POST", `/api/projects/${encodeURIComponent(pid)}/godot/runs/${encodeURIComponent(id)}/cancel`, {confirm:true});
+      if (current()) await renderProject(pid, "runs", stage, selection);
+    } catch (e) {
+      if (current()) status.textContent = "Não foi possível solicitar o encerramento. " + e.message;
+    } finally {
+      stop.disabled = refresh.disabled = false;
+    }
+  };
+}
+
 function wireRunHistory(pid, stage, selection, current) {
   const retry = document.getElementById("history-retry");
   if (retry) retry.onclick = () => renderProject(pid, "runs", stage, selection);
@@ -1093,6 +1319,7 @@ function wireRunHistory(pid, stage, selection, current) {
   };
   const [mode, id] = selection;
   if (mode !== "run" || !id) return;
+  wireGodotRunControls(pid, stage, selection, current);
   const base = `/api/projects/${encodeURIComponent(pid)}/runs/${encodeURIComponent(id)}`;
   const forms = [
     ["history-evidence", "evidence", ["path", "kind"], "Evidência registrada."],
@@ -1795,14 +2022,14 @@ async function wireRelease(pid, rel) {
 }
 
 /* ----- config (project: engines + providers) ----- */
-function projectConfig(pid, data) {
+function projectConfig(pid, data, stage = "preparation") {
   const eng = data.engine || {};
   const prov = data.providers || {};
   const engOpts = (data.engine_catalog || []).map(item =>
     `<option value="${esc(item.id)}" ${eng.id===item.id?"selected":""}>${esc(item.name)} — ${item.verified ? "perfil genérico" : "não verificado"}</option>`).join("");
   return `<h1>Configuração do projeto</h1>
     <div class="card"><h3>Perfil de engine</h3>
-      <p class="muted">Perfil não é adapter. Nenhuma engine abre projeto, roda jogo ou faz build. Godot tem apenas diagnóstico opcional do binário/versionamento; Unreal/Unity/MonoGame ainda não são detectados.</p>
+      <p class="muted">O perfil organiza o projeto. Para configurar e iniciar o adaptador local, abra <a href="${esc(godotLink(pid, stage))}">Godot</a>.</p>
       <select id="eng-sel">${engOpts}</select>
       <div class="row" style="margin-top:10px"><button onclick="setEngine('${esc(pid)}')">Salvar perfil</button></div>
       <div class="tag">Atual: ${esc(eng.name||"—")} · verificado: ${eng.verified? "sim":"não"}</div>

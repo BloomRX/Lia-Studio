@@ -1,6 +1,6 @@
 # Lia Studio — roadmap de implementação
 
-A branch `arena/01a0f4ab-lia-gamedev` já entrega [os fluxos de interface](UI-IMPLEMENTATION-STATUS.md) e [o histórico persistente de execuções](TASK-RUN-HISTORY.md). A Fase 3 amplia esse histórico com a primeira engine. As [decisões arquiteturais](../architecture/LIA-STUDIO-ARCHITECTURE-DECISIONS.md) e a [consolidação](../CONSOLIDACAO-ARQUITETURAL-LIA-STUDIO.md) permanecem referências para compatibilidade, segurança e evidência.
+A branch `arena/01a0f4ab-lia-gamedev` já entrega [os fluxos de interface](UI-IMPLEMENTATION-STATUS.md) e [o histórico persistente de execuções](TASK-RUN-HISTORY.md). A [Fase 3 amplia esse histórico com a Godot 4.x](GODOT-INTEGRATION.md). As [decisões arquiteturais](../architecture/LIA-STUDIO-ARCHITECTURE-DECISIONS.md) e a [consolidação](../CONSOLIDACAO-ARQUITETURAL-LIA-STUDIO.md) permanecem referências para compatibilidade, segurança e evidência.
 
 O Studio coordena projetos, Tasks, execução, testes e distribuição. O **Lia Agent Hub** responde pelo ecossistema de Skills, MCP, ferramentas e capacidades dos agentes. O **Lia Forge** responde pela produção de assets. O Studio integra esses produtos por contratos versionados e continua utilizável com ambos ausentes.
 

@@ -440,3 +440,21 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
   .history-fields { grid-template-columns: minmax(0, 1fr); }
   .history-fields dd { margin-bottom: 6px; }
 }
+
+
+.godot-section { margin-block: 12px; }
+.godot-section h2 { margin-top: 0; }
+.godot-section fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.godot-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.godot-output { margin-top: 10px; }
+.godot-output summary { cursor: pointer; }
+.godot-output summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.godot-output pre {
+  max-height: 20rem;
+  overflow: auto;
+  padding: 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -534,7 +534,7 @@ assert.equal(reloads, 1);
   });
   assert.match(configHtml, /value="unreal" selected/);
   assert.match(configHtml, /Unreal Engine — não verificado/);
-  assert.match(configHtml, /Perfil não é adapter/);
+  assert.match(configHtml, /\/godot\/preparation/);
   context.document.getElementById = id => ({view, toast, 'eng-sel': {value: 'unreal'}})[id];
   context.wireConfig('project-1', {});
   await context.window.setEngine('project-1');
@@ -1010,6 +1010,100 @@ assert.equal(reloads, 1);
   assert.match(evidenceList.innerHTML, /evidence-1/);
   assert.equal(reviewForm.resets, 1);
   assert.equal(evidenceForm.resets, 0);
+  context.document.getElementById = originalGet;
+  context.fetch = originalFetch;
+
+  const godotData = { entry:{archived:false}, modules:[{id:'mod', tasks:[{id:'task', name:'Protótipo'}]}] };
+  const godotBase = '/api/projects/project-1/godot';
+  const godotConfig = {executable:'C:/Godot/Godot.exe', project_path:'game/project.godot', revision:'rev-1'};
+  const adapterRequests = [];
+  context.fetch = async (url, options) => {
+    adapterRequests.push({url, method:options.method, body:options.body ? JSON.parse(options.body) : null});
+    if (url === godotBase && options.method === 'GET') return {ok:true, json:async () => ({
+      config:godotConfig, inspection:{status:'configured', candidates:['C:/<Seleção>/Godot.exe']},
+    })};
+    if (url === godotBase && options.method === 'PUT') return {ok:true, json:async () => ({
+      ...JSON.parse(options.body), revision:'rev-2',
+    })};
+    if (url === godotBase+'/inspect') return {ok:true, json:async () => ({
+      status:'ready', version:'4.5.stable', project_name:'<Meu jogo>',
+    })};
+    if (url === godotBase+'/runs') return {ok:true, json:async () => ({id:'godot-run-1', status:'running'})};
+    if (url === godotBase+'/runs/godot-run-1/cancel') return {ok:true, json:async () => ({status:'cancellation_pending'})};
+    throw new Error('Unexpected route '+url);
+  };
+  const godotHtml = await context.projectGodot('project-1', godotData, 'mvp');
+  assert.match(godotHtml, /C:\/&lt;Seleção&gt;\/Godot\.exe/);
+  assert.match(godotHtml, /id="godot-run"/);
+  const godotControls = {};
+  const fakeGodot = {
+    'godot-config':{dataset:{revision:'rev-1'}, querySelector:() => godotControls, reportValidity:() => true},
+    'godot-executable':{value:godotConfig.executable}, 'godot-project-path':{value:godotConfig.project_path},
+    'godot-save':{}, 'godot-inspect':{}, 'godot-launch':{}, 'godot-inspection':{}, 'godot-launch-status':{},
+    'godot-editor':{}, 'godot-run':{}, 'godot-task':{value:''},
+  };
+  context.document.getElementById = id => fakeGodot[id] ?? originalGet(id);
+  context.wireGodot('project-1','mvp',() => true);
+  assert.equal(fakeGodot['godot-launch'].disabled,false);
+  const oldConfirmGodot = context.confirm;
+  let godotConsent = '';
+  context.confirm = text => { godotConsent = text; return false; };
+  await fakeGodot['godot-inspect'].onclick();
+  assert.match(godotConsent,/--version/);
+  assert.equal(adapterRequests.length,1);
+  context.confirm = text => { godotConsent = text; return true; };
+  fakeGodot['godot-project-path'].value = 'D:/MeuJogo/project.godot';
+  fakeGodot['godot-project-path'].oninput();
+  assert.equal(fakeGodot['godot-launch'].disabled,true);
+  await fakeGodot['godot-run'].onclick();
+  assert.equal(adapterRequests.length,1);
+  await fakeGodot['godot-inspect'].onclick();
+  assert.equal(adapterRequests.at(-1).url,godotBase+'/inspect');
+  assert.match(fakeGodot['godot-inspection'].textContent,/4\.5\.stable.*<Meu jogo>/);
+  await fakeGodot['godot-config'].onsubmit({preventDefault() {}});
+  assert.equal(adapterRequests.at(-1).method,'PUT');
+  assert.equal(fakeGodot['godot-launch'].disabled,false);
+  const oldGodotHash = context.location.hash;
+  await fakeGodot['godot-editor'].onclick();
+  assert.match(godotConsent,/D:\/MeuJogo\/project\.godot/);
+  assert.deepEqual(adapterRequests.at(-1).body,{action:'editor',module_id:'',task_id:'',revision:'rev-2',confirm:true});
+  assert.equal(context.location.hash,'#/project/project-1/runs/mvp/run/godot-run-1');
+  fakeGodot['godot-task'].value = 'mod/task';
+  await fakeGodot['godot-run'].onclick();
+  assert.deepEqual(adapterRequests.at(-1).body,{action:'run',module_id:'mod',task_id:'task',revision:'rev-2',confirm:true});
+  context.location.hash = oldGodotHash;
+
+  const godotRun = {id:'godot-run-1', action:'editor', project_path:'game/project.godot', kind:'godot', status:'running',
+    module_id:'', task_id:'', started_at:'2026-11-16T00:00:00Z', finished_at:null, result:null};
+  const renderGodotRun = run => context.runDetails('project-1',godotData,'mvp',{run,evidence:[],reviews:[]});
+  const activeGodot = renderGodotRun({...godotRun, live:{stdout:"Parcial <amostra>",stderr:"",warnings:0,errors:0,truncated:false}});
+  assert.match(activeGodot,/Editor Godot/);
+  assert.match(activeGodot,/Saída parcial/);
+  assert.match(activeGodot,/Parcial &lt;amostra&gt;/);
+  assert.doesNotMatch(activeGodot,/<dt>Código de saída/);
+  assert.match(activeGodot,/\/godot\/mvp.*← Godot/);
+  assert.match(activeGodot,/id="godot-stop-run"/);
+  const terminalGodot = renderGodotRun({...godotRun,status:'failed',finished_at:'2026-11-16T00:00:02Z',
+    result:{code:'exit_nonzero',validation_status:'not_run',exit_code:1,warnings:1,errors:2,truncated:true,
+      stdout:'<img src=x onerror=test()>',stderr:'Falhou'}});
+  assert.match(terminalGodot,/&lt;img src=x onerror=test\(\)&gt;/);
+  assert.match(terminalGodot,/Saída de erros/);
+  assert.match(terminalGodot,/Processo encerrado com erro/);
+  assert.match(terminalGodot,/truncada/);
+  assert.doesNotMatch(terminalGodot,/id="godot-stop-run"/);
+
+  fakeGodot['godot-refresh-run'] = {};
+  fakeGodot['godot-stop-run'] = {};
+  fakeGodot['godot-stop-status'] = {};
+  const currentProjectRenderer = context.renderProject;
+  let resumedGodotView = false;
+  context.renderProject = async () => { resumedGodotView = true; };
+  context.wireGodotRunControls('project-1','mvp',['run','godot-run-1'],() => true);
+  await fakeGodot['godot-stop-run'].onclick();
+  assert.equal(adapterRequests.at(-1).url,godotBase+'/runs/godot-run-1/cancel');
+  assert.equal(resumedGodotView,true);
+  context.renderProject = currentProjectRenderer;
+  context.confirm = oldConfirmGodot;
   context.document.getElementById = originalGet;
   context.fetch = originalFetch;
   console.log('UI regression: OK');
