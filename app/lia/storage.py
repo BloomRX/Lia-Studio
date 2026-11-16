@@ -42,6 +42,8 @@ STRUCTURED_FILES = [
     "evidence.json",
     "sessions.json",
     "attempt_events.json",  # histórico opcional de tentativas, sem alterar Sessions simuladas
+    "godot_config.json",
+    "godot_runs.json",
     "run_history.json",  # evidências e revisões de execuções
     "validation_sessions.json",  # processos de análise sintática, separados da simulação
     "code_changes.json",  # alterações assistidas após diff e confirmação
@@ -93,7 +95,7 @@ def _decode_json(text: str, name: str) -> Any:
         if type(raw.get("schema_version")) is not int or raw["schema_version"] != SCHEMA_VERSION or "data" not in raw:
             raise StorageError(f"versão ou formato incompatível em {name}")
         raw = raw["data"]
-    expected = list if name in {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json", "run_history.json"} else dict
+    expected = list if name in {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json", "run_history.json", "godot_runs.json"} else dict
     if not isinstance(raw, expected):
         raise StorageError(f"estrutura inválida em {name} (esperado {expected.__name__})")
     return raw
@@ -303,7 +305,7 @@ class Storage:
         return sorted(p.name for p in proj_dir.glob("*.md") if p.is_file() and not p.is_symlink())
 
     # ---- dados estruturados ----
-    _LIST_FILES = {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json", "run_history.json"}
+    _LIST_FILES = {"decisions.json", "modules.json", "qa.json", "evidence.json", "sessions.json", "attempt_events.json", "validation_sessions.json", "code_changes.json", "draft_jobs.json", "assets.json", "run_history.json", "godot_runs.json"}
 
     def read_structured(self, project_id: str, name: str) -> Any:
         if name not in STRUCTURED_FILES:
@@ -420,6 +422,10 @@ class Storage:
         if path.name in ("attempt_events.json", "attempt_events.json.bak"):
             from . import attempt_history
             attempt_history.validate_entries(data, expected_project_id=project_id)
+        if path.name in ("godot_config.json", "godot_config.json.bak", "godot_runs.json", "godot_runs.json.bak"):
+            from . import godot_runs
+            validator = godot_runs.validate_config if path.name.startswith("godot_config.") else godot_runs.validate_entries
+            validator(data)
         if path.name in ("run_history.json", "run_history.json.bak"):
             from . import run_history
             run_history.validate_entries(data)

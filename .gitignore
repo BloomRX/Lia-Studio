@@ -28,3 +28,9 @@ dist/
 **/gateway_connection.json
 **/gateway_connection.json.bak
 **/gateway_connection.json.corrupt-*
+
+# Configuração local, logs da engine e cópias de recuperação.
+**/godot_config.json
+**/godot_config.json.*
+**/godot_runs.json
+**/godot_runs.json.*

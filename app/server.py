@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -77,6 +77,12 @@ def _tier_payload(observed: dict) -> dict:
 
 
 # ---------- rotas de projeto ----------
+
+
+def _local_engine_access(handler):
+    # Acesso à engine e logs só na API local, nunca no preview de rede.
+    return (handler is not None and handler.server.server_address[0] == "127.0.0.1"
+            and handler.client_address[0] == "127.0.0.1")
 
 
 def api_projects(handler, pid: Optional[str], sub: list, method: str, body, query) -> Any:
@@ -152,11 +158,17 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
 
     if method == "DELETE" and not sub:
         confirm = query.get("confirm", ["false"])[0].lower() == "true"
-        storage.delete_project(pid, confirm=confirm)
+        with storage.stage_lock:
+            if godot_runs.has_active(storage, pid):
+                raise StorageError("encerre a Godot antes de excluir este projeto")
+            storage.delete_project(pid, confirm=confirm)
         return {"deleted": True}
 
     if method == "POST" and sub == ["archive"]:
-        return storage.archive_project(pid)
+        with storage.stage_lock:
+            if godot_runs.has_active(storage, pid):
+                raise StorageError("encerre a Godot antes de arquivar este projeto")
+            return storage.archive_project(pid)
     if method == "POST" and sub == ["reopen"]:
         return storage.reopen_project(pid)
 
@@ -235,15 +247,29 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         if set(body) != {"proposal_id", "confirm"}:
             raise StorageError("envie proposta e confirmação")
         return code_drafts.apply(storage, pid, body["proposal_id"], body["confirm"]), 201
+    if sub and sub[0] == "godot":
+        if not _local_engine_access(handler):
+            return {"error": "a integração Godot requer o Studio local"}, 403
+        if method == "GET" and sub == ["godot"]:
+            return godot_runs.get_config(storage, pid)
+        if method == "POST" and sub == ["godot", "inspect"]:
+            return godot_runs.inspect(storage, pid, body)
+        if method == "PUT" and sub == ["godot"]:
+            return godot_runs.save_config(storage, pid, body)
+        if method == "POST" and sub == ["godot", "runs"]:
+            return godot_runs.launch(storage, pid, body), 201
+        if method == "POST" and len(sub) == 4 and sub[1] == "runs" and sub[3] == "cancel":
+            return godot_runs.cancel(storage, pid, sub[2], body)
+
     if method == "GET" and sub == ["runs"]:
-        return {"runs": run_history.list_runs(storage, pid)}
+        return {"runs": run_history.list_runs(storage, pid, include_engine=_local_engine_access(handler))}
     if method == "GET" and len(sub) == 2 and sub[0] == "runs":
-        return run_history.run_detail(storage, pid, sub[1])
+        return run_history.run_detail(storage, pid, sub[1], include_engine=_local_engine_access(handler))
     if method == "POST" and len(sub) == 3 and sub[0] == "runs":
         if sub[2] == "evidence":
-            return run_history.register_evidence(storage, pid, sub[1], body), 201
+            return run_history.register_evidence(storage, pid, sub[1], body, include_engine=_local_engine_access(handler)), 201
         if sub[2] == "reviews":
-            return run_history.add_review(storage, pid, sub[1], body), 201
+            return run_history.add_review(storage, pid, sub[1], body, include_engine=_local_engine_access(handler)), 201
     if method == "GET" and sub == ["validation-sessions"]:
         return {"sessions": validation_sessions.list_sessions(storage, pid)}
     if method == "POST" and len(sub) == 3 and sub[0] == "validation-sessions" and sub[2] == "cancel":
@@ -401,10 +427,14 @@ class Handler(BaseHTTPRequestHandler):
                 sub = parts[3:]
                 return api_projects(self, pid, sub, method, self._body, query)
             if parts == ["api", "engines", "godot", "candidates"] and method == "POST":
+                if not _local_engine_access(self):
+                    return {"error": "a integração Godot requer o Studio local"}, 403
                 if set(body) != {"confirm"}:
                     raise StorageError("envie confirmação da consulta à PATH")
                 return engine_probe.candidates(body["confirm"]), 200
             if parts == ["api", "engines", "godot", "version"] and method == "POST":
+                if not _local_engine_access(self):
+                    return {"error": "a integração Godot requer o Studio local"}, 403
                 if set(body) != {"command", "path", "confirm"}:
                     raise StorageError("envie binário selecionado e confirmação")
                 return engine_probe.version(body["command"], body["path"], body["confirm"]), 200

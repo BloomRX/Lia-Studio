@@ -1,17 +1,13 @@
 """Detecção Godot opt-in: somente PATH e --version; não abre jogo, engine ou build."""
 from __future__ import annotations
 
-import os
-import re
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Dict, List
 
 from .storage import StorageError
 
 COMMANDS = ("godot4", "godot", "godot4.exe", "godot.exe")
-VERSION = re.compile(r"v?(\d{1,2}\.\d{1,3}(?:\.\d{1,3})?)\b")
 TIMEOUT = 4
 MAX_OUTPUT = 4096
 
@@ -49,18 +45,8 @@ def version(command: str, expected_path: str, confirmed: bool) -> Dict[str, str]
     candidate = next((item for item in _candidates() if item["command"] == command), None)
     if candidate is None or candidate["path"] != expected_path:
         raise StorageError("binário mudou ou não foi localizado; consulte a lista novamente")
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
-    try:
-        result = subprocess.run([candidate["path"], "--version"], stdin=subprocess.DEVNULL,
-                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                timeout=TIMEOUT, check=False, creationflags=flags)
-        if result.returncode != 0 or len(result.stdout) > MAX_OUTPUT:
-            raise ValueError("versão ausente ou saída excessiva")
-        first = result.stdout.decode("utf-8", errors="replace").splitlines()[0]
-        match = VERSION.match(first.strip())
-        if match is None:
-            raise ValueError("versão não reconhecida")
-    except (OSError, ValueError, subprocess.TimeoutExpired, IndexError) as exc:
-        raise StorageError("Godot não retornou versão verificável; sem abrir projeto ou build") from exc
-    return {"status": "version_detected", "version": match.group(1),
+    from . import godot  # o adapter também usa os nomes e limites de descoberta acima
+
+    observed = godot._probe(godot._executable(candidate["path"]))
+    return {"status": "version_detected", "version": observed,
             "path": candidate["path"], "warning": "Somente binário/versionamento; projeto, adapter, build e jogo NÃO verificados."}

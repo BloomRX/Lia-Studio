@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from . import evidence, validation_sessions
+from . import evidence, godot_runs, validation_sessions
 from .storage import MARKDOWN_DOCS, STRUCTURED_FILES, StorageError
 
 NAME = "run_history.json"
@@ -95,18 +95,25 @@ def _public_run(run, active):
     }
 
 
-def list_runs(storage, pid):
+def list_runs(storage, pid, *, include_engine=True):
     with storage.stage_lock:
-        runs = validation_sessions._load(storage, pid)
-        return [_public_run(run, validation_sessions.is_active(pid, run["id"])) for run in reversed(runs)]
+        runs = [_public_run(run, validation_sessions.is_active(pid, run["id"]))
+                for run in validation_sessions._load(storage, pid)]
+        if include_engine:
+            runs.extend(godot_runs.public_run(storage, pid, run) for run in godot_runs._load(storage, pid))
+        return sorted(runs, key=lambda run: run["started_at"], reverse=True)
 
 
-def _run_context(storage, pid, run_id):
-    with storage.stage_lock:
-        runs = {run["id"]: run for run in validation_sessions._load(storage, pid)}
-        if run_id not in runs:
-            raise StorageError("execução não encontrada neste projeto")
-        return runs[run_id], _events(storage, pid, runs)
+def _run_context(storage, pid, run_id, *, include_engine):
+    parser = validation_sessions._load(storage, pid)
+    engines = godot_runs._load(storage, pid)
+    runs = {run["id"]: run for run in (*parser, *engines)}
+    if len(runs) != len(parser) + len(engines):
+        raise StorageError("identidade duplicada no histórico de execuções")
+    run = runs.get(run_id)
+    if run is None or (not include_engine and "action" in run):
+        raise StorageError("execução não encontrada neste projeto")
+    return run, _events(storage, pid, runs)
 
 
 def _hash(storage, pid, path, *, source=False):
@@ -140,27 +147,32 @@ def _with_integrity(storage, pid, record):
     return {**record, "integrity": integrity}
 
 
-def run_detail(storage, pid, run_id):
+def run_detail(storage, pid, run_id, *, include_engine=True):
     with storage.stage_lock:
-        run, events = _run_context(storage, pid, run_id)
-        public = _public_run(run, validation_sessions.is_active(pid, run_id))
-    source = {"id": f"source-{run_id}", "path": run["path"], "sha256": run["sha256"],
-              "bytes": run["byte_count"], "origin": "python-ast-input", "kind": "file",
-              "recorded_at": run["started_at"]}
+        run, events = _run_context(storage, pid, run_id, include_engine=include_engine)
+        engine = "action" in run
+        public = (godot_runs.public_run(storage, pid, run, logs=True) if engine else
+                  _public_run(run, validation_sessions.is_active(pid, run_id)))
+    if engine:
+        source = godot_runs.descriptor_evidence(storage, pid, run)
+    else:
+        source = _with_integrity(storage, pid, {"id": f"source-{run_id}", "path": run["path"],
+            "sha256": run["sha256"], "bytes": run["byte_count"], "origin": "python-ast-input",
+            "kind": "file", "recorded_at": run["started_at"]})
     related = [item for item in events if item["run_id"] == run_id]
     return {
         "run": public,
-        "evidence": [_with_integrity(storage, pid, item)
-                     for item in (source, *(event for event in related if event["type"] == "evidence"))],
+        "evidence": [source, *(_with_integrity(storage, pid, item)
+                              for item in related if item["type"] == "evidence")],
         "reviews": [event for event in related if event["type"] == "review"],
     }
 
 
-def _append(storage, pid, run_id, event_type, data):
+def _append(storage, pid, run_id, event_type, data, *, include_engine):
     with storage.stage_lock:
         if (storage.get_entry(pid) or {}).get("archived"):
             raise StorageError("reabra o projeto antes de registrar evidência ou revisão")
-        run, events = _run_context(storage, pid, run_id)
+        run, events = _run_context(storage, pid, run_id, include_engine=include_engine)
         if run["finished_at"] is None:
             raise StorageError("somente execuções com resultado terminal aceitam evidências e revisões")
         event = {"id": uuid.uuid4().hex[:12], "run_id": run_id, "type": event_type,
@@ -180,15 +192,16 @@ def _append(storage, pid, run_id, event_type, data):
     return event
 
 
-def register_evidence(storage, pid, run_id, data):
+def register_evidence(storage, pid, run_id, data, *, include_engine=True):
     if not isinstance(data, dict) or set(data) != {"path", "kind"} or data["kind"] not in KINDS:
         raise StorageError("envie caminho e tipo da evidência (arquivo, log ou captura)")
-    return {**_append(storage, pid, run_id, "evidence", data), "integrity": "intact"}
+    return {**_append(storage, pid, run_id, "evidence", data, include_engine=include_engine), "integrity": "intact"}
 
 
-def add_review(storage, pid, run_id, data):
+def add_review(storage, pid, run_id, data, *, include_engine=True):
     if (not isinstance(data, dict) or set(data) != {"decision", "comment", "reviewer"}
         or data["decision"] not in DECISIONS or not _text(data["reviewer"], 120)
         or not _text(data["comment"], 4000)):
         raise StorageError("envie decisão, nome declarado do responsável e comentário")
-    return _append(storage, pid, run_id, "review", {key: value.strip() for key, value in data.items()})
+    return _append(storage, pid, run_id, "review", {key: value.strip() for key, value in data.items()},
+                   include_engine=include_engine)
