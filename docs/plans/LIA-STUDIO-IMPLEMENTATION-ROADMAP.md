@@ -1,6 +1,24 @@
-# Lia Studio — roadmap condicionado de implementação (Agent 0)
+# Lia Studio — roadmap de implementação
 
-**Status: PLANO PARA REVISÃO, SEM CÓDIGO APROVADO.** Leia [decisões C1–C10](../architecture/LIA-STUDIO-ARCHITECTURE-DECISIONS.md) e [consolidação](../CONSOLIDACAO-ARQUITETURAL-LIA-STUDIO.md). Base de produto `4868a18`; branch de coordenação `arena/01a0f4ab-lia-gamedev` em `d9dd166` antes deste pacote documental. Trabalho em **clone/worktree limpo baseado nessa branch**, jamais no checkout original `ad64510` com 114 alterações. `app/lia/` mantém somente Python stdlib. Os nomes de novos módulos/schemas abaixo são **candidatos**, não contratos aprovados.
+A branch `arena/01a0f4ab-lia-gamedev` já entrega [os fluxos de interface](UI-IMPLEMENTATION-STATUS.md) e [o histórico persistente de execuções](TASK-RUN-HISTORY.md). A Fase 3 amplia esse histórico com a primeira engine. As [decisões arquiteturais](../architecture/LIA-STUDIO-ARCHITECTURE-DECISIONS.md) e a [consolidação](../CONSOLIDACAO-ARQUITETURAL-LIA-STUDIO.md) permanecem referências para compatibilidade, segurança e evidência.
+
+O Studio coordena projetos, Tasks, execução, testes e distribuição. O **Lia Agent Hub** responde pelo ecossistema de Skills, MCP, ferramentas e capacidades dos agentes. O **Lia Forge** responde pela produção de assets. O Studio integra esses produtos por contratos versionados e continua utilizável com ambos ausentes.
+
+| Ordem | Trilha | Dependência e critério |
+| --- | --- | --- |
+| 1 | Engine Integration | Godot 4.x instalada pelo Dev. Validar projeto e executável escolhidos, supervisionar o processo, vincular resultado e logs ao histórico. Primeira execução para projetos próprios e confiáveis. |
+| 2 | Gameplay & QA | Usa execuções da engine e histórico. Separar saída do processo, evidência, veredito e aceite humano. |
+| 3 | Development Workspace | Evoluir arquivos, edição e fluxo de Tasks sobre o vínculo do workspace e as evidências. |
+| 4 | Git & Collaboration | Integrar status, diffs e colaboração sobre workspaces identificados e alterações atribuíveis. |
+| 5 | Forge Integration | Intercâmbio opcional de pacotes com versão, hashes, direitos e proveniência. Pode evoluir em paralelo após validação do contrato entre produtos. |
+| 6 | Agent Hub Integration | Consumir capacidades declaradas pelo Hub. Qualquer execução de agentes depende de controles efetivos e homologação próprios. |
+| 7 | Build & Release | Depende de adapter de exportação, QA, validação de plataforma, empacotamento e aceite de release. |
+
+A Fase 3 autoriza descoberta, configuração, inspeção e abertura/execução confirmada de projetos Godot confiáveis. No Windows, o processo deve entrar em um Job Object antes de executar, com encerramento da árvore se o Studio fechar. Controle de ciclo de vida não isola arquivos, rede, credenciais ou identidade. Não há instalação, importação de código externo, build, alteração de gates ou acesso ao Hub/Forge nesta fase.
+
+## Plano histórico (Agent 0)
+
+As ondas abaixo registram a proposta anterior e seus critérios. A ordem e a distribuição de responsabilidades vigentes estão na tabela acima.
 
 ## 0. Regras, gates e ordem crítica
 
