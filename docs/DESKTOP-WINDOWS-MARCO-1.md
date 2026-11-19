@@ -48,6 +48,22 @@ O resultado esperado fica na **pasta inteira** `dist\LiaStudio\`, incluindo
 O script verifica os três caminhos e encerra com erro se faltarem. `dist/` e
 `build/` são ignorados pelo Git.
 
+## Build com Skills preparadas pelo Agent Hub
+
+A preparação é explícita. Rode o bootstrap do Lia Agent Hub com pacotes e
+manifestos locais do perfil lia-studio numa cópia de trabalho em que as pastas
+de destino estejam livres. Passe a pasta .agents/skills produzida ao build
+da branch do Studio.
+
+```powershell
+.\desktop\build_windows.ps1 -SkillsDirectory '<copia-preparada>\.agents\skills'
+```
+
+O build conserva o caminho .agents/skills dentro do pacote. Ele verifica se a
+Skill de bootstrap existe. A conferência de revisões e hashes acontece na
+materialização do Hub. O operador seleciona a biblioteca completa antes de
+empacotar. Para obter o build da árvore versionada, omita o parâmetro.
+
 ## Roteiro de qualificação Windows (ainda não executado)
 
 1. Use **outra** pasta temporária nova em `LIA_PROJECTS_DIR`; guarde versão de

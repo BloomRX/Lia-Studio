@@ -1,15 +1,26 @@
-# Empacotamento local explícito. Não instala pacotes, não publica nem executa Agent.
+﻿# Empacotamento local explícito. Não instala pacotes, não publica nem executa Agent.
+[CmdletBinding()]
+param([string]$SkillsDirectory)
+
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $python = Join-Path $root '.venv\Scripts\python.exe'
 if (-not (Test-Path $python)) {
     throw 'Crie .venv com py -m venv .venv e instale desktop/requirements-windows.txt antes de construir.'
 }
+if (!$SkillsDirectory) {
+    $SkillsDirectory = Join-Path $root '.agents/skills'
+}
+$skills = (Resolve-Path -LiteralPath $SkillsDirectory).Path
+$bootstrap = Join-Path $skills 'lia-game-project-bootstrap/SKILL.md'
+if (!(Test-Path -LiteralPath $bootstrap -PathType Leaf)) {
+    throw "Biblioteca de Skills incompleta: $bootstrap"
+}
 Push-Location $root
 try {
     & $python -m PyInstaller --noconfirm --clean --windowed --onedir --contents-directory . `
         --name LiaStudio --add-data 'app/static;app/static' `
-        --add-data '.agents/skills;.agents/skills' desktop.py
+        --add-data "$skills;.agents/skills" desktop.py
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller falhou ($LASTEXITCODE)" }
     $package = Join-Path $root 'dist\LiaStudio'
     foreach ($relative in @('LiaStudio.exe', 'app\static\index.html', '.agents\skills\lia-game-project-bootstrap\SKILL.md')) {
