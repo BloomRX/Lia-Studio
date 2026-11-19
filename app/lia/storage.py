@@ -608,7 +608,7 @@ class Storage:
             raise StorageError(f"documento inválido: {doc}")
 
     @staticmethod
-    def _atomic_write(path: Path, content: str) -> None:
+    def _atomic_write(path: Path, content: str, *, newline: str | None = None) -> None:
         if not isinstance(content, str):
             raise StorageError("conteúdo deve ser texto")
         try:
@@ -618,7 +618,7 @@ class Storage:
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
+            with os.fdopen(fd, "w", encoding="utf-8", newline=newline) as f:
                 f.write(content)
                 f.flush()
                 os.fsync(f.fileno())

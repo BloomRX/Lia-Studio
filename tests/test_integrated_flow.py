@@ -1,4 +1,5 @@
 """Jornada HTTP real e limitada: grant → arquivo → modelo falso → diff → parser → gate."""
+import hashlib
 import json
 import sys
 import tempfile
@@ -60,6 +61,8 @@ class TestIntegratedFlow(unittest.TestCase):
                     self.assertFalse(changed["verified_result"])
                     self.assertEqual((store.project_path(pid) / changed["backup_path"]).read_bytes(),
                                      b"# Arquivo inicial criado por Lia Studio. Revise antes de executar.\n")
+                    written = (store.project_path(pid) / "game/loop.py").read_bytes()
+                    self.assertEqual(hashlib.sha256(written).hexdigest(), changed["new_sha256"])
                     parsed = post("/validation-sessions", {"module_id":mid,"task_id":tid,
                                                                    "path":"game/loop.py","confirm":True})
                     self.assertEqual(parsed["validation_status"], "passed")

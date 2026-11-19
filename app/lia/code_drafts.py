@@ -268,8 +268,10 @@ def apply(storage: Storage, project_id: str, proposal_id: str, confirmed: bool) 
         # Se a escrita do índice falhar depois da substituição, manter backup e
         # arquivo gerado para inspeção manual; nunca restaurar automaticamente.
         try:
-            storage._atomic_write(backup, before.decode("utf-8"))
-            storage._atomic_write(target, code)
+            # Os hashes de base e de proposta descrevem os bytes UTF-8.
+            # A tradução de LF no Windows mudaria tanto o backup quanto o resultado.
+            storage._atomic_write(backup, before.decode("utf-8"), newline="")
+            storage._atomic_write(target, code, newline="")
         except (OSError, UnicodeError) as exc:
             raise StorageError("escrita parcial possível; inspecione arquivo e backup antes de repetir") from exc
         record = {"id": proposal_id, "project_id": project_id,
