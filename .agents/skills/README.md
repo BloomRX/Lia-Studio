@@ -12,7 +12,8 @@ quando necessário, pastas `templates/` e `references/`).
 
 ## Skills disponíveis
 
-- `lia-game-project-bootstrap` — Etapa 0: preparar o jogo (documental, sem gameplay).
+- `lia-game-project-bootstrap` — Etapa 0 guiada: preparar o jogo (documental, sem gameplay).
+- `lia-execution-brief` — rota inicial opcional: brief revisável para executor; gera os mesmos documentos canônicos e não executa o jogo.
 - `lia-module-planning` — planejar módulos, tarefas, aceite e dependências.
 - `lia-task-handoff` — transferir trabalho com limites e evidências.
 - `lia-project-resume` — retomar o projeto a partir dos registros locais.
@@ -38,9 +39,10 @@ As Skills são **opcionais e combináveis**, não papéis de Agent nem capacidad
 concedidas. Uma Task simples pode dispensá-las; futura seleção por Agent exige
 Runtime autorizado, contexto mínimo e a decisão do Dev quando houver ambiguidade.
 Nenhuma troca de modelo, instalação, rede, comando ou avanço de gate decorre da
-seleção de uma Skill. `lia-game-project-bootstrap` continua responsável pela
-Etapa 0; `lia-module-planning` e `lia-task-handoff` continuam canônicos para
-Task e handoff, sem duplicação de registros por essas Skills.
+seleção de uma Skill. `lia-game-project-bootstrap` e `lia-execution-brief` são duas entradas para a
+mesma Etapa 0; `lia-module-planning` e `lia-task-handoff` continuam canônicos
+para Task e handoff, sem duplicação de registros por essas Skills. A sugestão de
+rota atual usa regras locais e depende de confirmação do Dev, não de Agent Runtime.
 
 No Workspace de Skills, as incluídas aparecem como **Biblioteca do Studio**, são
 somente leitura e podem ser **duplicadas para editar** na biblioteca local do Dev.

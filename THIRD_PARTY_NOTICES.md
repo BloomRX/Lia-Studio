@@ -17,6 +17,14 @@ instalador Windows distribuível.
   ou redistribuído. Antes de redistribuir qualquer conteúdo desse projeto, confirme
   titularidade e permissão (a cópia local inspecionada não trazia `LICENSE` na raiz).
 
+- **Game Prompt Architect (MagmaDev, descrição pública de vídeo e anexos fornecidos
+  pelo Dev)** — referência conceitual para uma segunda entrada de preparação do
+  Studio. A Skill completa é descrita como exclusiva para membros; licença e
+  direito de redistribuição **não foram informados**. Nenhum payload, template,
+  script ou configuração dessa Skill foi copiado para o Studio. A nova Skill
+  `lia-execution-brief` e o fluxo são implementação própria; sem Agent Runtime
+  conectado nem dependência desse conteúdo externo.
+
 ## Skills adaptadas (incluídas na biblioteca)
 
 - **Mr. Mak Workspace** — fonte pública

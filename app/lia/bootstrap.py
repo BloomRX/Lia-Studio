@@ -10,6 +10,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 
 from .storage import Storage, StorageError
+from . import start_routes
 
 LABELS = ["confirmado", "proposto", "suposição", "em aberto"]
 
@@ -50,7 +51,7 @@ def _label_tag(label: str) -> str:
     return f"[{label}]"
 
 
-def build_decisions(answers: Dict[str, Any]) -> List[Dict[str, str]]:
+def build_decisions(answers: Dict[str, Any], include_brief: bool = False) -> List[Dict[str, str]]:
     """Constrói decisões estruturadas: o que o Dev informou vira 'confirmado';
     lacunas viram 'em aberto'. Nunca se inventa 'confirmado'."""
     decs: List[Dict[str, str]] = []
@@ -82,6 +83,16 @@ def build_decisions(answers: Dict[str, Any]) -> List[Dict[str, str]]:
         add("Restrições", "confirmado", restrictions)
     else:
         add("Restrições", "em aberto", "Nenhuma declarada", "Tempo, orçamento, equipe, hardware?")
+
+    # A rota de brief compartilha este registro; não cria um segundo GDD.
+    if include_brief:
+        add("Entrega pretendida", "confirmado", answers["delivery"].strip())
+        for key, topic in (("requirements", "Requisitos do brief"),
+                           ("delegated", "Autonomia delegada")):
+            items = answers.get(key) or []
+            add(topic, "confirmado" if items else "em aberto",
+                " | ".join(items) if items else "Nenhum informado",
+                "Somente escolhas explicitamente delegadas ficam a cargo do executor." if not items else "")
 
     return decs
 
@@ -131,21 +142,29 @@ def render_decisions_md(decs: List[Dict[str, str]]) -> str:
 def run_bootstrap(storage: Storage, project_id: str, answers: Dict[str, Any]) -> Dict[str, Any]:
     _validate_answers(answers)
     with storage.stage_lock:
+        entry = storage.get_entry(project_id)
+        if entry is None:
+            raise StorageError("projeto não encontrado")
+        route = start_routes.validate_route(entry.get("start_route", "guided"))
+        if route == "brief":
+            start_routes.validate_brief_answers(answers)
         return _run_bootstrap(storage, project_id, answers)
 
 
 def _run_bootstrap(storage: Storage, project_id: str, answers: Dict[str, Any]) -> Dict[str, Any]:
     # Evita sobrescrever parte do wizard quando um documento/journal é um link.
     folder = storage.project_path(project_id)
+    entry = storage.get_entry(project_id)
+    route = start_routes.validate_route(entry.get("start_route", "guided"))
+    route_docs = ("EXECUTION_BRIEF.md",) if route == "brief" else ()
     for doc in ("PROJECT_BRIEF.md", "GDD.md", "SCOPE.md", "REFERENCIAS.md",
-                "DECISIONS.md", "JOURNAL.md"):
+                "DECISIONS.md", "JOURNAL.md", *route_docs):
         path = folder / doc
         if path.is_symlink() or (path.exists() and not path.is_file()):
             raise StorageError(f"documento inválido para Etapa 0: {doc}")
     # decisions.json participa do mesmo fluxo: detectar corrupção/backup inválido
     # antes de regravar qualquer documento. Não é transação entre processos.
     storage.preflight_structured_write(project_id, "decisions.json")
-    entry = storage.get_entry(project_id)
     if not entry or entry.get("archived"):
         raise StorageError("reabra o projeto antes de iniciar a Etapa 0")
     if entry.get("stage", "preparation") != "preparation":
@@ -153,7 +172,7 @@ def _run_bootstrap(storage: Storage, project_id: str, answers: Dict[str, Any]) -
     # O gerador é de uso único. A UI oculta o wizard após a geração, mas a API
     # também deve proteger documentos editados e decisões registradas pelo Dev.
     # Em caso de falha parcial, preservar o conteúdo para revisão manual.
-    generated = ("PROJECT_BRIEF.md", "GDD.md", "SCOPE.md", "REFERENCIAS.md", "DECISIONS.md")
+    generated = ("PROJECT_BRIEF.md", "GDD.md", "SCOPE.md", "REFERENCIAS.md", "DECISIONS.md", *route_docs)
     if any((folder / doc).exists() for doc in generated) or (folder / "decisions.json").exists():
         raise StorageError("Etapa 0 já iniciada; revise e edite documentos/decisões sem regenerá-los")
     proj_name = entry["name"]
@@ -204,6 +223,11 @@ def _run_bootstrap(storage: Storage, project_id: str, answers: Dict[str, Any]) -
 ---
 Rótulos usados: `confirmado` · `proposto` · `suposição` · `em aberto`
 """
+    if route == "brief":
+        brief += ("\n## Rota inicial: brief para executor\n"
+                  "O resultado pretendido e a autonomia concedida estão em DECISIONS.md; "
+                  "exemplos não vinculantes e a instrução revisável estão em EXECUTION_BRIEF.md. "
+                  "O projeto continua nesta mesma pipeline.\n")
 
     # GDD.md (derivado, marcado como proposto onde incerto)
     gdd = f"""# GDD (Game Design Document) — {proj_name}
@@ -286,29 +310,37 @@ _（a definir — [em aberto]）_
   e não está licenciada pela MIT para apropriação ou representação como produto oficial.
 """
 
-    decs = build_decisions(answers)
+    decs = build_decisions(answers, include_brief=(route == "brief"))
     decisions_md = render_decisions_md(decs)
 
-    # grava documentos
+    execution_brief = start_routes.render_brief(proj_name, answers) if route == "brief" else None
+
+    # A mesma fonte documental e os mesmos gates para as duas rotas. Em falha
+    # parcial, não regenerar por cima: o conteúdo fica para revisão manual.
     storage.write_doc(project_id, "PROJECT_BRIEF.md", brief)
     storage.write_doc(project_id, "GDD.md", gdd)
     storage.write_doc(project_id, "SCOPE.md", scope)
     storage.write_doc(project_id, "REFERENCIAS.md", referencias)
     storage.write_doc(project_id, "DECISIONS.md", decisions_md)
     storage.write_structured(project_id, "decisions.json", decs)
+    if execution_brief is not None:
+        storage.write_doc(project_id, "EXECUTION_BRIEF.md", execution_brief)
 
     # journal
     _append_journal(storage, project_id,
-                    f"Etapa 0 (preparação) concluída. Docs iniciais gerados: PROJECT_BRIEF, GDD, SCOPE, DECISIONS, REFERENCIAS.")
+                    "Etapa 0 (preparação) concluída. Docs iniciais gerados: "
+                    "PROJECT_BRIEF, GDD, SCOPE, DECISIONS, REFERENCIAS" +
+                    (", EXECUTION_BRIEF (rascunho, não enviado)." if route == "brief" else "."))
 
     # avança fase
     storage.update_entry(project_id, phase="plan",
                          next_step="Revisar os documentos e criar o primeiro plano de módulos/tarefas.")
 
     return {
-        "docs": ["PROJECT_BRIEF.md", "GDD.md", "SCOPE.md", "DECISIONS.md", "REFERENCIAS.md"],
+        "docs": ["PROJECT_BRIEF.md", "GDD.md", "SCOPE.md", "DECISIONS.md", "REFERENCIAS.md"] + list(route_docs),
         "decisions": decs,
         "phase": "plan",
+        "start_route": route,
     }
 
 

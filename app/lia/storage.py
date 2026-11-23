@@ -23,6 +23,7 @@ GLOBAL_FILES = {"lia_settings.json", "runtime_policy.json", "combo_declarations.
 # Documentos em Markdown (editáveis pelo Dev) e dados estruturados (JSON).
 MARKDOWN_DOCS = [
     "PROJECT_BRIEF.md",
+    "EXECUTION_BRIEF.md",  # snapshot revisável da rota de brief, não altera os gates
     "GDD.md",
     "SCOPE.md",
     "REFERENCIAS.md",
@@ -161,7 +162,10 @@ class Storage:
         return self._project_folder(entry)
 
     # ---- criação / atualização / exclusão ----
-    def create_project(self, name: str, location: Optional[str] = None) -> Dict[str, Any]:
+    def create_project(self, name: str, location: Optional[str] = None,
+                       start_route: str = "guided") -> Dict[str, Any]:
+        from .start_routes import validate_route
+        validate_route(start_route)  # antes de criar diretório ou alterar índice
         if not isinstance(name, str) or not name.strip():
             raise StorageError("nome do projeto é obrigatório")
         with self.stage_lock:
@@ -181,6 +185,7 @@ class Storage:
                 "location": str(proj_dir), "status": "ativo", "archived": False,
                 "created": _now(), "updated": _now(),
                 "phase": "bootstrap",  # atividade da alpha; não é o estágio do jogo
+                "start_route": start_route,  # rota inicial, não é um segundo estágio
                 "stage": "preparation", "stage_history": [],
                 "next_step": "Completar a Etapa 0 (preparação do jogo).",
             }

@@ -458,3 +458,14 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Duas entradas na mesma Etapa 0: seleção acessível sem alterar a pipeline. */
+.start-route { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 14px; }
+.start-route legend { color: var(--ink); font-weight: 700; padding: 0 6px; }
+.start-route label { display: flex; align-items: flex-start; gap: 10px; padding: 10px; margin: 4px 0;
+  cursor: pointer; border-radius: 9px; background: var(--panel-2); color: var(--ink); }
+.start-route label:has(input:checked) { outline: 2px solid var(--accent); }
+.start-route label:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.start-route input { margin-top: 5px; accent-color: var(--accent); }
+.start-route small { display: block; color: var(--muted); margin-top: 3px; }
+.short-text { min-height: 74px; }

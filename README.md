@@ -17,10 +17,13 @@ supervisionáveis, sem substituir a direção criativa do Dev.
 - Gerenciamento de projetos (criar, renomear, arquivar, reabrir, excluir com confirmação).
 - JSON versionado, backup local da versão anterior, diagnóstico e recuperação
   com confirmação. Exportação manual de projeto com manifesto do índice.
-- **Etapa 0** guiada, de geração única, que cria documentos do jogo (brief, GDD,
-  escopo, decisões, referências) sem escrever gameplay ou sobrescrever edições do
-  Dev numa segunda chamada. A skill `lia-game-project-bootstrap` é consultável,
-  mas o gerador ainda não usa seus templates diretamente.
+- **Etapa 0** com duas entradas escolhidas na Home: preparação guiada ou brief
+  revisável para outro executor. Uma sugestão local por regras pode indicar a rota,
+  mas o Dev confirma; não há Agent Runtime orquestrador conectado. Ambas geram os
+  mesmos documentos canônicos (brief, GDD, escopo, decisões, referências) sem
+  gameplay ou sobrescrita na segunda chamada. A rota breve acrescenta
+  `EXECUTION_BRIEF.md` como snapshot não enviado; o Plano e os gates permanecem.
+  As Skills são consultáveis; o gerador não interpreta seus templates diretamente.
 - Edição de documentos Markdown e rótulos `confirmado/proposto/suposição/em aberto`.
 - Detecção de **conflitos** entre decisão confirmada e suposição/em-aberto; aba
   Decisões para registro e revisão humana, com proteção contra edição obsoleta e
@@ -53,7 +56,7 @@ supervisionáveis, sem substituir a direção criativa do Dev.
   edição ou verificação sintática; só metadados desses registros são incluídos,
   sem grants locais, prompt, fonte ou diff. Handoff não envia dados nem executa
   código, e não substitui a revisão humana antes de compartilhar.
-- Biblioteca de 16 Skills locais consultáveis (quatro originais e 12 adaptadas de fontes MIT), separada dos projetos; busca por finalidade e editor de cópia. Aplicação por agente ainda não conectada.
+- Biblioteca de 17 Skills locais consultáveis (cinco originais e 12 adaptadas de fontes MIT), separada dos projetos; busca por finalidade e editor de cópia. Aplicação geral por Agent Runtime ainda não conectada. Ver [duas rotas de início](docs/START-ROUTES-LIA-STUDIO.md).
 - Na aba Assets, prévia local e opcional de brief de Task para o Lia Forge, copiável após revisão; não conecta Forge, não envia dados nem substitui o catálogo ou QA. Ver `docs/LIA-FORGE-NA-PIPELINE.md`.
 
 ## Alpha UI.1 — aceita pelo Dev em 2026-10-05
@@ -193,7 +196,7 @@ Backups `.bak` não substituem cópias em outro disco; veja `docs/armazenamento-
   skills, provedores, execução simulada, QA, release, engines e conflitos).
 - `app/server.py` — API JSON + servidor HTTP (stdlib).
 - `app/static/` — interface (HTML/CSS/JS vanilla, sem build).
-- `.agents/skills/` — 16 skills documentais consultáveis; templates da Etapa 0
+- `.agents/skills/` — 17 skills documentais consultáveis; templates da Etapa 0
   ainda não são a fonte do gerador (decisão D1 pendente).
 - `planejamento/` — documentos de visão e handoffs.
 - `docs/` — documentação da entrega.

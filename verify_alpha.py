@@ -75,6 +75,8 @@ CHECKS = {
     "forge_brief": ("Brief manual Studio → Forge sem execução nem escrita", [sys.executable, "tests/test_forge_brief.py"]),
     "gameplay_loop": ("Hipótese, protótipos e relato manual sem promover gates", [sys.executable, "tests/test_gameplay_loop.py"]),
     "skills": ("Skills: metadados progressivos", [sys.executable, "tests/test_skills_progressive.py"]),
+    "start_routes": ("Duas rotas iniciais, sem Agent Runtime", [sys.executable, "tests/test_start_routes.py"]),
+    "start_routes_ui": ("Escolha e sugestão das rotas na UI", ["node", "tests/test_start_routes_ui.cjs"]),
     "desktop": ("Shell desktop sem GUI (loopback e encerramento)", [sys.executable, "tests/test_desktop.py"]),
     "dependency_layers": ("Dependências por camada e Skills sem cópia", [sys.executable, "tests/test_dependency_layers.py"]),
     "parts": ("Cobertura dos blocos curtos", [sys.executable, "tests/test_verify_parts.py"]),
@@ -93,7 +95,7 @@ PARTS = (
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe", "engine_inspection", "godot", "engine_process")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation", "run_history", "godot_runs")),
     ("CLI/combo declarativo, serviço local falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "legacy_ids", "chat", "drafts", "draft_jobs")),
-    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "forge_brief", "gameplay_loop", "skills", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
+    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "forge_brief", "gameplay_loop", "skills", "start_routes", "start_routes_ui", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 
 
@@ -109,7 +111,7 @@ def run_check(key: str) -> bool:
         index = int(key.split("-")[1]) - 1
         return check(PARTS[index][0], [sys.executable, "tests/test_core.py", "-q", *CORE_PARTS[index]])
     label, command = CHECKS[key]
-    if key in ("ui", "js"):
+    if key in ("ui", "js", "start_routes_ui"):
         node = shutil.which("node")
         if not node:
             print(f"\n== {label}: NÃO EXECUTADO (Node.js indisponível) ==", flush=True)

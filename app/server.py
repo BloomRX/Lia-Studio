@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, templates_loader, validation_sessions, vertical_slice
+from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -90,13 +90,15 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         return {"projects": storage.list_projects()}
 
     if method == "POST" and pid is None:
+        if set(body) - {"name", "location", "start_route"}:
+            raise StorageError("campos inválidos ao criar projeto")
         name = body.get("name")
         if not isinstance(name, str) or not name.strip():
             raise StorageError("nome obrigatório")
         location = body.get("location")
         if location is not None and not isinstance(location, str):
             raise StorageError("local do projeto deve ser um caminho textual")
-        entry = storage.create_project(name.strip(), location)
+        entry = storage.create_project(name.strip(), location, body.get("start_route", "guided"))
         return entry, 201
 
     if pid is None:
@@ -397,6 +399,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if parts == ["api", "health"]:
                 return {"ok": True, "app": "Lia Studio", "offline": True}, 200
+            if parts == ["api", "start-routes", "recommend"] and method == "POST":
+                if set(body) != {"intent"}:
+                    raise StorageError("descreva apenas a intenção; a sugestão não cria projeto")
+                return start_routes.recommend(body["intent"]), 200
             if parts == ["api", "skills"] and method == "GET":
                 return {"skills": skills.list_skills(storage)}, 200
             if parts == ["api", "skills"] and method == "POST":

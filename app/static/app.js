@@ -100,6 +100,15 @@ async function renderHome() {
         <h2>Novo projeto</h2><p class="muted">Você poderá revisar cada decisão antes de avançar.</p>
         <label for="np-name">Nome do jogo</label><input id="np-name" type="text" maxlength="120" placeholder="Ex.: Minha aventura" />
         <label for="np-loc">Pasta local (opcional)</label><input id="np-loc" type="text" placeholder="Em branco: pasta padrão do Studio" />
+        <fieldset class="start-route" aria-describedby="route-help"><legend>Como você quer começar?</legend>
+          <label><input type="radio" name="np-route" value="guided" /><span><b>Preparar o projeto comigo</b><small>Etapa 0 acompanhada: Brief, GDD, Escopo e Decisões.</small></span></label>
+          <label><input type="radio" name="np-route" value="brief" /><span><b>Preparar um brief para executor</b><small>Um texto revisável para orientar outra IA, mais os mesmos documentos da Etapa 0.</small></span></label>
+        </fieldset>
+        <p id="route-help" class="muted">As duas rotas seguem depois pelo mesmo Plano, Tasks e gates. Nenhum agente executa o jogo aqui.</p>
+        <label for="np-intent">Em dúvida? Descreva o que quer fazer (opcional)</label>
+        <textarea id="np-intent" maxlength="1000" class="short-text" placeholder="Ex.: quero um brief para passar a um agente"></textarea>
+        <button type="button" class="ghost small" onclick="suggestStartRoute()">Sugerir rota</button>
+        <p id="np-suggestion" role="status" aria-live="polite" class="muted">Sugestão local por regras; ela não troca sua seleção nem cria projeto.</p>
         <div class="row" style="margin-top:14px"><button onclick="createProject()">Criar e abrir</button><button class="ghost" onclick="hideNewProject()">Cancelar</button></div>
       </div></div>
       <section id="recent" class="home-recent"><div class="section-heading"><div><span class="eyebrow">SEUS MUNDOS</span><h2>Projetos recentes</h2></div><button class="ghost small" onclick="loadExample()">Carregar exemplo local</button></div>
@@ -120,12 +129,28 @@ function projectCard(p) {
 }
 function showNewProject() { document.getElementById("newproj").hidden = false; }
 function hideNewProject() { document.getElementById("newproj").hidden = true; }
+async function suggestStartRoute() {
+  const intent = document.getElementById("np-intent").value.trim();
+  if (!intent) return toast("Descreva primeiro o que quer fazer.");
+  const status = document.getElementById("np-suggestion");
+  try {
+    const result = await api("POST", "/api/start-routes/recommend", { intent });
+    // Nunca alterar a rota escolhida: o Dev pode selecionar outra enquanto a resposta chega.
+    if (document.getElementById("np-intent").value.trim() !== intent) return;
+    status.textContent = result.reason + (result.suggested
+      ? ` Sugestão: ${result.suggested === "brief" ? "brief para executor" : "preparação guiada"}. Se concordar, selecione essa opção acima.`
+      : "");
+  } catch (e) { status.textContent = "Não foi possível sugerir a rota: " + e.message; }
+}
 async function createProject() {
   const name = document.getElementById("np-name").value.trim();
   const loc = document.getElementById("np-loc").value.trim();
+  const selected = document.querySelector('input[name="np-route"]:checked');
+  if (!selected) return toast("Escolha uma rota inicial.");
+  const start_route = selected.value;
   if (!name) return toast("Informe um nome.");
   try {
-    const p = await api("POST", "/api/projects", { name, location: loc || undefined });
+    const p = await api("POST", "/api/projects", { name, location: loc || undefined, start_route });
     toast("Projeto criado.");
     location.hash = `#/project/${p.id}/bootstrap`;
   } catch (e) { toast("Erro: " + e.message); }
@@ -577,15 +602,18 @@ async function advanceStage(pid, target) {
 
 /* ----- bootstrap ----- */
 function projectBootstrap(pid, data) {
+  const briefMode = data.entry?.start_route === "brief";
   const hasBrief = data.docs.includes("PROJECT_BRIEF.md");
   if (hasBrief) {
     return `<h1>Etapa 0 — preparação do jogo</h1>
       <div class="banner ok">Etapa 0 já iniciada. Os documentos foram gerados (veja em <b>Documentos</b>). Você pode editá-los livremente.</div>
+      ${briefMode ? `<div class="banner warn">O EXECUTION_BRIEF.md é um snapshot de revisão, não uma fonte paralela de decisões. Se os documentos mudaram, revise o brief antes de copiá-lo. Nenhum agente foi acionado.</div>` : ""}
       <div class="card"><h3>Próximo</h3><p>Vá para <b>Plano</b> para transformar os documentos aprovados em módulos/tarefas.</p>
-      <a class="btn" href="#/project/${esc(pid)}/gameplay-loop">Formular hipótese do loop →</a> <a class="btn ghost" href="#/project/${esc(pid)}/plan">Ir para Plano →</a></div>`;
+      <a class="btn" href="#/project/${esc(pid)}/gameplay-loop">Formular hipótese do loop →</a> <a class="btn ghost" href="#/project/${esc(pid)}/plan">Ir para Plano →</a>
+      ${briefMode ? `<a class="btn ghost" href="#/project/${esc(pid)}/docs">Revisar brief de execução →</a>` : ""}</div>`;
   }
-  return `<h1>Etapa 0 — preparação do jogo</h1>
-    <div class="banner info">Conversa guiada. Não exigimos vocabulário técnico e não reduzimos sua ambição. Campos não preenchidos viram <b>[em aberto]</b>. Nenhum código de jogo é escrito aqui.</div>
+  return `<h1>Etapa 0 — ${briefMode ? "brief para executor" : "preparação do jogo"}</h1>
+    <div class="banner info">${briefMode ? "Rota breve: organize a ideia e a autonomia delegada em um texto revisável. Também criamos os documentos normais da Etapa 0; nenhuma IA executa o jogo aqui." : "Conversa guiada. Não exigimos vocabulário técnico e não reduzimos sua ambição. Campos não preenchidos viram <b>[em aberto]</b>. Nenhum código de jogo é escrito aqui."}</div>
     <div class="card">
       <label for="b-idea">Ideia em uma frase *</label><input id="b-idea" type="text" placeholder="Ex.: um jogo calmo onde você cultiva ilhas flutuantes" />
       <label for="b-origin">Origem da ideia (o que inspirou o jogo?)</label><input id="b-origin" type="text" placeholder="Ex.: explorar com calma, inspirado por jogos pequenos de aventura" />
@@ -599,10 +627,17 @@ function projectBootstrap(pid, data) {
       <label for="b-ref">Referências (opcional — uma por linha: nome | origem | uso)</label><textarea id="b-ref" style="min-height:70px" placeholder="Stardew Valley | ConcernedApe | loop calmo"></textarea>
       <label for="b-vs">Vertical slice sugerida (opcional)</label><input id="b-vs" type="text" placeholder="Demo: uma ilha, colher, um mistério" />
       <label for="b-eng">Engine/perfil (opcional — núcleo é agnóstico)</label><input id="b-eng" type="text" placeholder="deixe em branco" />
-      <div class="row" style="margin-top:12px"><button onclick="runBootstrap('${esc(pid)}')">Gerar documentos da Etapa 0</button></div>
+      ${briefMode ? `<hr /><h2>Contrato para quem vai executar depois</h2>
+        <p class="muted">Informe apenas o que você decidiu. Linhas vazias não se tornam decisões delegadas.</p>
+        <label for="b-delivery">Entrega pretendida *</label><input id="b-delivery" type="text" maxlength="200" placeholder="Ex.: protótipo para testar o loop" />
+        <label for="b-req">Requisitos obrigatórios (um por linha)</label><textarea id="b-req" class="short-text" placeholder="Ex.: permitir explorar sem combate"></textarea>
+        <label for="b-examples">Exemplos não obrigatórios (um por linha)</label><textarea id="b-examples" class="short-text" placeholder="Ex.: um farol como ponto de encontro"></textarea>
+        <label for="b-delegated">Escolhas que você delega (um por linha)</label><textarea id="b-delegated" class="short-text" placeholder="Ex.: escolher como representar a progressão"></textarea>
+        <p class="muted">Um campo em branco permanece pendente. O brief não autoriza instalação, gastos, cópia de imagens ou execução de agente.</p>` : ""}
+      <div class="row" style="margin-top:12px"><button onclick="runBootstrap('${esc(pid)}', '${briefMode ? "brief" : "guided"}')">${briefMode ? "Gerar documentos e brief revisável" : "Gerar documentos da Etapa 0"}</button></div>
     </div>`;
 }
-async function runBootstrap(pid) {
+async function runBootstrap(pid, route = "guided") {
   const refs = document.getElementById("b-ref").value.split("\n").map(l => {
     const p = l.split("|").map(s => s.trim());
     return p[0] ? { name: p[0], origin: p[1] || "", use: p[2] || "" } : null;
@@ -620,6 +655,14 @@ async function runBootstrap(pid) {
     engine: document.getElementById("b-eng").value,
   };
   if (!answers.idea.trim()) return toast("Descreva a ideia em uma frase.");
+  if (route === "brief") {
+    const lines = id => document.getElementById(id).value.split("\n").map(s => s.trim()).filter(Boolean);
+    answers.delivery = document.getElementById("b-delivery").value;
+    answers.requirements = lines("b-req");
+    answers.examples = lines("b-examples");
+    answers.delegated = lines("b-delegated");
+    if (!answers.delivery.trim()) return toast("Informe a entrega pretendida.");
+  }
   try {
     await api("POST", `/api/projects/${pid}/bootstrap`, { answers });
     toast("Documentos gerados.");
