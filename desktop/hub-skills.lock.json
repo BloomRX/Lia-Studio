@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "4e103271633cdd12c03019fa2d6d517cbc35de59",
+  "manifestSha256": "ee6a7df10dd82c3e7f363ab4837aa8ed312135f4b723f31991b41cb26726efc8",
+  "locks": [
+    {
+      "file": "lia-game-audio-plan.lock.json",
+      "sha256": "4826b0b9294b20538057513780f1e702c6db470fa1a3969fd5ba3778874ea822"
+    },
+    {
+      "file": "lia-game-balance-review.lock.json",
+      "sha256": "30856f4db9055eedb02e5d33644de6a434c12e82435b2b851e72f53e357292cc"
+    },
+    {
+      "file": "lia-game-bug-triage.lock.json",
+      "sha256": "cb9fc6044023f4db3cb1f5642a9c81001887dbc91249c7b1fd5f949cefe222d9"
+    },
+    {
+      "file": "lia-game-design-review.lock.json",
+      "sha256": "98bf3ab36d5a6ec2d42215d8d377362f9b1390605648d23babf8beb7e162f344"
+    },
+    {
+      "file": "lia-game-level-design.lock.json",
+      "sha256": "fd6047859e27869b546d954db30c01534515db58b77e4d251e351321f5523a19"
+    },
+    {
+      "file": "lia-game-playtest-report.lock.json",
+      "sha256": "08a02ce567e281eed6729f236c5f630b33bbf32b5d96e492a995da035e91fc0f"
+    },
+    {
+      "file": "lia-game-project-bootstrap.lock.json",
+      "sha256": "bdec4b853e1dfca5631705e99b4f76bd1795ed8c652ff83883bdc3bf3c4b0622"
+    },
+    {
+      "file": "lia-game-qa-plan.lock.json",
+      "sha256": "d1aaabba55443ca6a44b338697deefcfab2b138cdeb23bc7732ec52faf06de05"
+    },
+    {
+      "file": "lia-game-story-readiness.lock.json",
+      "sha256": "d0304817e362563ddc7d42e3a8b277dc0c03a55d8fc195864a9806ef90708946"
+    },
+    {
+      "file": "lia-game-test-evidence-review.lock.json",
+      "sha256": "aef817eadcd5c3c41ee8eafbbbcbb0474557b459c267da2014b1002402297dde"
+    },
+    {
+      "file": "lia-game-ui-plan.lock.json",
+      "sha256": "f3be69b9d90143e4444125947e8b6f1d5e0cb4072e210b278aed1bd38f642972"
+    },
+    {
+      "file": "lia-game-vfx-plan.lock.json",
+      "sha256": "5c103536ddf92b44314b629b6846955c08978bd06c978691402ac8789a17eade"
+    },
+    {
+      "file": "lia-game-visual-review.lock.json",
+      "sha256": "f48c0649df07e88bf394bc9ea94435ef1017fe0e57e1672892cac8ba2e9db0df"
+    },
+    {
+      "file": "lia-module-planning.lock.json",
+      "sha256": "411965d78d390fd53e2514fc4896a48c23ac9a395cb2a80cbb7f96119cc32ec3"
+    },
+    {
+      "file": "lia-project-resume.lock.json",
+      "sha256": "4a785f68483a61d21afcb688f021d3ff2ae853f636b08e65b7ef0bb1b6834790"
+    },
+    {
+      "file": "lia-task-handoff.lock.json",
+      "sha256": "70f18473d8166956d4bf861bea4b8b74953a24c5fa00999f507ebe0396f132aa"
+    }
+  ]
+}
