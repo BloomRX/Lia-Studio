@@ -243,6 +243,7 @@ def _wait(storage, pid, rid, process):
 
 
 def launch(storage, pid, data):
+    from . import editor_runs
     if (type(data) is not dict or set(data) != {"action", "module_id", "task_id", "confirm", "revision"}
         or data["confirm"] is not True or data["action"] not in ACTIONS
         or any(type(data[k]) is not str for k in ("module_id", "task_id", "revision"))):
@@ -254,8 +255,8 @@ def launch(storage, pid, data):
         if data["revision"] != _with_revision(config)["revision"]:
             raise StorageError("a configuração mudou; recarregue e confirme novamente")
         _validate_target(storage, pid, mid, tid)
-        if has_active(storage, pid):
-            raise StorageError("já existe um processo Godot ativo neste projeto")
+        if has_active(storage, pid) or editor_runs.has_active(storage, pid):
+            raise StorageError("já existe uma engine ativa neste projeto")
     prepared = godot.prepare(storage, pid, config["executable"], config["project_path"])
     argv = [prepared["executable"], "--path", prepared["project_dir"]]
     if data["action"] == "editor":
@@ -263,7 +264,7 @@ def launch(storage, pid, data):
     with storage.stage_lock:
         _require_active_project(storage, pid)
         _validate_target(storage, pid, mid, tid)
-        if _config(storage, pid) != config or has_active(storage, pid):
+        if _config(storage, pid) != config or has_active(storage, pid) or editor_runs.has_active(storage, pid):
             raise StorageError("a configuração ou a execução mudou; revise antes de continuar")
         current_descriptor = godot.inspect_descriptor(storage, pid, config["project_path"])
         if current_descriptor["descriptor_sha256"] != prepared["descriptor_sha256"]:

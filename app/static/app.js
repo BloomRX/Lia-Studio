@@ -1183,6 +1183,7 @@ function historyLink(pid, stage, ...selection) {
 
 function runType(kind, action) {
   if (kind === "godot") return action === "editor" ? "Editor Godot" : "Execução no Godot";
+  if (kind === "unity" || kind === "unreal") return `Editor ${kind === "unity" ? "Unity" : "Unreal"}`;
   return kind === "python-ast" ? "Análise sintática Python" : kind;
 }
 
@@ -1234,6 +1235,7 @@ function runEvidenceList(evidence) {
       <dt>Arquivo</dt><dd><code>${esc(item.path)}</code></dd>
       <dt>Origem</dt><dd>${esc(item.origin === "python-ast-input" ? "Entrada lida pelo parser Python" :
         item.origin === "godot-descriptor" ? "Descritor usado para iniciar o Godot" :
+        ["unity-descriptor", "unreal-descriptor"].includes(item.origin) ? "Descritor do editor selecionado" :
         item.origin === "manual_local_file" ? "Arquivo local registrado manualmente" : item.origin)}</dd>
       <dt>SHA-256 registrado</dt><dd><code>${esc(item.sha256)}</code></dd>
       <dt>Tamanho registrado</dt><dd>${esc(item.bytes)} bytes</dd>
@@ -1256,23 +1258,25 @@ function runDetails(pid, data, stage, {run, evidence, reviews}) {
   const taskLabel = historyTaskLabels(data.modules).get(`${run.module_id}/${run.task_id}`) || run.task_id || "Sem Task";
   const allowWrite = Boolean(run.finished_at) && !data.entry.archived;
   const godot = run.kind === "godot";
+  const editor = run.kind === "unity" || run.kind === "unreal";
   const backLink = run.task_id ? historyLink(pid, stage, "task", run.module_id, run.task_id) :
-    godot ? godotLink(pid, stage) : historyLink(pid, stage);
-  const backText = run.task_id ? "Execuções desta Task" : godot ? "Godot" : "Histórico de execuções";
+    godot ? godotLink(pid, stage) : editor ? `#/project/${encodeURIComponent(pid)}/config/${stage}` : historyLink(pid, stage);
+  const backText = run.task_id ? "Execuções desta Task" : godot ? "Godot" : editor ? "Configuração de editores" : "Histórico de execuções";
   return `<a href="${esc(backLink)}">← ${backText}</a>
     <section class="card history-list">
       <h2>${esc(runType(run.kind, run.action))}</h2>
       <dl class="history-fields">
         <dt>Execução</dt><dd><code>${esc(run.id)}</code></dd>
         <dt>Task</dt><dd>${esc(taskLabel)}${run.task_id ? ` · <code>${esc(run.task_id)}</code>` : ""}</dd>
-        ${godot && run.project_path ? `<dt>Descritor</dt><dd><code>${esc(run.project_path)}</code></dd>` : ""}
+        ${(godot || editor) && run.project_path ? `<dt>Descritor</dt><dd><code>${esc(run.project_path)}</code></dd>` : ""}
+        ${editor ? `<dt>Formato/versão declarada no descritor</dt><dd>${esc(run.declared_version)}</dd>` : ""}
         <dt>Estado da execução</dt><dd>${pill(RUN_STATUS.get(run.status) || run.status)}</dd>
         <dt>Início</dt><dd>${esc(run.started_at)}</dd>
         <dt>Término</dt><dd>${esc(run.finished_at || "Sem término registrado")}</dd>
         <dt>Validação automática</dt><dd>${esc(RUN_VALIDATION.get(run.result?.validation_status) || "Sem resultado de validação")}</dd>
         <dt>Resultado registrado</dt><dd>${esc(RUN_RESULT.get(run.result?.code) || run.result?.code || "Sem resultado registrado")}</dd>
       </dl>
-      ${godot ? godotRunControls(run) : ""}
+      ${godot || editor ? godotRunControls(run) : ""}
       ${run.kind === "python-ast" ? '<p class="muted">O parser analisa a sintaxe do arquivo Python. O jogo não foi executado.</p>' : ""}
     </section>
     <h2>Evidências vinculadas</h2>
@@ -1312,10 +1316,10 @@ function godotRunControls(run) {
   const result = run.result;
   const active = run.status === "running" || run.status === "cancellation_pending";
   const output = result || (active ? run.live : null);
-  return `<p class="muted">O histórico registra o processo Godot. O código de saída não confirma gameplay nem aprova a Task.</p>
+  return `<p class="muted">O histórico registra o processo ${esc(run.kind)}. Código de saída zero não confirma importação, gameplay, build, QA nem aprova a Task. Logs capturados podem ser parciais e são visíveis somente no Studio local.</p>
     ${active ? `<div class="godot-actions">
       <button type="button" class="ghost" id="godot-refresh-run">Atualizar estado e saída</button>
-      <button type="button" class="danger" id="godot-stop-run">${run.status === "cancellation_pending" ? "Tentar encerrar novamente" : "Encerrar processo"}</button>
+      <button type="button" class="danger" id="godot-stop-run" data-engine="${esc(run.kind)}">${run.status === "cancellation_pending" ? "Tentar encerrar novamente" : "Encerrar processo"}</button>
       </div><p id="godot-stop-status" role="status"></p>` : ""}
     ${output ? `<h3>${result ? "Saída registrada" : "Saída parcial"}</h3>
     <dl class="history-fields">
@@ -1337,12 +1341,13 @@ function wireGodotRunControls(pid, stage, selection, current) {
   const status = document.getElementById("godot-stop-status");
   stop.onclick = async () => {
     if (stop.disabled || !current()) return;
-    if (!confirm("Encerrar o processo Godot? Alterações não salvas no editor podem ser perdidas.")) return;
+    if (!confirm("Encerrar o processo da engine? Alterações não salvas no editor podem ser perdidas.")) return;
     const [, id] = selection;
     stop.disabled = refresh.disabled = true;
     status.textContent = "Solicitando encerramento…";
     try {
-      await api("POST", `/api/projects/${encodeURIComponent(pid)}/godot/runs/${encodeURIComponent(id)}/cancel`, {confirm:true});
+      const endpoint = stop.dataset.engine === "godot" ? `godot/runs/${encodeURIComponent(id)}/cancel` : `editor-runs/cancel/${encodeURIComponent(id)}`;
+      await api("POST", `/api/projects/${encodeURIComponent(pid)}/${endpoint}`, {confirm:true});
       if (current()) await renderProject(pid, "runs", stage, selection);
     } catch (e) {
       if (current()) status.textContent = "Não foi possível solicitar o encerramento. " + e.message;
@@ -2099,6 +2104,22 @@ function projectConfig(pid, data, stage = "preparation") {
       <button type="button" id="external-engine-inspect" class="ghost">Conferir prévia externa</button>
       <p id="external-engine-result" class="muted" role="status" aria-live="polite">Nenhum arquivo externo lido.</p>
     </div>
+    <div class="card"><h3>Editor Unity / Unreal (Windows local, opt-in)</h3>
+      <p class="muted">Abrir editor é uma ação executável separada da prévia. Escolha arquivos próprios e confiáveis, faça backup antes: o editor pode importar, migrar e executar scripts com suas permissões. O supervisor controla a árvore do processo, não isola arquivos ou rede. Não faz build, teste, gameplay ou QA.</p>
+      ${["unity", "unreal"].map(kind => `<fieldset class="editor-config" data-engine="${kind}">
+        <legend>${kind === "unity" ? "Unity" : "Unreal"}</legend>
+        <label for="editor-exe-${kind}">Caminho absoluto do editor ${kind === "unity" ? "Unity.exe" : "UnrealEditor.exe ou UE4Editor.exe"}</label>
+        <input id="editor-exe-${kind}" spellcheck="false" />
+        <label for="editor-project-${kind}">Descritor absoluto ${kind === "unity" ? "ProjectSettings/ProjectVersion.txt" : "*.uproject"}</label>
+        <input id="editor-project-${kind}" spellcheck="false" />
+        <button id="editor-save-${kind}" class="ghost" type="button"${data.entry?.archived ? " disabled" : ""}>Conferir e salvar seleção</button>
+        <label for="editor-task-${kind}">Task (opcional)</label>
+        <select id="editor-task-${kind}"><option value="">Sem Task</option>${[...historyTaskLabels(data.modules || [])].map(([key, label]) =>
+          `<option value="${esc(key)}">${esc(label)}</option>`).join("")}</select>
+        <button id="editor-launch-${kind}" type="button" disabled>Abrir editor</button>
+        <p id="editor-status-${kind}" class="muted" role="status" aria-live="polite">Sem seleção confirmada.</p>
+      </fieldset>`).join("")}
+    </div>
     <div class="card"><h3>Provedores de IA (offline / simulado)</h3>
       <div class="banner warn">${esc(prov.message||"Sem conexão.")}</div>
       <p class="muted">Modo: <b>${esc(prov.mode||"offline")}</b> · conectado: <b>${prov.connected?"sim":"não"}</b> · simulado: <b>${prov.simulated?"sim":"não"}</b></p>
@@ -2139,6 +2160,52 @@ async function wireConfig(pid, data) {
       } catch (e) { externalResult.textContent = "Prévia externa indisponível: " + e.message; }
       finally { externalButton.disabled = false; }
     });
+  }
+  const editorKinds = ["unity", "unreal"];
+  if (document.getElementById("editor-save-unity")) {
+    const base = `/api/projects/${encodeURIComponent(pid)}/editor-runs`;
+    let stored = {};
+    try { stored = (await api("GET", base)).configurations || {}; }
+    catch (e) { document.getElementById("editor-status-unity").textContent = "Editores indisponíveis: " + e.message; }
+    for (const kind of editorKinds) {
+      const get = name => document.getElementById(`editor-${name}-${kind}`);
+      const exe = get("exe"), project = get("project"), task = get("task");
+      const save = get("save"), launch = get("launch"), status = get("status");
+      let revision = stored[kind]?.revision || "";
+      if (stored[kind]) {
+        exe.value = stored[kind].executable;
+        project.value = stored[kind].project_path;
+        launch.disabled = Boolean(data.entry?.archived);
+        status.textContent = "Seleção anterior carregada. Confira os caminhos antes de abrir.";
+      }
+      const changed = () => { revision = ""; launch.disabled = true; status.textContent = "Seleção alterada. Confira e salve novamente."; };
+      exe.addEventListener("input", changed); project.addEventListener("input", changed);
+      save.addEventListener("click", async () => {
+        const executable = exe.value.trim(), project_path = project.value.trim();
+        if (!executable || !project_path) return toast("Selecione executável e descritor absolutos.");
+        if (!confirm(`Ler o descritor e salvar seleção do editor ${kind}? Binário: ${executable}. Projeto: ${project_path}. Nenhum editor será iniciado agora.`)) return;
+        save.disabled = launch.disabled = true;
+        try {
+          const updated = await api("PUT", `${base}/${kind}`, {executable, project_path, confirm:true});
+          revision = updated.revision;
+          launch.disabled = false;
+          status.textContent = "Seleção salva. Editor e compatibilidade ainda não verificados.";
+        } catch (e) { status.textContent = "Não foi possível salvar: " + e.message; }
+        finally { save.disabled = Boolean(data.entry?.archived); }
+      });
+      launch.addEventListener("click", async () => {
+        if (!revision || launch.disabled) return;
+        const executable = exe.value.trim(), project_path = project.value.trim();
+        if (!confirm(`Abrir ${kind} com ${executable} e ${project_path}? Isto pode executar código e modificar/migrar o projeto com suas permissões. Faça backup; Job Object não é sandbox. Não comprova QA. Continuar?`)) return;
+        launch.disabled = true;
+        const [module_id, task_id] = task.value ? task.value.split("/") : ["", ""];
+        try {
+          const run = await api("POST", `${base}/${kind}/launch`, {revision, module_id, task_id, action:"editor", confirm:true});
+          location.hash = historyLink(pid, "preparation", "run", run.id);
+        } catch (e) { status.textContent = "Não foi possível abrir: " + e.message; }
+        finally { launch.disabled = !revision || Boolean(data.entry?.archived); }
+      });
+    }
   }
   const scan = document.getElementById("godot-scan");
   const version = document.getElementById("godot-version");

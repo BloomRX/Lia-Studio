@@ -596,6 +596,44 @@ assert.equal(reloads, 1);
   assert.deepEqual(JSON.parse(inspectRequests[0].options.body),{path:'game/project.godot',confirm:true});
   assert.match(inspectFields['engine-inspect-result'].textContent,/NÃO verificada/);
   assert.equal(inspectFields['engine-inspect-result'].innerHTML,'');
+  assert.match(configHtml, /Editor Unity \/ Unreal \(Windows local, opt-in\)/);
+  assert.match(configHtml, /não isola arquivos ou rede/);
+  const editorFields = {view, toast};
+  const editorHandlers = {};
+  for (const kind of ['unity','unreal']) {
+    for (const field of ['exe','project','task','save','launch','status']) {
+      const id = `editor-${field}-${kind}`;
+      editorFields[id] = {value:field === 'task' ? '' : '', disabled:field === 'launch',
+        textContent:'', innerHTML:'', addEventListener:(_,fn) => {editorHandlers[id + ':' + _] = fn;}};
+    }
+  }
+  context.document.getElementById=id=>editorFields[id];
+  const editorCalls=[];
+  context.fetch=async(url,options)=>{
+    editorCalls.push({url,options});
+    return {ok:true,json:async()=> options.method === 'GET' ? {configurations:{}} :
+      options.method === 'PUT' ? {revision:'sha-editor',engine_verified:false} : {id:'editor-1'}};
+  };
+  await context.wireConfig('project-1',{entry:{archived:false},modules:[]});
+  editorFields['editor-exe-unity'].value = 'C:/Unity.exe';
+  editorFields['editor-project-unity'].value = 'C:/Jogo/ProjectSettings/ProjectVersion.txt';
+  context.confirm=()=>false;
+  await editorHandlers['editor-save-unity:click']();
+  assert.equal(editorCalls.length,1); // GET only, no write without consent
+  context.confirm=()=>true;
+  await editorHandlers['editor-save-unity:click']();
+  assert.equal(editorCalls.at(-1).url,'/api/projects/project-1/editor-runs/unity');
+  assert.deepEqual(JSON.parse(editorCalls.at(-1).options.body),
+    {executable:'C:/Unity.exe',project_path:'C:/Jogo/ProjectSettings/ProjectVersion.txt',confirm:true});
+  assert.equal(editorFields['editor-launch-unity'].disabled,false);
+  await editorHandlers['editor-launch-unity:click']();
+  assert.equal(editorCalls.at(-1).url,'/api/projects/project-1/editor-runs/unity/launch');
+  assert.deepEqual(JSON.parse(editorCalls.at(-1).options.body),
+    {revision:'sha-editor',module_id:'',task_id:'',action:'editor',confirm:true});
+  assert.equal(context.location.hash,'#/project/project-1/runs/preparation/run/editor-1');
+  editorFields['editor-exe-unity'].value = 'C:/other.exe';
+  editorHandlers['editor-exe-unity:input']();
+  assert.equal(editorFields['editor-launch-unity'].disabled,true);
   const probeResult = {textContent: '', innerHTML: ''};
   const probeButton = {disabled: false};
   context.document.getElementById = id => ({view, toast,
@@ -1082,7 +1120,7 @@ assert.equal(reloads, 1);
   assert.match(activeGodot,/Parcial &lt;amostra&gt;/);
   assert.doesNotMatch(activeGodot,/<dt>Código de saída/);
   assert.match(activeGodot,/\/godot\/mvp.*← Godot/);
-  assert.match(activeGodot,/id="godot-stop-run"/);
+  assert.match(activeGodot,/id="godot-stop-run" data-engine="godot"/);
   const terminalGodot = renderGodotRun({...godotRun,status:'failed',finished_at:'2026-11-16T00:00:02Z',
     result:{code:'exit_nonzero',validation_status:'not_run',exit_code:1,warnings:1,errors:2,truncated:true,
       stdout:'<img src=x onerror=test()>',stderr:'Falhou'}});
@@ -1093,7 +1131,7 @@ assert.equal(reloads, 1);
   assert.doesNotMatch(terminalGodot,/id="godot-stop-run"/);
 
   fakeGodot['godot-refresh-run'] = {};
-  fakeGodot['godot-stop-run'] = {};
+  fakeGodot['godot-stop-run'] = {dataset:{engine:'godot'}};
   fakeGodot['godot-stop-status'] = {};
   const currentProjectRenderer = context.renderProject;
   let resumedGodotView = false;

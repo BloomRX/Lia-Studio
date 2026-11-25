@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
+from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -167,15 +167,15 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
     if method == "DELETE" and not sub:
         confirm = query.get("confirm", ["false"])[0].lower() == "true"
         with storage.stage_lock:
-            if godot_runs.has_active(storage, pid):
-                raise StorageError("encerre a Godot antes de excluir este projeto")
+            if godot_runs.has_active(storage, pid) or editor_runs.has_active(storage, pid):
+                raise StorageError("encerre a engine antes de excluir este projeto")
             storage.delete_project(pid, confirm=confirm)
         return {"deleted": True}
 
     if method == "POST" and sub == ["archive"]:
         with storage.stage_lock:
-            if godot_runs.has_active(storage, pid):
-                raise StorageError("encerre a Godot antes de arquivar este projeto")
+            if godot_runs.has_active(storage, pid) or editor_runs.has_active(storage, pid):
+                raise StorageError("encerre a engine antes de arquivar este projeto")
             return storage.archive_project(pid)
     if method == "POST" and sub == ["reopen"]:
         return storage.reopen_project(pid)
@@ -255,6 +255,18 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
         if set(body) != {"proposal_id", "confirm"}:
             raise StorageError("envie proposta e confirmação")
         return code_drafts.apply(storage, pid, body["proposal_id"], body["confirm"]), 201
+    if sub and sub[0] == "editor-runs":
+        if not _local_engine_access(handler):
+            return {"error": "editores requerem Studio local em loopback"}, 403
+        if method == "GET" and sub == ["editor-runs"]:
+            return {"configurations": editor_runs.get_config(storage, pid)}
+        if method == "PUT" and len(sub) == 2 and sub[1] in editor_runs.ENGINES:
+            return editor_runs.save_config(storage, pid, sub[1], body)
+        if method == "POST" and len(sub) == 3 and sub[1] in editor_runs.ENGINES and sub[2] == "launch":
+            return editor_runs.launch(storage, pid, sub[1], body), 201
+        if method == "POST" and len(sub) == 3 and sub[1] == "cancel":
+            return editor_runs.cancel(storage, pid, sub[2], body)
+        raise StorageError("rota do editor desconhecida")
     if sub and sub[0] == "godot":
         if not _local_engine_access(handler):
             return {"error": "a integração Godot requer o Studio local"}, 403

@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from . import evidence, godot_runs, validation_sessions
+from . import editor_runs, evidence, godot_runs, validation_sessions
 from .storage import MARKDOWN_DOCS, STRUCTURED_FILES, StorageError
 
 NAME = "run_history.json"
@@ -101,14 +101,16 @@ def list_runs(storage, pid, *, include_engine=True):
                 for run in validation_sessions._load(storage, pid)]
         if include_engine:
             runs.extend(godot_runs.public_run(storage, pid, run) for run in godot_runs._load(storage, pid))
+            runs.extend(editor_runs.public_run(storage, pid, run) for run in editor_runs._load(storage, pid))
         return sorted(runs, key=lambda run: run["started_at"], reverse=True)
 
 
 def _run_context(storage, pid, run_id, *, include_engine):
     parser = validation_sessions._load(storage, pid)
     engines = godot_runs._load(storage, pid)
-    runs = {run["id"]: run for run in (*parser, *engines)}
-    if len(runs) != len(parser) + len(engines):
+    editors = editor_runs._load(storage, pid)
+    runs = {run["id"]: run for run in (*parser, *engines, *editors)}
+    if len(runs) != len(parser) + len(engines) + len(editors):
         raise StorageError("identidade duplicada no histórico de execuções")
     run = runs.get(run_id)
     if run is None or (not include_engine and "action" in run):
@@ -151,10 +153,12 @@ def run_detail(storage, pid, run_id, *, include_engine=True):
     with storage.stage_lock:
         run, events = _run_context(storage, pid, run_id, include_engine=include_engine)
         engine = "action" in run
-        public = (godot_runs.public_run(storage, pid, run, logs=True) if engine else
+        public = (editor_runs.public_run(storage, pid, run, logs=True) if "engine" in run else
+                  godot_runs.public_run(storage, pid, run, logs=True) if engine else
                   _public_run(run, validation_sessions.is_active(pid, run_id)))
     if engine:
-        source = godot_runs.descriptor_evidence(storage, pid, run)
+        source = (editor_runs.descriptor_evidence(storage, pid, run) if "engine" in run else
+                  godot_runs.descriptor_evidence(storage, pid, run))
     else:
         source = _with_integrity(storage, pid, {"id": f"source-{run_id}", "path": run["path"],
             "sha256": run["sha256"], "bytes": run["byte_count"], "origin": "python-ast-input",

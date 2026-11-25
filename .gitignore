@@ -34,3 +34,7 @@ dist/
 **/godot_config.json.*
 **/godot_runs.json
 **/godot_runs.json.*
+**/editor_config.json
+**/editor_config.json.*
+**/editor_runs.json
+**/editor_runs.json.*

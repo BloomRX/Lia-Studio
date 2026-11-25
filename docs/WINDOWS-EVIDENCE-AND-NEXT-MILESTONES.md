@@ -1,9 +1,10 @@
 # Continuação verificável da Lia Studio
 
-**Estado: trabalho em andamento, não release.** Esta entrega adiciona uma coleta
-segura de evidências e uma inspeção estática de projeto Unity ao plano de
-conclusão. Não implementa adapters executáveis Unreal ou Unity, Agent Runtime,
-QA de gameplay ou instalador. O usuário autorizou trabalhar
+**Estado: trabalho em andamento, não release.** Esta entrega inclui coleta
+restrita de evidências, prévia estática dos três descritores e abertura opt-in
+de **editor** Unity/Unreal apenas no Windows local (código testado com processo
+falso; Windows real NÃO EXECUTADO). Não implementa build, teste/gameplay,
+Agent Runtime, QA de gameplay ou instalador. O usuário autorizou trabalhar
 em todos os três engines, **sem lista fixa de versões aceitas**: versões antigas e
 migrações são possibilidades de projeto. Isso não significa executar binários de
 origem não confiável, abrir projeto não revisado ou afirmar compatibilidade.
@@ -72,7 +73,9 @@ Os testes Godot nesta rodada usaram processo falso (smoke real opt-in pulado).
    bloquear apenas pelo número da versão. Compatibilidade real requer executar
    projetos descartáveis e migrações em cada engine no Windows, com isolamento,
    cancelamento e logs limitados. Godot já tem integração própria na ponta remota;
-   os outros dois não são declarados prontos neste relatório.
+   Unity/Unreal agora têm **somente abertura de editor** local com confirmação,
+   revisão, cancelamento e histórico (`plans/UNITY-UNREAL-EDITOR-ADAPTER.md`);
+   não têm build/test/gameplay nem validação com engines reais neste relatório.
 2. **Agent Runtime:** CLI experimental e chat não são executor. Primeiro contrato
    de Tool/custo/isolamento por Task, depois opt-in e teste de falha/cancelamento.
    `--allowedTools` não fornece isolamento de processo. Sem fallback pago implícito.
