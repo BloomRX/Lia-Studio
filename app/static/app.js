@@ -2084,11 +2084,20 @@ function projectConfig(pid, data, stage = "preparation") {
       <p id="godot-result" class="muted" role="status">Sem diagnóstico. PATH pode conter executáveis não confiáveis; não é teste de engine/projeto/build.</p>
     </div>
     <div class="card"><h3>Inspeção estática do projeto de jogo</h3>
-      <p class="muted">Somente arquivo relativo dentro deste projeto: project.godot ou *.uproject (até 256 KiB). Não inicia engine, não testa importação, build, jogo ou QA; não muda estágio ou perfil.</p>
+      <p class="muted">Somente arquivo relativo dentro deste projeto: project.godot, *.uproject ou ProjectSettings/ProjectVersion.txt (até 256 KiB). Não inicia engine, não testa importação, build, jogo ou QA; não muda estágio ou perfil.</p>
       <label for="engine-descriptor">Descritor existente no projeto</label>
       <input id="engine-descriptor" type="text" placeholder="game/project.godot ou game/MeuJogo.uproject" />
       <button type="button" id="engine-inspect" class="ghost">Conferir descritor local</button>
       <p id="engine-inspect-result" class="muted" role="status" aria-live="polite">Não inspecionado.</p>
+    </div>
+    <div class="card"><h3>Prévia de projeto externo (somente no Studio local)</h3>
+      <p class="muted">Escolha um descritor existente por caminho absoluto. A leitura exige sua confirmação, não vincula o projeto e não inicia engine nem atualiza gates. Caminhos e conteúdo não entram no relatório Windows.</p>
+      <label for="external-engine-kind">Engine do descritor</label>
+      <select id="external-engine-kind"><option value="godot">Godot</option><option value="unreal">Unreal</option><option value="unity">Unity</option></select>
+      <label for="external-engine-path">Caminho absoluto do descritor</label>
+      <input id="external-engine-path" type="text" maxlength="4096" placeholder="Caminho local do project.godot, .uproject ou ProjectSettings/ProjectVersion.txt" />
+      <button type="button" id="external-engine-inspect" class="ghost">Conferir prévia externa</button>
+      <p id="external-engine-result" class="muted" role="status" aria-live="polite">Nenhum arquivo externo lido.</p>
     </div>
     <div class="card"><h3>Provedores de IA (offline / simulado)</h3>
       <div class="banner warn">${esc(prov.message||"Sem conexão.")}</div>
@@ -2108,9 +2117,27 @@ async function wireConfig(pid, data) {
       inspect.disabled = true;
       try {
         const info = await api("POST", `/api/projects/${pid}/engine-inspection`, {path, confirm:true});
-        output.textContent = `${info.engine} · formato declarado ${info.descriptor_format_version} · ${info.bytes} bytes · SHA-256 ${info.sha256}. ${info.warning}`;
+        output.textContent = `${info.engine} · versão/formato declarado ${info.declared_editor_version || info.descriptor_format_version} · ${info.bytes} bytes · SHA-256 ${info.sha256}. ${info.warning}`;
       } catch (e) { output.textContent = "Não foi possível inspecionar: " + e.message; }
       finally { inspect.disabled = false; }
+    });
+  }
+  const externalButton = document.getElementById("external-engine-inspect");
+  const externalPath = document.getElementById("external-engine-path");
+  const externalKind = document.getElementById("external-engine-kind");
+  const externalResult = document.getElementById("external-engine-result");
+  if (externalButton && externalPath && externalKind && externalResult) {
+    externalButton.addEventListener("click", async () => {
+      const path = externalPath.value.trim();
+      const engine = externalKind.value;
+      if (!path) return toast("Informe o caminho absoluto do descritor externo.");
+      if (!confirm(`Ler somente o descritor externo ${path} como ${engine}? Nenhuma engine será iniciada ou projeto vinculado.`)) return;
+      externalButton.disabled = true;
+      try {
+        const info = await api("POST", `/api/projects/${pid}/engine-inspection/external`, {engine, path, confirm:true});
+        externalResult.textContent = `${info.engine} · versão/formato declarado ${info.declared_editor_version || info.descriptor_format_version} · ${info.bytes} bytes · SHA-256 ${info.sha256}. ${info.warning}`;
+      } catch (e) { externalResult.textContent = "Prévia externa indisponível: " + e.message; }
+      finally { externalButton.disabled = false; }
     });
   }
   const scan = document.getElementById("godot-scan");

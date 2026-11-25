@@ -37,6 +37,23 @@ Se a revisão testada estiver desatualizada em relação ao remoto, faça primei
 uma atualização *segura*, preservando alterações locais; o push recusará caso
 não seja fast-forward. Não trate o commit do relatório como aprovação de release.
 
+## Prévia externa de descritores (incremento seguinte)
+
+Em **Configuração do projeto → Prévia de projeto externo**, selecione Godot,
+Unreal ou Unity e informe o caminho absoluto, local e canônico do descritor
+`project.godot`, `*.uproject` ou `ProjectSettings/ProjectVersion.txt`. Confirme a
+leitura. A API `POST /api/projects/{id}/engine-inspection/external` exige Studio
+servido e acessado em loopback e recebe somente `engine`, `path`, `confirm:true`.
+Ela não procura nem inicia binários, não grava a associação ao projeto, não
+importa/migra o jogo e não altera Tasks, QA ou gates. Retorna apenas engine,
+versão/formato **declarado**, hash e tamanho; não retorna nome/conteúdo do jogo
+ou caminho externo. Não há versão mínima fixa. Arquivos inacessíveis, maiores
+que 256 KiB, symlinks/junctions ou caminhos UNC são recusados. O arquivo pode
+ter sido alterado após a leitura: esta prévia não autoriza execução futura.
+A UI não aparece como prova de instalação ou compatibilidade. Testes automatizados
+cobrem o fluxo sem engine, inclusive a restrição HTTP de loopback; no Windows
+real e com projetos reais permanece **NÃO EXECUTADO**.
+
 ## Próximos incrementos, sem falsear gates
 
 1. **Engines:** o pré-voo opt-in lê agora também

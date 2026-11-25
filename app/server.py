@@ -146,6 +146,12 @@ def api_projects(handler, pid: Optional[str], sub: list, method: str, body, quer
     if method == "POST" and sub == ["export"]:
         return {"path": storage.export_project(pid, body.get("dest_dir"))}
 
+    if method == "POST" and sub == ["engine-inspection", "external"]:
+        if not _local_engine_access(handler):
+            return {"error": "inspeção externa requer Studio em loopback"}, 403
+        if set(body) != {"engine", "path", "confirm"}:
+            raise StorageError("envie engine, descritor absoluto e confirmação")
+        return engine_inspection.inspect_external(storage, pid, body["engine"], body["path"], body["confirm"])
     if method == "POST" and sub == ["engine-inspection"]:
         if set(body) != {"path", "confirm"}:
             raise StorageError("envie caminho relativo do descritor e confirmação")

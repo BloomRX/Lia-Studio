@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +49,16 @@ def inspect_project(storage: Storage, project_id: str, path: Any, confirm: Any) 
     if (len(content) != before.st_size or len(content) > MAX_DESCRIPTOR_BYTES or
         before.st_size != after.st_size or before.st_mtime_ns != after.st_mtime_ns):
         raise StorageError("descritor mudou durante a leitura; revise antes de continuar")
+    declared = _declared_version(kind, content)
+    return {"status": "descriptor_read", "engine": kind, "path": path,
+            "descriptor_format_version": declared if kind != "unity" else None,
+            "declared_editor_version": declared if kind == "unity" else None,
+            "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content),
+            "engine_verified": False, "gameplay_verified": False, "stage_gate_changed": False,
+            "warning": "Somente descritor estático; engine, importação, build, jogo e QA NÃO verificados."}
+
+
+def _declared_version(kind: str, content: bytes) -> str:
     try:
         text = content.decode("utf-8-sig")
         if kind == "godot":
@@ -67,9 +79,44 @@ def inspect_project(storage: Storage, project_id: str, path: Any, confirm: Any) 
             declared = str(data["FileVersion"])  # formato, não versão/compatibilidade da engine
     except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
         raise StorageError("descritor inválido; nenhum projeto ou engine foi executado") from exc
-    return {"status": "descriptor_read", "engine": kind, "path": path,
+    return declared
+
+
+def inspect_external(storage: Storage, project_id: str, kind: Any, path: Any, confirm: Any) -> dict:
+    """Prévia local de descritor externo; não vincula, executa ou grava nada.
+
+    Cada componente passa pela defesa canônica de caminhos locais da Godot,
+    inclusive reparse/junction/UNC. A UI/API deve exigir loopback também.
+    """
+    from .godot import _local_path, _signature
+    if confirm is not True or kind not in ("godot", "unreal", "unity") or type(kind) is not str:
+        raise StorageError("selecione a engine e confirme a leitura do projeto externo")
+    if type(path) is not str or not 1 <= len(path) <= 4096:
+        raise StorageError("selecione um descritor local absoluto")
+    requested = Path(path)
+    if ((kind == "godot" and requested.name != "project.godot") or
+        (kind == "unreal" and (requested.suffix.casefold() != ".uproject" or not requested.stem)) or
+        (kind == "unity" and requested.parts[-2:] != ("ProjectSettings", "ProjectVersion.txt"))):
+        raise StorageError("descritor não corresponde à engine escolhida")
+    storage.project_path(project_id)  # projeto Studio deve existir; nunca trocar sua pasta
+    descriptor = _local_path(requested)
+    try:
+        before = descriptor.lstat()
+        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_DESCRIPTOR_BYTES:
+            raise StorageError("descritor externo inválido, vazio ou acima de 256 KiB")
+        with descriptor.open("rb") as stream:
+            if _signature(os.fstat(stream.fileno())) != _signature(before):
+                raise StorageError("descritor alterado durante a leitura")
+            content = stream.read(MAX_DESCRIPTOR_BYTES + 1)
+        if len(content) != before.st_size or _signature(_local_path(descriptor).lstat()) != _signature(before):
+            raise StorageError("descritor alterado durante a leitura")
+    except OSError as exc:
+        raise StorageError("não foi possível ler o descritor externo") from exc
+    declared = _declared_version(kind, content)
+    return {"status": "external_descriptor_read", "engine": kind,
             "descriptor_format_version": declared if kind != "unity" else None,
             "declared_editor_version": declared if kind == "unity" else None,
             "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content),
-            "engine_verified": False, "gameplay_verified": False, "stage_gate_changed": False,
-            "warning": "Somente descritor estático; engine, importação, build, jogo e QA NÃO verificados."}
+            "engine_verified": False, "gameplay_verified": False,
+            "project_bound": False, "stage_gate_changed": False,
+            "warning": "Prévia local sem vínculo ou execução; versão declarada não comprova compatibilidade."}
