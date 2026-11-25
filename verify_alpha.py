@@ -55,6 +55,7 @@ CHECKS = {
     "runtime_policy": ("Grants locais aplicados às operações restritas", [sys.executable, "tests/test_runtime_policy.py"]),
     "engine_probe": ("Diagnóstico Godot opt-in com binário falso", [sys.executable, "tests/test_engine_probe.py"]),
     "engine_inspection": ("Descritor de projeto local sem executar engine", [sys.executable, "tests/test_engine_inspection.py"]),
+    "unity_inspection": ("Descritor Unity de qualquer versão, sem engine", [sys.executable, "tests/test_unity_inspection.py"]),
     "attempts": ("Tentativas e eventos locais (sem Runtime)", [sys.executable, "tests/test_attempt_history.py"]),
     "slice": ("Roteiro de fatia vertical (sem jogo/runner)", [sys.executable, "tests/test_vertical_slice.py"]),
     "validation": ("Validação sintática Python local (não gameplay)", [sys.executable, "tests/test_validation_sessions.py"]),
@@ -77,6 +78,7 @@ CHECKS = {
     "skills": ("Skills: metadados progressivos", [sys.executable, "tests/test_skills_progressive.py"]),
     "start_routes": ("Duas rotas iniciais, sem Agent Runtime", [sys.executable, "tests/test_start_routes.py"]),
     "start_routes_ui": ("Escolha e sugestão das rotas na UI", ["node", "tests/test_start_routes_ui.cjs"]),
+    "windows_evidence": ("Relatório Windows sem dados privados ou push implícito", [sys.executable, "tests/test_windows_evidence.py"]),
     "desktop": ("Shell desktop sem GUI (loopback e encerramento)", [sys.executable, "tests/test_desktop.py"]),
     "dependency_layers": ("Dependências por camada e Skills sem cópia", [sys.executable, "tests/test_dependency_layers.py"]),
     "parts": ("Cobertura dos blocos curtos", [sys.executable, "tests/test_verify_parts.py"]),
@@ -92,10 +94,10 @@ PARTS = (
     ("HTTP: origem, bloqueios e decisões", ("core-4",)),
     ("HTTP: jornada, documentos, evidências e provedores", ("core-5",)),
     ("HTTP: Sessions, recuperação e descoberta local", ("core-6",)),
-    ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe", "engine_inspection", "godot", "engine_process")),
+    ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe", "engine_inspection", "unity_inspection", "godot", "engine_process")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation", "run_history", "godot_runs")),
     ("CLI/combo declarativo, serviço local falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "legacy_ids", "chat", "drafts", "draft_jobs")),
-    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "forge_brief", "gameplay_loop", "skills", "start_routes", "start_routes_ui", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
+    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "forge_brief", "gameplay_loop", "skills", "start_routes", "start_routes_ui", "windows_evidence", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 
 

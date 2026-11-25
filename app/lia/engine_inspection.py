@@ -16,7 +16,8 @@ from .evidence import _file, _relative_path
 from .storage import Storage, StorageError
 
 MAX_DESCRIPTOR_BYTES = 256 * 1024
-GODOT_CONFIG = re.compile(r"(?m)^config_version\s*=\s*(\d{1,2})\s*$")
+GODOT_CONFIG = re.compile(r"(?m)^config_version\s*=\s*(\d{1,6})\s*$")
+UNITY_VERSION = re.compile(r"(?m)^m_EditorVersion:\s*([A-Za-z0-9.+_-]{1,64})\s*$")
 
 
 def inspect_project(storage: Storage, project_id: str, path: Any, confirm: Any) -> dict:
@@ -29,8 +30,10 @@ def inspect_project(storage: Storage, project_id: str, path: Any, confirm: Any) 
         kind = "godot"
     elif name.lower().endswith(".uproject") and name.lower() != ".uproject":
         kind = "unreal"
+    elif relative.parts[-2:] == ("ProjectSettings", "ProjectVersion.txt"):
+        kind = "unity"
     else:
-        raise StorageError("selecione project.godot ou um arquivo .uproject")
+        raise StorageError("selecione project.godot, um .uproject ou ProjectSettings/ProjectVersion.txt")
     descriptor = _file(storage, project_id, path)  # recusa caminhos externos e symlinks
     try:
         before = descriptor.stat()
@@ -47,20 +50,26 @@ def inspect_project(storage: Storage, project_id: str, path: Any, confirm: Any) 
     try:
         text = content.decode("utf-8-sig")
         if kind == "godot":
-            match = GODOT_CONFIG.search(text)
-            if match is None or not 1 <= int(match.group(1)) <= 20:
-                raise ValueError("formato Godot ausente")
-            declared = str(int(match.group(1)))  # versão de formato, NÃO versão da engine
+            matches = GODOT_CONFIG.findall(text)
+            if len(matches) != 1 or int(matches[0]) < 1:
+                raise ValueError("formato Godot ausente ou duplicado")
+            declared = str(int(matches[0]))  # formato, não versão/compatibilidade da engine
+        elif kind == "unity":
+            matches = UNITY_VERSION.findall(text)
+            if len(matches) != 1:
+                raise ValueError("versão declarada Unity ausente ou duplicada")
+            declared = matches[0]  # declaração do projeto, não versão instalada
         else:
             data = json.loads(text)
             if (type(data) is not dict or type(data.get("FileVersion")) is not int or
-                not 1 <= data["FileVersion"] <= 20):
+                data["FileVersion"] < 1 or len(str(data["FileVersion"])) > 6):
                 raise ValueError("formato Unreal ausente")
-            declared = str(data["FileVersion"])  # formato do descritor, NÃO versão da engine
+            declared = str(data["FileVersion"])  # formato, não versão/compatibilidade da engine
     except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
         raise StorageError("descritor inválido; nenhum projeto ou engine foi executado") from exc
     return {"status": "descriptor_read", "engine": kind, "path": path,
-            "descriptor_format_version": declared,
+            "descriptor_format_version": declared if kind != "unity" else None,
+            "declared_editor_version": declared if kind == "unity" else None,
             "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content),
             "engine_verified": False, "gameplay_verified": False, "stage_gate_changed": False,
             "warning": "Somente descritor estático; engine, importação, build, jogo e QA NÃO verificados."}
