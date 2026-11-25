@@ -36,7 +36,7 @@ class TestExternalEngineInspection(unittest.TestCase):
             ('unreal', self.game / 'Futuro.uproject', '250'),
             ('unity', self.game / 'ProjectSettings' / 'ProjectVersion.txt', '5.6.7f1'),
         ):
-            with self.subTest(engine=engine), patch('subprocess.run') as spawn:
+            with self.subTest(engine=engine), patch('subprocess.run') as run, patch('subprocess.Popen') as spawn:
                 result = engine_inspection.inspect_external(self.storage, self.pid, engine, str(desc), True)
                 self.assertEqual(result['engine'], engine)
                 self.assertEqual(result['declared_editor_version' if engine == 'unity' else 'descriptor_format_version'], declared)
@@ -44,6 +44,7 @@ class TestExternalEngineInspection(unittest.TestCase):
                 self.assertFalse(result['project_bound'] or result['engine_verified'] or result['gameplay_verified'])
                 self.assertNotIn(str(self.game), str(result))
                 self.assertNotIn('Segredo', str(result))
+                run.assert_not_called()
                 spawn.assert_not_called()
         self.assertEqual(set(self.storage.project_path(self.pid).iterdir()), before_files)
         self.assertEqual(stages.evaluate(self.storage, self.pid), before_gate)
@@ -66,6 +67,17 @@ class TestExternalEngineInspection(unittest.TestCase):
         with self.assertRaises(StorageError):
             engine_inspection.inspect_external(self.storage, self.pid, 'godot',
                                                str(self.game / 'shortcut' / 'project.godot'), True)
+
+    def test_oversized_empty_and_invalid_descriptors_fail_closed(self):
+        path = self.game / 'Futuro.uproject'
+        for raw in (b'', b'not json', b'x' * (engine_inspection.MAX_DESCRIPTOR_BYTES + 1)):
+            with self.subTest(length=len(raw)):
+                path.write_bytes(raw)
+                with self.assertRaises(StorageError):
+                    engine_inspection.inspect_external(self.storage, self.pid, 'unreal', str(path), True)
+        with self.assertRaises(StorageError):
+            engine_inspection.inspect_external(self.storage, 'missing-id', 'godot',
+                                               str(self.game / 'project.godot'), True)
 
     def test_http_external_requires_loopback_and_exact_shape(self):
         from app import server
