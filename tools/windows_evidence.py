@@ -35,6 +35,8 @@ def _git(*args: str, runner: Runner = subprocess.run) -> str:
 
 def collect(runner: Runner = subprocess.run) -> dict:
     """Executa cada parte em processo próprio e grava APENAS resultado agregado."""
+    if _git("status", "--porcelain", runner=runner):
+        raise RuntimeError("Checkout com alterações locais. Teste em checkout limpo para atribuir a revisão correta; nada foi descartado.")
     revision = _git("rev-parse", "HEAD", runner=runner)
     if not re.fullmatch(r"[a-f0-9]{40}", revision):
         raise RuntimeError("Revisão Git inválida; não crie relatório.")

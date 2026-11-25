@@ -15,10 +15,21 @@ from tools import windows_evidence as we
 
 
 class WindowsEvidenceTests(unittest.TestCase):
+    def test_dirty_checkout_is_not_misattributed_to_head(self):
+        commands = []
+        def fake(command, **kwargs):
+            commands.append(command)
+            return CompletedProcess(command, 0, ' M private-note.txt', '')
+        with self.assertRaisesRegex(RuntimeError, 'Checkout com alterações locais'):
+            we.collect(runner=fake)
+        self.assertEqual(commands, [['git', 'status', '--porcelain']])
+
     def test_collect_is_sequential_and_never_persists_raw_output_or_paths(self):
         calls = []
         def fake(command, **kwargs):
             calls.append(command)
+            if command[:2] == ['git', 'status']:
+                return CompletedProcess(command, 0, '', '')
             if command[:2] == ['git', 'rev-parse']:
                 return CompletedProcess(command, 0, 'a'*40 + '\n', '')
             if command[:2] == ['git', 'branch']:

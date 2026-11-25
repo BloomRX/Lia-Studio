@@ -10,8 +10,12 @@ origem não confiável, abrir projeto não revisado ou afirmar compatibilidade.
 
 ## Na máquina Windows do Dev
 
-Abra um checkout atualizado da branch `arena/01a0f4ab-lia-gamedev`, revise o
+Abra um checkout **limpo** e atualizado da branch
+`arena/01a0f4ab-lia-gamedev` (confirme com `git status --short`), revise o
 `.bat` e execute `Studio-Windows-Evidence.bat` com Python 3.10+ e Git instalados.
+Se houver alterações locais, o script para antes dos testes para não atribuir
+resultados a um commit diferente do código efetivamente executado. Preserve
+esse trabalho e use um checkout limpo separado; não faça `reset --hard`.
 O script executa **`python verify_alpha.py --part N`, uma parte por chamada,
 sequencialmente** (1 a 10). Não instala/download nada, não inicia engines ou
 Agent, não conecta serviços pagos e não abre projetos. Relata PASS/FAIL/TIMEOUT/
