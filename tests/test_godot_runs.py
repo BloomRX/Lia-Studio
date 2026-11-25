@@ -77,10 +77,11 @@ class TestGodotRuns(unittest.TestCase):
         data = {"executable": str(self.fake_exe), "project_path": str(self.descriptor)}
         with patch.object(godot, "discover", return_value=[]):
             self.assertEqual(godot_runs.inspect(self.store, self.pid, {**data, "executable": ""})["status"], "not_found")
-        with patch.object(godot, "_probe", side_effect=godot.IncompatibleGodot("Godot 3")) as probe:
+        with patch.object(godot, "_probe", return_value="3.5.0") as probe:
             saved = self.configure()
             probe.assert_not_called()
-            self.assertEqual(godot_runs.inspect(self.store, self.pid, data)["status"], "incompatible")
+            old = godot_runs.inspect(self.store, self.pid, data)
+            self.assertEqual((old["status"], old["version"]), ("ready", "3.5.0"))
         self.fake_exe.unlink()
         result = godot_runs.get_config(self.store, self.pid)
         self.assertEqual(result["inspection"]["status"], "unavailable")

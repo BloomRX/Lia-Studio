@@ -1,4 +1,8 @@
-"""Descoberta e verificação local de Godot 4 para projetos de confiança."""
+"""Descoberta e verificação local de Godot para projetos de confiança.
+
+A versão declarada não é uma política de compatibilidade; scripts e migrações
+exigem avaliação própria no ambiente escolhido pelo Dev.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -92,9 +96,9 @@ def inspect_descriptor(storage: Storage, project_id: str, project_path: str) -> 
         text = content.decode("utf-8-sig")
     except UnicodeError as exc:
         raise StorageError("project.godot deve estar em UTF-8") from exc
-    match = GODOT_CONFIG.search(text)
-    if match is None or match.group(1) != "5":
-        raise StorageError("selecione um project.godot no formato de projeto do Godot 4 (config_version=5)")
+    matches = GODOT_CONFIG.findall(text)
+    if len(matches) != 1 or int(matches[0]) < 1:
+        raise StorageError("selecione um project.godot com config_version positiva e única")
 
     name_match = _PROJECT_NAME.search(text)
     name = None
@@ -106,7 +110,7 @@ def inspect_descriptor(storage: Storage, project_id: str, project_path: str) -> 
     if not name or len(name) > 160 or not name.isprintable():
         name = descriptor.parent.name
     return {"project_path": normalized, "project_dir": str(descriptor.parent),
-            "project_name": name, "descriptor_format_version": "5",
+            "project_name": name, "descriptor_format_version": str(int(matches[0])),
             "descriptor_sha256": hashlib.sha256(content).hexdigest(), "descriptor_bytes": len(content)}
 
 
@@ -162,10 +166,6 @@ def discover() -> list[dict]:
     return candidates
 
 
-class IncompatibleGodot(StorageError):
-    pass
-
-
 def _probe(path: Path) -> str:
     from . import engine_process
 
@@ -181,8 +181,8 @@ def _probe(path: Path) -> str:
     match = _VERSION_LINE.fullmatch(output.strip())
     if match is None:
         raise StorageError("o executável não retornou uma versão reconhecível do Godot")
-    if not match.group(1).startswith("4."):
-        raise IncompatibleGodot(f"Godot {match.group(1)} é incompatível; selecione a versão 4.x")
+    # Uma versão reconhecida não prova compatibilidade com este project.godot.
+    # Não rejeitar majors antigas nem versões candidatas por regra fixa.
     return match.group(1)
 
 

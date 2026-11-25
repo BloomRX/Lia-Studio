@@ -52,7 +52,13 @@ que 256 KiB, symlinks/junctions ou caminhos UNC são recusados. O arquivo pode
 ter sido alterado após a leitura: esta prévia não autoriza execução futura.
 A UI não aparece como prova de instalação ou compatibilidade. Testes automatizados
 cobrem o fluxo sem engine, inclusive a restrição HTTP de loopback; no Windows
-real e com projetos reais permanece **NÃO EXECUTADO**.
+real e com projetos reais permanece **NÃO EXECUTADO**. O adapter Godot existente
+não barra mais `project.godot` por `config_version=5` ou executável por major 4:
+aceita um formato positivo declarado e saída `--version` reconhecível, sem
+prometer que a combinação importará ou rodará. O usuário deve selecionar e
+confirmar binário/projeto confiáveis e fazer backup antes de qualquer abertura;
+versões distintas, migrações e Godot sem `project.godot` não foram validados.
+Os testes Godot nesta rodada usaram processo falso (smoke real opt-in pulado).
 
 ## Próximos incrementos, sem falsear gates
 

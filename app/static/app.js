@@ -992,12 +992,12 @@ function godotLink(pid, stage) {
 
 function godotInspectionMessage(inspection) {
   const status = new Map([
-    ["unconfigured", "Selecione um executável Godot 4.x e o descritor do projeto."],
+    ["unconfigured", "Selecione um executável Godot e o descritor do projeto."],
     ["configured", "Configuração carregada. Consulte a versão para conferir o executável."],
     ["needs_selection", "Selecione um executável Godot para consultar a versão."],
     ["not_found", "Nenhum executável Godot foi encontrado."],
     ["invalid_project", "Confira o caminho do arquivo project.godot."],
-    ["ready", "Godot 4.x detectado."],
+    ["ready", "Versão do executável Godot detectada; projeto e compatibilidade não comprovados."],
   ]);
   return [inspection.message || status.get(inspection.status),
     inspection.version && `Versão ${inspection.version}`,
@@ -1006,7 +1006,7 @@ function godotInspectionMessage(inspection) {
 }
 
 async function projectGodot(pid, data, stage) {
-  const heading = '<h1>Godot 4.x</h1>';
+  const heading = '<h1>Godot</h1>';
   let config, inspection;
   try {
     ({ config, inspection } = await api("GET", `/api/projects/${encodeURIComponent(pid)}/godot`));
@@ -1047,7 +1047,7 @@ async function projectGodot(pid, data, stage) {
     </section>
     <section class="card godot-section">
       <h2>Abrir editor ou rodar jogo</h2>
-      <p>O Godot usa as permissões desta conta do sistema. Prossiga com um executável e um projeto que você controla e confia. Finalize pelo Godot ou pelo histórico do Studio.</p>
+      <p>O Godot usa as permissões desta conta do sistema. Prossiga só com executável e projeto confiáveis; versões antigas ou diferentes podem exigir migração, sem garantia de compatibilidade. Abrir o projeto pode alterá-lo. Faça backup antes. Finalize pelo Godot ou pelo histórico do Studio.</p>
       <fieldset id="godot-launch"${configured && !archived ? "" : " disabled"}>
         <label for="godot-task">Vincular a uma Task (opcional)</label>
         <select id="godot-task"><option value="">Sem Task</option>${[...tasks].map(([key, name]) =>
@@ -1140,7 +1140,7 @@ function wireGodot(pid, stage, current) {
 
   function run(action, label) {
     if (launch.disabled || !current()) return;
-    if (!confirm(`${label} com ${saved.executable}?\nProjeto: ${saved.project_path}\n\nO executável e o projeto podem executar código com as permissões desta conta. Prossiga apenas se confiar nos dois.`)) return;
+    if (!confirm(`${label} com ${saved.executable}?\nProjeto: ${saved.project_path}\n\nO executável e o projeto podem executar código com as permissões desta conta. Versão detectada não garante compatibilidade; abrir pode migrar/alterar arquivos. Tenha backup. Prossiga apenas se confiar nos dois.`)) return;
     const task = get("godot-task").value;
     const [module_id, task_id] = task ? task.split("/") : ["", ""];
     return withBusy(launchMessage, "Solicitando início…", async () => {

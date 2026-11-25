@@ -67,8 +67,6 @@ def inspect(storage, pid, data, *, probe=True):
         return {**data, "status": "invalid_project", "message": str(exc), "candidates": godot.discover()}
     try:
         return godot.inspect(storage, pid, data["executable"] or None, data["project_path"], probe=probe)
-    except godot.IncompatibleGodot as exc:
-        status, message = "incompatible", str(exc)
     except StorageError as exc:
         status, message = "unavailable", str(exc)
     return {**metadata, "executable": data["executable"], "status": status, "message": message,

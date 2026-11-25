@@ -79,10 +79,21 @@ class GodotTest(unittest.TestCase):
                 godot.prepare(self.storage, self.project_id, self.bin.name)
             with self.assertRaises(StorageError):
                 godot.prepare(self.storage, self.project_id, r"\\server\share\godot.exe")
-            self.descriptor.write_bytes(b"config_version=4\n")
-            with self.assertRaises(StorageError):
-                godot.prepare(self.storage, self.project_id, str(self.bin))
+            for bad in (b"config_version=0\n", b"config_version=5\nconfig_version=4\n", b"[application]\n"):
+                with self.subTest(bad=bad):
+                    self.descriptor.write_bytes(bad)
+                    with self.assertRaises(StorageError):
+                        godot.prepare(self.storage, self.project_id, str(self.bin))
         probe.assert_not_called()
+
+    def test_old_and_future_descriptor_formats_are_declared_not_compatibility(self):
+        for declared in ('4', '5', '100'):
+            with self.subTest(declared=declared):
+                self.descriptor.write_text(f'config_version={declared}\n')
+                result = godot.inspect_descriptor(self.storage, self.project_id, 'project.godot')
+                self.assertEqual(result['descriptor_format_version'], declared)
+                with patch.object(godot, '_probe', return_value='3.5.0'):
+                    self.assertEqual(godot.prepare(self.storage, self.project_id, str(self.bin))['version'], '3.5.0')
 
     def test_reparse_point_is_rejected(self):
         reparse_info = Mock(st_mode=0, st_file_attributes=godot.stat.FILE_ATTRIBUTE_REPARSE_POINT)
@@ -110,8 +121,11 @@ class GodotTest(unittest.TestCase):
             self.assertEqual(godot._probe(self.bin), "4.5.1")
             start.assert_called_once_with([str(self.bin), "--version"], self.bin.parent)
             wait.assert_called_once_with(timeout=godot.TIMEOUT)
-            for response in ({**result, "stdout": "3.5.0.stable"},
-                             {**result, "stdout": "4.5.1\nunexpected"},
+            for old, expected in (("3.5.0.stable", "3.5.0"), ("2.1.stable", "2.1"),
+                                  ("5.0.dev1", "5.0")):
+                wait.return_value = {**result, "stdout": old}
+                self.assertEqual(godot._probe(self.bin), expected)
+            for response in ({**result, "stdout": "4.5.1\nunexpected"},
                              {**result, "exit_code": 1}, {**result, "truncated": True}):
                 with self.subTest(response=response), self.assertRaises(StorageError):
                     wait.return_value = response
