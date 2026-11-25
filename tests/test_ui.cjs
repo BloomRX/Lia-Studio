@@ -634,6 +634,33 @@ assert.equal(reloads, 1);
   editorFields['editor-exe-unity'].value = 'C:/other.exe';
   editorHandlers['editor-exe-unity:input']();
   assert.equal(editorFields['editor-launch-unity'].disabled,true);
+  assert.match(configHtml, /Encontrar apps locais/);
+  const appHandlers = {};
+  const appButton = {disabled:false,addEventListener:(_,fn)=>appHandlers.search=fn};
+  const appStatus = {textContent:''};
+  const appList = {items:[],replaceChildren() {this.items=[];},append(item) {this.items.push(item);}};
+  const originalCreate = context.document.createElement;
+  context.document.createElement = () => ({textContent:'', children:[], append(child) {this.children.push(child);}});
+  context.document.getElementById=id=>({view,toast,
+    'apps-discover':appButton,'apps-extra-roots':{value:'C:/Steam\nD:/Portable'},
+    'apps-discover-status':appStatus,'apps-discover-results':appList})[id];
+  const appCalls=[];
+  context.fetch=async(url,options)=>{
+    appCalls.push({url,options});
+    return {ok:true,json:async()=>({candidates:[{app:'blender',source:'steam',path:'<img src=x onerror=alert(1)>'}],
+      limited:false,warning:'Nenhum app foi iniciado.'})};
+  };
+  await context.wireConfig('project-1',{});
+  context.confirm=()=>false;
+  await appHandlers.search();
+  assert.equal(appCalls.length,0);
+  context.confirm=()=>true;
+  await appHandlers.search();
+  assert.equal(appCalls[0].url,'/api/apps/discover');
+  assert.deepEqual(JSON.parse(appCalls[0].options.body),{confirm:true,roots:['C:/Steam','D:/Portable']});
+  assert.match(appList.items[0].children[0].textContent,/<img src=x/);
+  assert.equal(appList.items[0].innerHTML,undefined); // displayed as text only
+  context.document.createElement = originalCreate;
   const probeResult = {textContent: '', innerHTML: ''};
   const probeButton = {disabled: false};
   context.document.getElementById = id => ({view, toast,

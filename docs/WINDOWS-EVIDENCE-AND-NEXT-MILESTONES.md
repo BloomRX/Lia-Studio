@@ -23,6 +23,10 @@ Agent, não conecta serviços pagos e não abre projetos. Relata PASS/FAIL/TIMEO
 PARTIAL para cada bloco. Sem Node, a parte de UI fica PARTIAL; isso não é PASS
 completo. A presença de Godot/Unreal/Unity na PATH é apenas indício, não prova
 versão, licença, jogo, adapter ou build. Uma instalação fora da PATH pode existir.
+A nova busca de apps criativos é **separada** deste `.bat`: exige clique e
+confirmação no Studio local, não entra no JSON de evidência; veja
+`plans/LOCAL-APP-DISCOVERY.md`. Busca em pastas extras e pistas Steam/Epic
+sem iniciar executáveis, mas precisa de prova no Windows real.
 
 O único arquivo persistido é um JSON novo em `docs/windows-evidence/`, com
 revisão Git testada, família do SO, versão do Python, dez estados e sinais

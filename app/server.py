@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
+from .lia import app_discovery, assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -450,6 +450,12 @@ class Handler(BaseHTTPRequestHandler):
                 pid = parts[2]
                 sub = parts[3:]
                 return api_projects(self, pid, sub, method, self._body, query)
+            if parts == ["api", "apps", "discover"] and method == "POST":
+                if not _local_engine_access(self):
+                    return {"error": "busca de apps exige o Studio local em loopback"}, 403
+                if set(body) != {"confirm", "roots"}:
+                    raise StorageError("confirme a busca e informe as pastas extras")
+                return app_discovery.discover(body["confirm"], body["roots"]), 200
             if parts == ["api", "engines", "godot", "candidates"] and method == "POST":
                 if not _local_engine_access(self):
                     return {"error": "a integração Godot requer o Studio local"}, 403

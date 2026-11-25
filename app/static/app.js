@@ -2104,6 +2104,14 @@ function projectConfig(pid, data, stage = "preparation") {
       <button type="button" id="external-engine-inspect" class="ghost">Conferir prévia externa</button>
       <p id="external-engine-result" class="muted" role="status" aria-live="polite">Nenhum arquivo externo lido.</p>
     </div>
+    <div class="card"><h3>Encontrar apps locais (opcional)</h3>
+      <p class="muted">Busca passiva e limitada quando você clicar: PATH, pastas comuns, bibliotecas Steam e manifestos de engine do Epic Launcher. Também aceita até quatro pastas extras (uma por linha), inclusive instalações portáteis ou personalizadas. Não varre unidades inteiras, não inicia apps e não grava seus caminhos no relatório Windows. Candidatos não são garantia de autenticidade ou compatibilidade.</p>
+      <label for="apps-extra-roots">Pastas extras ou executáveis conhecidos (opcional; até quatro linhas)</label>
+      <textarea id="apps-extra-roots" rows="3" placeholder="Caminho absoluto da pasta personalizada, biblioteca Steam ou executável"></textarea>
+      <button type="button" class="ghost" id="apps-discover">Procurar Godot, Unity, Unreal, Blender, Krita e apps criativos</button>
+      <p id="apps-discover-status" class="muted" role="status" aria-live="polite">Busca ainda não realizada.</p>
+      <ul id="apps-discover-results" class="clean"></ul>
+    </div>
     <div class="card"><h3>Editor Unity / Unreal (Windows local, opt-in)</h3>
       <p class="muted">Abrir editor é uma ação executável separada da prévia. Escolha arquivos próprios e confiáveis, faça backup antes: o editor pode importar, migrar e executar scripts com suas permissões. O supervisor controla a árvore do processo, não isola arquivos ou rede. Não faz build, teste, gameplay ou QA.</p>
       ${["unity", "unreal"].map(kind => `<fieldset class="editor-config" data-engine="${kind}">
@@ -2161,6 +2169,42 @@ async function wireConfig(pid, data) {
       finally { externalButton.disabled = false; }
     });
   }
+  const discoverApps = document.getElementById("apps-discover");
+  if (discoverApps) discoverApps.addEventListener("click", async () => {
+    const lines = document.getElementById("apps-extra-roots").value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const status = document.getElementById("apps-discover-status");
+    const results = document.getElementById("apps-discover-results");
+    if (lines.length > 4) { status.textContent = "Informe no máximo quatro caminhos extras."; return; }
+    if (!confirm(`Procurar candidatos locais sem iniciar apps? Pastas extras: ${lines.length}. Somente caminhos encontrados aparecem nesta tela local; nenhum resultado será salvo automaticamente.`)) return;
+    discoverApps.disabled = true;
+    results.replaceChildren();
+    status.textContent = "Procurando apenas nos locais selecionados…";
+    try {
+      const found = await api("POST", "/api/apps/discover", {confirm:true, roots:lines});
+      status.textContent = `${found.candidates.length} candidato(s). ${found.limited ? "Limite de busca atingido; acrescente um caminho específico. " : ""}${found.warning}`;
+      for (const item of found.candidates) {
+        const li = document.createElement("li");
+        const label = document.createElement("span");
+        label.textContent = `${item.app} · ${item.source} · ${item.path}`;
+        li.append(label);
+        if (["unity", "unreal"].includes(item.app)) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "ghost small";
+          button.textContent = "Usar este caminho no editor (sem executar)";
+          button.onclick = () => {
+            const input = document.getElementById(`editor-exe-${item.app}`);
+            input.value = item.path;
+            input.dispatchEvent(new Event("input")); // invalida seleção antiga
+            document.getElementById(`editor-status-${item.app}`).textContent = "Revise também o descritor e salve a seleção antes de abrir.";
+          };
+          li.append(button);
+        }
+        results.append(li);
+      }
+    } catch (e) { status.textContent = "Busca indisponível: " + e.message; }
+    finally { discoverApps.disabled = false; }
+  });
   const editorKinds = ["unity", "unreal"];
   if (document.getElementById("editor-save-unity")) {
     const base = `/api/projects/${encodeURIComponent(pid)}/editor-runs`;
