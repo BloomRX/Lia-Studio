@@ -204,7 +204,13 @@ independente de jogo, editar keyframes em trilhas anatômicas e expressivas,
 reproduzir uma prévia 2D esquemática, desfazer/refazer, guardar poses/gestos na
 biblioteca local e exportar/importar um **backup interno**. A integração deste
 editor com o contrato de animação do Forge e com o runtime Lia ainda não foi
-validada; a exportação atual é somente backup interno, não um asset interoperável. Veja
+validada; a exportação atual é somente backup interno, não um asset interoperável.
+
+**Forge V1 (candidata):** há um [espaço separado](/static/forge-animation.html)
+para abrir, editar e exportar **spec.json** após inspeção estrutural local.
+Não converte animações 2D do Studio, não gera GLTF, não aprova direitos e
+não substitui o compositor oficial do Forge. Consulte o adendo em
+[ANIMATION-AUTHORING-V1.md](docs/ANIMATION-AUTHORING-V1.md). Veja
 [escopo, fluxo e handoff](docs/ANIMATION-AUTHORING-V1.md).
 
 ## Estrutura
