@@ -1,0 +1,66 @@
+{
+  "schema": "lia-studio-windows-evidence-v1",
+  "collected_utc": "2026-11-26T00:43:22+00:00",
+  "revision_tested": "a4f81556b9e2bf9f3b986efe3fa1d9b7b601427d",
+  "branch_tested": "arena/01a0f4ab-lia-gamedev",
+  "platform_family": "Windows",
+  "python_version": "3.14.7",
+  "checks": [
+    {
+      "part": 1,
+      "result": "PASS"
+    },
+    {
+      "part": 2,
+      "result": "PASS"
+    },
+    {
+      "part": 3,
+      "result": "PASS"
+    },
+    {
+      "part": 4,
+      "result": "PASS"
+    },
+    {
+      "part": 5,
+      "result": "PASS"
+    },
+    {
+      "part": 6,
+      "result": "PASS"
+    },
+    {
+      "part": 7,
+      "result": "FAIL"
+    },
+    {
+      "part": 8,
+      "result": "PASS"
+    },
+    {
+      "part": 9,
+      "result": "FAIL"
+    },
+    {
+      "part": 10,
+      "result": "FAIL"
+    }
+  ],
+  "engine_presence_on_path_only": {
+    "godot_on_path": false,
+    "unreal_on_path": false,
+    "unity_on_path": false
+  },
+  "not_tested": [
+    "engine_versions",
+    "engine_projects",
+    "gameplay",
+    "agent_runtime",
+    "windows_installer",
+    "secrets_store",
+    "build_or_release"
+  ],
+  "raw_logs_stored": false,
+  "project_data_stored": false
+}
