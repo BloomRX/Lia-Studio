@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#17111c" />
+  <title>Lia Studio — workspace local</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body data-space="home">
+  <a class="skip-link" href="#view" onclick="event.preventDefault(); document.getElementById('view').focus()">Ir para o conteúdo</a>
+  <header class="topbar">
+    <a class="brand" href="#/home" aria-label="Lia Studio — voltar ao launcher">
+      <span class="badge" aria-hidden="true">✿</span>
+      <span class="brand-copy"><strong>Lia <em>Studio</em></strong><small>CRIE · EXPERIMENTE · EVOLUA</small></span>
+    </a>
+    <span id="shell-context" class="shell-context">Launcher</span>
+    <nav class="topnav" aria-label="Áreas do Studio">
+      <a href="#/home" data-nav="home">Home</a>
+      <a href="#/skills" data-nav="skills">Skills</a>
+      <a href="/static/animation.html">Animações</a>
+      <a href="#/recovery" data-nav="recovery">Dados</a>
+      <a href="#/config" data-nav="config">Configuração</a>
+    </nav>
+    <button id="desktop-reload" type="button" class="desktop-reload ghost" hidden
+            title="Recarregar a interface (rascunhos não salvos podem ser perdidos)"
+            onclick="reloadDesktop()">↻ Recarregar</button>
+  </header>
+
+  <main id="view" class="view" tabindex="-1">
+    <div class="loading" role="status">Carregando…</div>
+  </main>
+
+  <footer class="foot"><span>Lia Studio · local-first · você decide o próximo passo</span><span>Alpha UI.1 · Agents e execução real não conectados</span></footer>
+  <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

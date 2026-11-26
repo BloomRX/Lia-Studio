@@ -1,0 +1,226 @@
+# Armazenamento de dados, backup/exportação e privacidade
+
+## Onde os dados ficam
+- Pasta padrão: `~/LiaStudioProjects` (configurável via `LIA_PROJECTS_DIR`).
+- Cada projeto: `<pasta>/<slug>-<id>/` contendo:
+  - Markdown editável: `PROJECT_BRIEF.md`, `GDD.md`, `SCOPE.md`, `REFERENCIAS.md`,
+    `DECISIONS.md`, `MODULE_INDEX.md`, `ASSET_REGISTER.md`, `RELEASE.md`, `JOURNAL.md`,
+    `HANDOFF.md` (opcional, salvo somente após revisão/confirmação).
+  - JSON estruturado: `decisions.json`, `modules.json`, `qa.json`, `assets.json`,
+    `gameplay_loop.json` (hipótese e relatos humanos de protótipos), `release.json`, `engine_profile.json`, `evidence.json` (metadados de arquivos
+    locais, IDs e SHA-256; não contém o conteúdo dos arquivos referenciados) e
+    `sessions.json` (somente metadados de simulações aprovadas, sem logs ou prompts)
+    e `attempt_events.json` (opcional, eventos declarativos de tentativas; sem
+    produtor na Alpha, sem log livre nem evidência verificada), além de
+    `validation_sessions.json` (opcional; processo de sintaxe Python real,
+    separado de Session simulada e sem saída bruta) e `code_changes.json`
+    (opcional; hashes, IDs, criação inicial sem backup anterior e caminhos de
+    backup de edições assistidas aprovadas) e `draft_jobs.json` (opcional;
+    somente metadados de inferência, nunca prompt, fonte, resposta ou diff).
+    Na **raiz local** da instalação,
+    fora da pasta exportável do projeto, `runtime_policy.json` opcional guarda
+    capacidades fixas, grants/negações por projeto e Task vinculados ao local;
+    ausente significa negar operações reais restritas. Não contém segredos, mas
+    não é proteção contra processos locais hostis; exportar projeto não o copia.
+- O registro de decisões usa `decisions.json` como fonte estruturada; a aba Decisões
+  reescreve a projeção `DECISIONS.md` após revisão. Se o Markdown foi editado
+  manualmente, substituí-lo exige confirmação explícita. A revisão SHA-256 do
+  JSON impede editar uma posição antiga sem recarga, mas não há transação
+  multi-arquivo/processo para manter o par sempre sincronizado após falha de disco.
+- Skills criadas pelo Dev (Alpha UI.1): `<pasta>/_skills/lia-user-<id>/SKILL.md`,
+  Markdown UTF-8 independente de todos os projetos. Skills verificadas do Hub
+  em `.agents/skills/` são opcionais, locais e somente leitura no app; uma cópia editável vai para
+  `_skills`. Não há sincronização, importação, backup automático, migração nem
+  aplicação a Agent. A exportação de um projeto **não inclui** a biblioteca;
+  faça cópia separada antes de mover ou apagar `LIA_PROJECTS_DIR`. Escrita é
+  atômica sob lock do processo e checa revisão antes de sobrescrever; como os
+  demais arquivos locais, não é transação entre processos. Não coloque segredos
+  nessas instruções: a API local da biblioteca pode servir seu conteúdo.
+- **Fonte única de metadados do projeto:** `<pasta>/lia_index.json` (nome,
+  localização, status, estágio, decisões de avanço, próximo passo). Um projeto
+  novo não gera `meta.json`; não há duas cópias do estado para divergir.
+  Configurações globais ficam em `<pasta>/lia_settings.json`; a Alpha armazena só
+  preferência de modo/provider do catálogo e `keys_present: false`, sem chaves.
+
+## Formato
+- Tudo é texto (Markdown/JSON) — legível, versionável e exportável. Nenhum binário de
+  projeto é gerado pelo app nesta alpha.
+- Índice novo usa `version: 2`; os demais JSONs novos usam
+  `{ "schema_version": 2, "data": ... }`. Leitura de JSONs antigos sem envelope
+  (v1) ainda funciona, **sem regravar só porque foram lidos**. Uma escrita válida
+  os atualiza para v2. Versão futura não é sobrescrita ou rebaixada.
+- Cada JSON escrito mantém `arquivo.json.bak` na mesma pasta. Na primeira escrita,
+  é cópia da primeira versão; nas seguintes, contém a **última versão anterior**.
+  Escrita usa arquivo temporário + substituição atômica com `fsync` do arquivo.
+  Isso não é histórico nem substitui backup em outro disco. Links simbólicos para
+  JSONs/backup são recusados; exportação preserva links em vez de copiar dados
+  externos que eles apontem. Markdown editável e journal também recusam links
+  simbólicos e tipos/conteúdos inválidos antes de ler ou gravar; a pasta do projeto
+  não pode ser link simbólico nem apontar para fora da localização registrada no
+  índice. As verificações e o lock são locais ao processo (sem transação entre
+  processos). Se criar um projeto falhar ao gravar o índice, o Studio remove apenas
+  a pasta recém-criada **vazia e não registrada**. Caso o índice já cite o projeto,
+  esteja ilegível ou a pasta tenha conteúdo, preserva-a para revisão manual.
+
+## Backup / exportação e recuperação
+- Na Visão geral, **Exportar projeto** copia a pasta para um caminho absoluto novo
+  no computador que executa o Studio. A API é `POST /api/projects/<id>/export`
+  com `{"dest_dir": "..."}`. A exportação inclui `_export_meta.json` com a entrada
+  atual do índice e os `.bak` dos JSONs do projeto; não sobrescreve um destino
+  existente. A cópia não inclui o índice global inteiro nem substitui backup
+  externo; se houver escrita concorrente entre arquivos, a cópia não é snapshot
+  transacional de toda a aplicação. Em preview remoto, a pasta é no servidor do
+  preview, **não** no navegador do Dev.
+- **Dados → Integridade** consulta `GET /api/storage/health` e mostra problemas
+  JSON, Markdown e de pasta de projeto. Se um JSON estiver inválido ou desaparecer
+  tendo backup, o app **não** cria um estado vazio nem sobrescreve o arquivo.
+  Outras partes ainda íntegras podem continuar acessíveis. Markdown e pastas
+  problemáticos requerem revisão manual; não há recuperação automática para eles.
+  `POST /api/storage/recover` exige `confirm: true`, valida o backup e preserva
+  os bytes danificados em `arquivo.json.corrupt-<data>-<id>` antes de restaurar.
+  A última alteração pode não constar do backup: revise o projeto após recuperar.
+  Sem backup válido ou com versão futura, faça revisão manual/atualize o app.
+  Se faltar o índice mas houver pastas de projetos na raiz, elas **não** são
+  tratadas como instalação nova. Backups do índice podem ser anteriores a uma
+  exclusão; restaurá-los não restaura a pasta excluída.
+- Git/sync/nuvem são **opcionais** e controlados pelo Dev; nada é enviado automaticamente.
+
+## Privacidade
+- Nenhum dado de projeto sai da máquina por padrão.
+- `gameplay_loop.json` guarda a hipótese atual e no máximo 100 relatos humanos com
+  data, tipo de protótipo e revisão da hipótese; não guarda saída de jogo por padrão,
+  não executa engine, não valida QA e não muda gates. Revisões deixam os relatos
+  anteriores desatualizados, preservando-os para auditoria humana. Retomada e
+  Handoff expõem só contagens/estado e o fingerprint, não copiam os relatos.
+  Texto pode conter dados privados: não cole informações pessoais de participantes,
+  prompts ou credenciais; revise antes de exportar. Backups `.bak` contêm versões
+  anteriores e não são um sistema de exclusão segura de dados. Recuperação exige
+  confirmação e validação sem promover relatório a teste verificado.
+- A inspeção de descritor de engine (`POST .../engine-inspection`) lê, após
+  confirmação, somente `project.godot` ou `*.uproject` **dentro** da pasta do
+  projeto, recusando symlinks e arquivos acima de 256 KiB; devolve tipo,
+  versão do formato declarada, hash e tamanho, não devolve conteúdo, não grava
+  estado e não inicia a engine. O caminho relativo informado aparece no resultado
+  HTTP local; não cole segredos nesse campo. Nenhum gate/QA muda por inspeção.
+- `assets.json` é um catálogo opcional de **metadados** dos arquivos de mídia já
+  existentes dentro do projeto (até 50 MB por arquivo): caminho relativo, SHA-256,
+  tamanho, categoria, alvo, origem/licença/nota **declarados pelo usuário** e data.
+  Cadastro não copia, envia, importa nem serve os bytes. Integridade é recalculada
+  na leitura e pode ser `intact`, `changed` ou `unavailable`; jamais prova direito
+  de uso, aprovação visual, importação na engine ou gameplay. Para mudar metadados,
+  a API exige revisão atual e confirmação; arquivo e hash anteriores são imutáveis
+  no registro. Dados privados na origem/nota permanecem no JSON e podem ser
+  expostos pela API local ou exportados junto com o projeto: revise antes de salvar
+  ou compartilhar. Projeto arquivado bloqueia cadastro e edição.
+  **Lia Forge (proposta, não conectado):** `.spriteforge/assets.json` pertence ao
+  workspace do Forge e não é o `assets.json` do Studio; não compartilhar escrita
+  ou tratar uma etapa do Forge como QA. Se um asset estiver fora da pasta do jogo,
+  o Dev precisa autorizar sua cópia/importação local e revisar conflito, tamanho,
+  origem/licença e dados privados antes do cadastro no Studio. Caminhos externos
+  e symlinks não substituem essa autorização. Ver `LIA-FORGE-NA-PIPELINE.md`.
+- `evidence.json` é registro local de SHA-256/ID/arquivo relativo/QA opcional. O
+  registro só lê arquivos de até 50 MB dentro do projeto, recusando links simbólicos;
+  a API não serve os bytes. Campos persistidos inesperados (inclusive uma alegação
+  de `verified_result`) são rejeitados e diagnosticados, não expostos como dados
+  confiáveis; recuperar exige backup válido e confirmação. Se o arquivo
+  mudar/desaparecer, a integridade calculada passa a `changed`/`unavailable`,
+  **sem** mudar estado de tarefa ou QA. O hash não atesta execução real nem
+  autoriza publicação. Arquivos referenciados podem viajar
+  na exportação da pasta: revise conteúdo/segredos antes de compartilhar.
+- `sessions.json` contém metadados de Session, não a saída bruta do worker:
+  runtime `simulator`, Profile/Skills/MCP/Tools/Provider/Model não atribuídos,
+  Computer Use nulo (campo opcional em registros novos), permissões efetivas e
+  contexto externo vazios; estado terminal da simulação
+  distinto de validação/evidência, ambas não verificadas. Prévia não escreve
+  Session; simulações anteriores não geram registros retroativos. A leitura pela
+  API é local e deve ser protegida como os demais dados do projeto; não há
+  retenção/limpeza automática nem transação com módulos/journal.
+- `attempt_events.json`, quando criado por código interno, guarda apenas IDs,
+  estados/códigos, sequência e horários de tentativas **não verificadas**. Não
+  alimenta `sessions.json`, QA ou gates; não existe rota que o produza na Alpha.
+  É incluído na exportação da pasta. Append-only é somente lógico: o JSON é
+  regravado e seu `.bak` pode perder o evento mais recente numa recuperação.
+  Inspecione-o junto com os demais dados antes de compartilhar/exportar.
+- `HANDOFF.md` é uma projeção local, não uma cópia dos arquivos de projeto nem das
+  evidências brutas de QA. A prévia não grava nada; a confirmação salva o Markdown.
+  O hash do snapshot indica alteração nas fontes estruturadas, inclusive hipótese/relatos do loop, Jobs,
+  edições e parser, e nos documentos citados; nunca inclui fonte/prompt/diff de
+  inferência, nem concede ou exporta os grants locais. Não garante ausência de
+  segredos. Texto de decisões, objetivos e caminhos
+  pode conter dados sensíveis: revise antes de compartilhar. Não há upload automático.
+- `validation_sessions.json` registra apenas ID, Task, arquivo relativo, hash e
+  tamanho dos bytes entregues ao parser, início/fim e código fixo de resultado.
+  Não guarda fonte, saída bruta ou credenciais. Um parser concluído não valida
+  gameplay, e um registro `running` após reinício pode ser processo interrompido:
+  não é automaticamente retomado ou aprovado. A integridade do arquivo atual é
+  recalculada apenas para exibição; não é prova de build/jogo. Um ID de edição
+  pode ser exibido quando hashes de bytes/Task/arquivo coincidem, sem reescrever
+  históricos nem atribuir causalidade ou aceite.
+- `draft_jobs.json` registra ID, Task, caminho relativo, modelo, hashes do
+  contexto, Skill opcional, estado e códigos fixos de resultado. A proposta/diff
+  e a conexão de inferência existem só em memória nesta instância, com prazo;
+  reinício/interrupção não recuperam proposta nem disparam retry. `running` após
+  reinício é incerto; `ready` sem proposta em memória não pode ser aplicado.
+  Cancelamento é pedido ao socket local, não promessa de interromper cobrança ou
+  inferência remota. O histórico/backup de JSON pode perder o último evento.
+- `code_changes.json` não guarda prompt/fonte gerada; somente IDs, modelo,
+  arquivo relativo, hashes, Skill escolhida/revisão (quando houver) e caminho
+  de backup quando há original. Criar um
+  arquivo inicial não gera backup: registra hash e estado `file_created`.
+  O backup `*.lia-backup-<id>` das edições é uma cópia local do arquivo anterior,
+  e pode conter segredos de projeto: revisar
+  antes de exportar/compartilhar. Uma falha entre backup/arquivo/índice pode
+  exigir inspeção manual; não há rollback automático nem transação entre
+  arquivos. Rascunho não aplicado existe só na memória do processo por tempo
+  limitado; perder a sessão exige pedir outra prévia. Aplicar o diff não muda
+  o gate nem comprova jogo funcional.
+- Nenhuma inferência ocorre por padrão. No chat opcional, o Dev seleciona um
+  modelo anunciado por Ollama, digita a mensagem e confirma **cada** envio ao
+  loopback. Dependendo do modelo/configuração do Ollama, a mensagem pode sair
+  do computador e ter custo: não use sem entender o modelo selecionado. O
+  Studio não salva prompt/resposta; um modelo pode ter seus próprios logs. O
+  chat não lê documentos do projeto nem executa Task. No rascunho de código,
+  somente uma Skill escolhida explicitamente (até 2400 caracteres) pode ser
+  enviada junto com objetivo/arquivo: não adiciona grants. Revisão da Skill é
+  checada antes de aplicar, e seu conteúdo não fica no registro de alterações.
+  Providers cloud do
+  catálogo seguem não conectados; nenhuma chave é persistida no Studio.
+
+## Limpeza
+- Exclusão de projeto é destrutiva e exige confirmação explícita (`confirm=true`).
+  Não há lixeira automática — o Dev decide.
+
+## Transporte CLI experimental (18/10/2026)
+
+`app/lia/agent_cli.py` é apenas código de transporte exercitado por CLI falso
+nos testes; a API/UI não o chama, não há Session de Agent real nem acesso ao
+gateway. O stream JSONL é limitado e resumido apenas em memória durante o teste
+(256 KiB stdout, 16 KiB stderr, 32 KiB por linha, 200 eventos e 30 s);
+não há log bruto persistido ou evidência criada. `session_id` do CLI é dado
+não confiável e não substitui o ID local da futura Session. Stream bruto pode
+conter fonte, prompts, caminhos e segredos. Retenção bruta de Session real
+futura deve estar desligada por padrão; eventual opt-in por Session exige
+acesso local restrito, revisão/redaction, exclusão do export/backup comum,
+mesmos caps e descarte verificável em até 24 h (Decisão 40). Isso não está
+implementado. Flags Read/Grep/Glob não são sandbox do SO.
+
+`app/lia/combo_policy.py` calcula prévia em memória de membros e juiz de
+fusion, sem execução. `combo_canary.py` adiciona armazenamento local **opt-in
+por confirmação do Dev**, com editor HTTP/UI de declaração e consulta local
+somente de metadados (Decisão 42): o arquivo global
+`combo_declarations.json` (raiz `LIA_PROJECTS_DIR`, fora dos projetos/export)
+guarda composição, juiz, classe/estimativa declarada, data UTC, capacidades e
+janela normalizadas do tier e decisões de seguir sem conferência associadas a
+IDs de tentativa (máximo 100 por tier ativo e 1000 no histórico local de
+redeclarações, sem descarte automático). Storage usa envelope com número de
+esquema, backup/recovery manual e recusa corrupção. `.gitignore` exclui esse
+arquivo e backups mesmo quando a pasta de projetos fica sob o checkout. Não
+inclui chave, sessão de dashboard, resposta bruta do endpoint ou prompt. A
+API/UI mostra apenas resumo e formulário de declaração; consultas a `/v1/models`
+ocorrem somente por ação explícita no servidor local, com token já no ambiente
+do processo, nunca em arquivo, no navegador ou na resposta HTTP. Não há botão
+de execução de Agent. Resposta bruta do gateway é descartada após normalização.
+Hash e canário não verificam membros, cota, cobrança ou preço; na tela ficam
+visíveis idade, última comparação e limitações do canário. Antes de ativar
+integração, revisar privacidade, retenção/auditoria dos registros e segurança
+do adapter; nunca colocar credenciais na declaração ou no Git.

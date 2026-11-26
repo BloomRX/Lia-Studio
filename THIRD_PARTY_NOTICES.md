@@ -1,0 +1,91 @@
+# Avisos de terceiros — Lia Studio
+
+**Estado do código-fonte:** o Core não recebeu código nem assets de terceiros.
+Doze Skills de instrução foram **adaptadas** de referências MIT, com fontes e
+revisões em cada `SKILL.md` e avisos integrais abaixo. Não foram importados
+agentes, hooks, scripts, configurações ou dependências desses projetos. O build
+desktop opcional usa dependências externas listadas abaixo; pacote final e
+licenças transitivas ainda exigem auditoria. Estas notas não certificam um
+instalador Windows distribuível.
+
+## Referências externas (não incluídas neste repositório)
+
+- **GameDevPipeline** — método de preparação da "Etapa 0" (`game-project-bootstrap`)
+  e modelos de documento de projeto. É uma **referência de método** apenas.
+  Os templates desta skill da Lia Studio foram **autorados originalmente** por
+  este projeto, adaptando o método; nenhum arquivo do GameDevPipeline foi copiado
+  ou redistribuído. Antes de redistribuir qualquer conteúdo desse projeto, confirme
+  titularidade e permissão (a cópia local inspecionada não trazia `LICENSE` na raiz).
+
+- **Game Prompt Architect (MagmaDev, descrição pública de vídeo e anexos fornecidos
+  pelo Dev)** — referência conceitual para uma segunda entrada de preparação do
+  Studio. A Skill completa é descrita como exclusiva para membros; licença e
+  direito de redistribuição **não foram informados**. Nenhum payload, template,
+  script ou configuração dessa Skill foi copiado para o Studio. A nova Skill
+  `lia-execution-brief` e o fluxo são implementação própria; sem Agent Runtime
+  conectado nem dependência desse conteúdo externo.
+
+## Skills adaptadas (incluídas na biblioteca)
+
+- **Mr. Mak Workspace** — fonte pública
+  [`witnesstodark/mr-mak-workspace` na revisão `cf1e1260253a61499dc67fe2332a330bf1b85c14`](https://github.com/witnesstodark/mr-mak-workspace/tree/cf1e1260253a61499dc67fe2332a330bf1b85c14),
+  licença raiz MIT, Copyright (c) 2026 Mr. Mak Workspace contributors. Cinco
+  Skills de planejamento/revisão de nível, visual, áudio, interface e VFX foram
+  adaptadas para instruções textuais limitadas do Studio; cada Skill liga à fonte.
+  Texto integral da licença: [`docs/licenses/MR-MAK-WORKSPACE-MIT.txt`](docs/licenses/MR-MAK-WORKSPACE-MIT.txt).
+  O ZIP do Drive informado pelo Dev **não foi comparado arquivo a arquivo** com
+  essa fonte pública; nenhuma cópia direta do ZIP foi incluída. Não foram
+  importados mídia, scripts, providers ou o subprojeto `img2threejs` (que tem
+  licença Apache-2.0 própria).
+- **Claude Code Game Studios** — fonte
+  [`donchitos/claude-code-game-studios` na revisão `05ad7c8a5b8aa2aa86bbd3439ae7cf7295cac418`](https://github.com/donchitos/claude-code-game-studios/tree/05ad7c8a5b8aa2aa86bbd3439ae7cf7295cac418),
+  licença MIT, Copyright (c) 2026 Donchitos. Sete Skills de revisão, prontidão,
+  QA, evidências, balanceamento, playtest e bugs foram adaptadas sem seu framework
+  de agentes, hooks, comandos Bash, aprovações automáticas, paths ou seleção de
+  modelos. Cada Skill liga à fonte. Texto integral da licença:
+  [`docs/licenses/CLAUDE-CODE-GAME-STUDIOS-MIT.txt`](docs/licenses/CLAUDE-CODE-GAME-STUDIOS-MIT.txt).
+
+As adaptações não incluem código executável de terceiros nem concedem permissões
+para ações no projeto. O Dev pode duplicá-las no gerenciador do Studio para
+editar sua cópia sem alterar a versão distribuída.
+
+## Política de assets e marca
+
+- A identidade da Lia (nome, personagem, logo, identidade visual) tem proteção de
+  marca **separada** e **não** está licenciada pela MIT para apropriação ou
+  representação como produto oficial. Forks não devem se apresentar como oficiais.
+- Usar uma imagem/referência para **direção** não é permissão para copiar ou
+  redistribuir o trabalho de terceiros. Se um asset de terceiro for incluído,
+  registre titularidade e licença antes.
+- Nenhuma chamada a modelos, APIs, MCP, Colab, ngrok ou serviço pago/externo faz
+  parte desta Etapa 0. Nenhuma chave, token ou credencial está incluída.
+
+## Dependências por camada
+
+- **Core `app/lia/`:** apenas biblioteca padrão Python; importações estáticas dos
+  módulos atuais foram inspecionadas no Linux/Python 3.11, sem imports de
+  pacotes externos. `python run.py` continua um caminho de desenvolvimento sem `pip`.
+- **Build/shell Windows (opcional no desenvolvimento):**
+  `desktop/requirements-windows.txt` fixa **pywebview 6.2.1** (BSD-3-Clause;
+  finalidade: janela WebView2 para a SPA) e **PyInstaller 6.22.3** (GPL-2.0-or-later
+  com exceção especial para distribuição de programas empacotados; finalidade:
+  empacotar o executável). Licenças/versões verificadas por metadados dessas
+  versões no PyPI em 18/10/2026; conferir os textos completos no pacote antes
+  de distribuição. WebView2 Runtime é dependência separada da máquina Windows.
+- **Instalador para usuário final (objetivo, não comprovado):** entregar interpretador
+  e dependências prontos; não executar `pip`, não exigir Python instalado, nem
+  exibir erros de dependências. O teste em máquina limpa ainda não foi feito.
+- Dependências transitivas do build (por exemplo `pythonnet` no Windows,
+  `proxy_tools` e `bottle` do pywebview; `altgraph`, `packaging`, `pefile`,
+  `pyinstaller-hooks-contrib`, `pywin32-ctypes` e `setuptools` do PyInstaller)
+  **não estão travadas nem auditadas neste arquivo**. Travar versões, verificar
+  avisos/licenças e incluir notices efetivos é requisito ANTES de um release;
+  os pins diretos não bastam para build reproduzível.
+
+Nenhum pacote é instalado automaticamente pelo Lia Studio nesta entrega.
+
+## Licença deste projeto
+
+O código e a documentação próprios da Lia Studio são distribuídos sob **MIT**
+(vide `LICENSE`). A separação entre a licença de software (MIT) e a proteção de
+marca da Lia é intencional e documentada acima.

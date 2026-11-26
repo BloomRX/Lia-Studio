@@ -1,0 +1,1175 @@
+// Regression checks for the vanilla JS flow; no browser dependencies required.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+
+const pre = { style: {}, textContent: '' };
+const approval = { disabled: true };
+const exportResult = { textContent: '' };
+const exportDest = { value: '' };
+const stageNote = { value: '' };
+const toast = { hidden: true, textContent: '' };
+const view = { innerHTML: '' };
+const desktopReload = {hidden:true};
+let reloads = 0;
+const requests = [];
+const context = {
+  document: { getElementById: id => ({ view, toast, 'exec-task': pre, 'approve-task': approval,
+    'export-result': exportResult, 'export-dest': exportDest, 'stage-note': stageNote,
+    'desktop-reload': desktopReload })[id] },
+  window: { addEventListener: () => {} },
+  location: { hash: '#/home', reload: () => { reloads++; } },
+  fetch: async (url, options) => {
+    requests.push({ url, options });
+    return { ok: true, json: async () => ({ proposal: 'Proposta', preview_digest: 'preview-v1', simulated_result: options.body && JSON.parse(options.body).approved ? 'SIMULADO' : null, session: options.body && JSON.parse(options.body).approved ? {id: 'session-1'} : null, blockers: [], warning: 'Aviso' }) };
+  },
+  clearTimeout, setTimeout: () => 1,
+  confirm: () => true,
+};
+const source = fs.readFileSync(require('node:path').join(__dirname, '../app/static/app.js'), 'utf8');
+assert.doesNotMatch(source, /\bprompt\s*\(/); // navegador de automação não suporta diálogos prompt()
+vm.runInNewContext(source.replace(/navigate\(\);\s*$/, ''), context);
+assert.equal(desktopReload.hidden, true); // sem pywebview, botão invisível
+context.window.pywebview = {platform:'edgechromium'};
+context.showDesktopReload();
+assert.equal(desktopReload.hidden, false);
+context.confirm = () => false;
+context.reloadDesktop();
+assert.equal(reloads, 0); // não perder um rascunho sem confirmação
+context.confirm = () => true;
+context.reloadDesktop();
+assert.equal(reloads, 1);
+
+(async () => {
+
+  const originalFetch = context.fetch;
+  const originalHome = context.renderHome;
+  context.renderHome = async () => {};
+  const button = {};
+  let archiveRequest;
+  context.fetch = async (url, options) => {
+    archiveRequest = { url, method: options.method };
+    return { ok: true, json: async () => ({}) };
+  };
+  assert.match(context.projectCard({id:'p', archived:true}), /archiveProject\('p', true, this\).*Reabrir/);
+  await context.archiveProject('p', true, button);
+  assert.deepEqual(archiveRequest, {url:'/api/projects/p/reopen', method:'POST'});
+  assert.equal(button.disabled, false);
+  context.fetch = async () => ({ ok: false, json: async () => ({error:'Bloqueado'}) });
+  await context.archiveProject('p', true, button);
+  assert.match(toast.textContent, /reabrir.*Bloqueado/);
+  context.renderHome = originalHome;
+
+  const selectDoc = {value:'GDD.md'};
+  const editor = {};
+  const save = {};
+  const retry = {};
+  const status = {};
+  const originalGet = context.document.getElementById;
+  context.document.getElementById = id => ({
+    'doc-sel':selectDoc, 'doc-content':editor, 'doc-save':save,
+    'doc-retry':retry, 'doc-status':status,
+  })[id] ?? originalGet(id);
+  let finishFirstLoad;
+  context.fetch = (url, options) => {
+    if (options.method === 'PUT') return Promise.resolve({ok:false, json:async () => ({error:'Bloqueado'})});
+    if (url.endsWith('GDD.md')) return new Promise(resolve => { finishFirstLoad = resolve; });
+    if (url.endsWith('SCOPE.md')) return Promise.resolve({ok:false, json:async () => ({error:'Indisponivel'})});
+    return Promise.resolve({ok:true, json:async () => ({content:'Brief'})});
+  };
+  const firstLoad = context.wireDocs('p');
+  selectDoc.value = 'BRIEF.md';
+  await selectDoc.onchange();
+  finishFirstLoad({ok:true, json:async () => ({content:'GDD antigo'})});
+  await firstLoad;
+  assert.equal(editor.value, 'Brief');
+  editor.value = 'Meu rascunho';
+  editor.oninput();
+  await save.onclick();
+  assert.match(status.textContent, /rascunho foi mantido/);
+  selectDoc.value = 'SCOPE.md';
+  await selectDoc.onchange();
+  assert.equal(retry.hidden, false);
+  assert.equal(save.disabled, true);
+  assert.match(status.textContent, /Indisponivel/);
+  selectDoc.value = 'BRIEF.md';
+  await context.wireDocs('p');
+  assert.equal(editor.value, 'Meu rascunho');
+  assert.equal(save.disabled, false);
+
+  context.document.getElementById = originalGet;
+  context.fetch = originalFetch;
+
+  const editMarkup = context.moduleCard({id:'m', tasks:[{id:'t', name:'Teste', status:'pendente'}]});
+  assert.match(editMarkup, /onsubmit="event.preventDefault\(\); updateTask\(this\)"/);
+  assert.doesNotMatch(context.moduleCard({id:'m', tasks:[{id:'t', name:'Final', status:'concluído'}]}), /Editar tarefa/);
+  await context.wirePlan('p', []);
+  const taskFields = {name:'Novo nome', objective:'Objetivo', files:'../fora.py', verify:'Revisar'};
+  const taskStatus = {};
+  const taskSubmit = {};
+  const taskDescription = {};
+  const taskForm = {
+    dataset:{module:'m', task:'t'},
+    elements:{namedItem: name => ({value:taskFields[name]})},
+    querySelector: selector => selector === '[role=status]' ? taskStatus : taskSubmit,
+    closest: () => ({querySelector: () => taskDescription}),
+  };
+  let taskRequest;
+  context.fetch = async (url, options) => {
+    taskRequest = {url, method:options.method, body:JSON.parse(options.body)};
+    return {ok:true, json:async () => taskRequest.body};
+  };
+  await context.window.updateTask(taskForm);
+  assert.match(taskStatus.textContent, /caminhos relativos/);
+  assert.equal(taskRequest, undefined);
+  taskFields.files = 'game/loop.py\nnotes.md';
+  await context.window.updateTask(taskForm);
+  assert.deepEqual(taskRequest, {
+    url:'/api/projects/p/modules/m/tasks/t', method:'PUT',
+    body:{name:'Novo nome', objective:'Objetivo', files:['game/loop.py','notes.md'], verify:'Revisar'},
+  });
+  assert.equal(taskDescription.textContent, 'Novo nome — Objetivo');
+  context.fetch = originalFetch;
+  const html = context.projectExecute('project-1', {
+    modules: [{ id: 'module-1', name: 'Módulo', tasks: [{ id: 'task', status: 'pendente', name: 'Tarefa' }] }],
+  });
+  assert.match(html, /execTask\('project-1','module-1','task'\)/);
+  await context.execTask('project-1', 'module-1', 'task');
+  assert.equal(requests.length, 0); // sem prévia, não há aprovação
+  await context.previewTask('project-1', 'module-1', 'task');
+  assert.deepEqual(JSON.parse(requests[0].options.body), { approved: false });
+  assert.doesNotMatch(pre.textContent, /SIMULADO/);
+  assert.equal(approval.disabled, false);
+  await context.execTask('project-1', 'module-1', 'task');
+  assert.equal(requests[1].url, '/api/projects/project-1/tasks/module-1/task/execute');
+  assert.deepEqual(JSON.parse(requests[1].options.body), { approved: true, preview_digest: 'preview-v1' });
+  assert.match(pre.textContent, /SIMULADO/);
+  assert.match(pre.textContent, /Session session-1: fluxo simulado encerrado; validação não realizada/);
+  assert.equal(approval.disabled, true);
+  assert.equal(pre.style.display, 'block');
+  const blockedHtml = context.projectExecute('project-1', {
+    modules: [{ id: 'module-1', name: 'M', tasks: [{ id: 'task', name: 'T' }] }],
+    module_blockers: { 'module-1': [{ code: 'DEPENDENCY_NOT_READY', message: 'Falta a base' }] },
+  });
+  assert.match(blockedHtml, /Execução bloqueada: Falta a base/);
+  assert.match(blockedHtml, /id="approve-task" disabled onclick="execTask/);
+  assert.match(blockedHtml, /previewTask\('project-1','module-1','task'\)/);
+  const historyHtml = context.projectExecute('project-1', {
+    modules: [], recent_sessions: [{id: 'session-1', task_id: 'task', runtime_id: 'simulator',
+      finished_at: '2026-09-30'}],
+  });
+  assert.match(historyHtml, /Sessions simuladas/);
+  assert.match(historyHtml, /SIMULADO/);
+  assert.match(historyHtml, /nenhuma evidência verificada/);
+  assert.doesNotMatch(historyHtml, /validação aprovada/);
+  const syntaxHtml = context.projectExecute('project-1', {modules: [{id:'module-1', name:'M',
+    tasks:[{id:'task', name:'T', files:['game/loop.py', '<img src=x onerror=alert(1)>.py']}]}],
+    recent_validations:[{id:'v1', task_id:'task', path:'game/loop.py',
+      display_state:'completed', validation_status:'passed',matching_change_id:'change-1'}],
+    runtime_policy:{revision:'r1',project:{allow:[],deny:[]},tasks:{},
+      capabilities:{'project.python.write':'Escrever arquivo Python'}},
+    recent_draft_jobs:[{id:'job-one',task_id:'task',path:'game/loop.py',display_state:'running'},
+      {id:'job-two',task_id:'task',path:'game/loop.py',display_state:'ready'}]});
+  assert.match(syntaxHtml, /data-syntax-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /data-draft-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /data-create-path="game\/loop.py"/);
+  assert.match(syntaxHtml, /data-open-draft-job="job-two"/);
+  assert.match(syntaxHtml, /data-cancel-draft-job="job-one"/);
+  assert.match(syntaxHtml, /id="review-draft-task"[^>]*disabled/);
+  assert.match(syntaxHtml, /data-policy-cap="project.python.write"/);
+  assert.match(syntaxHtml, /data-project-policy-cap="project.python.write"/);
+  assert.match(syntaxHtml, /id="apply-task"[^>]*disabled/);
+  assert.match(syntaxHtml, /somente sintaxe Python/);
+  assert.match(syntaxHtml, /hash coincide com alteração/);
+  assert.match(syntaxHtml, /sem prova de causalidade/);
+  assert.match(syntaxHtml, /jogo NÃO VERIFICADO/);
+  assert.doesNotMatch(syntaxHtml, /<img src=x onerror/);
+  const runningHtml = context.projectExecute('project-1', {modules:[],
+    recent_validations:[{id:'v1',task_id:'task',path:'game/loop.py',
+      display_state:'running',validation_status:'not_run'}]});
+  assert.match(runningHtml, /data-cancel-validation="v1"/);
+  assert.doesNotMatch(syntaxHtml, /data-cancel-validation/);
+  const planHtml = context.projectPlan('project-1', {
+    modules: [{ id: 'base', name: 'Base', tasks: [] },
+              { id: 'module-1', name: 'M', depends_on: ['base'], tasks: [] }],
+    module_blockers: { 'module-1': [{ code: 'DEPENDENCY_NOT_READY', message: 'Falta a base' }] },
+  });
+  assert.match(planHtml, /option value="base" selected/);
+  assert.match(planHtml, /Salvar dependências/);
+  assert.match(planHtml, /Falta a base/);
+  const qaHtml = context.projectQa('project-1', {
+    modules: [{ id: 'base', name: 'Base', tasks: [{ id: 'task', name: 'T' }] }], qa: [],
+  });
+  assert.match(qaHtml, /value="task:task"/);
+  const sliceReport = {tasks: [{task_id: 'task', task_name: '<img src=x onerror=alert(1)>',
+    module_name: 'Módulo', task_verify: 'iniciar', checks: [{id: 'loop', label: 'Loop principal',
+      criterion: 'ação → feedback → retorno', status: 'dev_declared_approved', qa_id: 'q1',
+      reports_count: 1, evidence: [{id: 'ev1', integrity: 'changed'}]}]}]};
+  const sliceHtml = context.projectQa('project-1', {modules: [], qa: [], slice_review: sliceReport});
+  assert.match(sliceHtml, /Fatia vertical/);
+  assert.match(sliceHtml, /Aprovado pelo Dev \(relato\)/);
+  assert.match(sliceHtml, /NÃO VERIFICADOS/);
+  assert.match(sliceHtml, /data-slice-task="task"/);
+  assert.doesNotMatch(sliceHtml, /<img src=x onerror/);
+  const fields = Object.fromEntries(['q-target', 'q-target-ref', 'q-crit', 'q-res'].map(id =>
+    [id, {value: '', focus() {}}]));
+  let onSliceClick;
+  const oldGetElementById = context.document.getElementById;
+  context.document.getElementById = id => fields[id] || oldGetElementById(id);
+  context.document.querySelectorAll = () => [{dataset: {sliceTask: 'task', sliceCheck: 'loop'},
+    addEventListener: (_, callback) => { onSliceClick = callback; }}];
+  const countBeforePrefill = requests.length;
+  await context.wireQa('project-1', sliceReport);
+  onSliceClick();
+  assert.equal(fields['q-target'].value, 'slice:loop');
+  assert.equal(fields['q-target-ref'].value, 'task:task');
+  assert.equal(fields['q-crit'].value, 'ação → feedback → retorno');
+  assert.equal(fields['q-res'].value, 'planejado');
+  assert.equal(requests.length, countBeforePrefill); // preparar não grava QA
+  context.document.getElementById = oldGetElementById;
+  delete context.document.querySelectorAll;
+  const handlers = {};
+  const chatElements = Object.fromEntries(['lia-chat-probe','lia-chat-send'].map(id =>
+    [id, {disabled:false, addEventListener: (_, fn) => {handlers[id] = fn;}}]));
+  chatElements['lia-chat-model'] = {value:'', options:[], replaceChildren() {this.options=[];},
+    add(item) {this.options.push(item);}};
+  chatElements['lia-chat-prompt'] = {value:'Uma pergunta'};
+  chatElements['lia-chat-status'] = {textContent:''};
+  chatElements['lia-chat-answer'] = {textContent:'', innerHTML:''};
+  context.Option = function(text,value) {return {text,value,dataset:{}};};
+  context.document.getElementById = id => chatElements[id] || oldGetElementById(id);
+  const priorFetch = context.fetch;
+  const chatRequests = [];
+  context.fetch = async (url, opts) => {
+    chatRequests.push({url,opts});
+    return {ok:true, json:async () => url.endsWith('/probe')
+      ? {models:['local'], message:'Encontrado'}
+      : {answer:'<img src=x onerror=alert(1)>', warning:'Resposta textual'}};
+  };
+  context.wireChat();
+  assert.equal(chatRequests.length, 0);
+  await handlers['lia-chat-probe']();
+  assert.equal(chatElements['lia-chat-model'].options[1].value, 'local');
+  chatElements['lia-chat-model'].value = 'local';
+  context.confirm = () => false;
+  await handlers['lia-chat-send']();
+  assert.equal(chatRequests.length, 1);
+  context.confirm = () => true;
+  await handlers['lia-chat-send']();
+  assert.deepEqual(JSON.parse(chatRequests[1].opts.body),
+    {model:'local', prompt:'Uma pergunta', confirm:true});
+  assert.equal(chatElements['lia-chat-answer'].textContent, '<img src=x onerror=alert(1)>');
+  assert.equal(chatElements['lia-chat-answer'].innerHTML, ''); // sem interpretar HTML remoto
+  context.fetch = priorFetch;
+  context.document.getElementById = oldGetElementById;
+  const draftHandlers = {};
+  const draftModel = {value:'', options:[], replaceChildren() {this.options=[];},
+    add(o) {this.options.push(o);}};
+  const draftPre = {style:{}, textContent:''};
+  const draftApply = {disabled:true, dataset:{}, addEventListener:(_,fn)=>draftHandlers.apply=fn};
+  const draftReview = {id:'review-draft-task', disabled:true,dataset:{},addEventListener:(_,fn)=>draftHandlers.review=fn};
+  const draftCancel = {hidden:true, disabled:false,dataset:{cancelDraftJob:''},addEventListener:(_,fn)=>draftHandlers.cancel=fn};
+  const draftProbe = {disabled:false, addEventListener:(_,fn)=>draftHandlers.probe=fn};
+  const draftButton = {disabled:false, dataset:{draftTask:'task', draftModule:'module-1', draftPath:'game/loop.py'},
+    addEventListener:(_,fn)=>draftHandlers.generate=fn};
+  const createButton = {disabled:false, dataset:{createTask:'task',createModule:'module-1',createPath:'game/loop.py'},
+    addEventListener:(_,fn)=>draftHandlers.create=fn};
+  const policyButton = {disabled:false,dataset:{policyTask:'task',policyModule:'module-1',
+    policyCap:'project.python.write',policyAction:'allow',policyRevision:'rev'},
+    addEventListener:(_,fn)=>draftHandlers.policy=fn};
+  const denyButton = {disabled:false,dataset:{projectPolicyCap:'project.python.write',
+    projectPolicyAction:'deny',policyRevision:'rev'},addEventListener:(_,fn)=>draftHandlers.deny=fn};
+  const draftSkill = {value:'', options:[], replaceChildren(o) {this.options=[o];},add(o) {this.options.push(o);}};
+  const draftSkillProbe = {disabled:false,addEventListener:(_,fn)=>draftHandlers.skillProbe=fn};
+  const draftDom = {'draft-probe':draftProbe,'draft-model':draftModel,
+    'draft-skill-probe':draftSkillProbe,'draft-skill':draftSkill,
+    'draft-status':{textContent:''},'draft-task':draftPre,'apply-task':draftApply,
+    'review-draft-task':draftReview,'cancel-draft-task':draftCancel};
+  context.document.getElementById = id => draftDom[id] || oldGetElementById(id);
+  context.document.querySelectorAll = selector => selector === '[data-draft-task]' ? [draftButton]
+    : selector === '[data-create-task]' ? [createButton]
+    : selector === '[data-policy-task]' ? [policyButton]
+    : selector === '[data-project-policy-cap]' ? [denyButton]
+    : selector === '[data-cancel-draft-job]' ? [draftCancel]
+    : selector === "[id^='review-draft-']" ? [draftReview]
+    : selector === "[id^='apply-']" ? [draftApply] : [];
+  const draftRequests = [];
+  context.fetch = async (url,opts) => {
+    draftRequests.push({url,opts});
+    return {ok:true,json:async()=>url.endsWith('/probe') ? {models:['local'],message:'ok'}
+      : url === '/api/skills' ? {skills:[{id:'lia-user-abcdef123456',title:'Skill curta',origin:'user'}]}
+      : url.endsWith('/draft-jobs') ? {id:'preview123',display_state:'running'}
+      : url.endsWith('/draft-jobs/preview123') ? {id:'preview123',task_id:'task',
+          state:'ready',display_state:'ready',diff:'-old\n+new',diff_sha256:'a'.repeat(64),reviewed:false}
+      : url.endsWith('/review') ? {id:'preview123',proposal_id:'preview123',warning:'revisão confirmada'}
+      : {backup_path:'game/loop.py.lia-backup-preview123'}};
+  };
+  await context.wireExecute('project-1');
+  await draftHandlers.probe();
+  draftModel.value='local';
+  context.confirm=()=>false;
+  await draftHandlers.generate();
+  assert.equal(draftRequests.length,1); // só probe
+  context.confirm=()=>true;
+  await draftHandlers.generate();
+  assert.equal(draftRequests[1].url, '/api/projects/project-1/tasks/module-1/task/draft-jobs');
+  assert.deepEqual(JSON.parse(draftRequests[1].opts.body),
+    {path:'game/loop.py',model:'local',confirm_send:true});
+  assert.equal(draftRequests[2].url,'/api/projects/project-1/draft-jobs/preview123');
+  assert.equal(draftPre.textContent,'-old\n+new');
+  assert.equal(draftReview.dataset.diffSha256,'a'.repeat(64));
+  assert.equal(draftApply.disabled,true); // ID do Job antes de revisar não autoriza escrita
+  const renderOriginal=context.renderProject;
+  context.renderProject=async()=>{};
+  await draftHandlers.review();
+  assert.equal(draftRequests[3].url,'/api/projects/project-1/draft-jobs/preview123/review');
+  assert.deepEqual(JSON.parse(draftRequests[3].opts.body),
+    {diff_sha256:'a'.repeat(64),confirm:true});
+  assert.equal(draftApply.dataset.proposalId,'preview123');
+  await draftHandlers.apply();
+  assert.deepEqual(JSON.parse(draftRequests[4].opts.body),
+    {proposal_id:'preview123',confirm:true});
+  await draftHandlers.create();
+  assert.equal(draftRequests[5].url, '/api/projects/project-1/tasks/module-1/task/create-python');
+  assert.deepEqual(JSON.parse(draftRequests[5].opts.body),
+    {path:'game/loop.py',confirm:true});
+  await draftHandlers.policy();
+  assert.equal(draftRequests[6].url,'/api/projects/project-1/tasks/module-1/task/runtime-policy');
+  assert.deepEqual(JSON.parse(draftRequests[6].opts.body),
+    {capability:'project.python.write',action:'allow',revision:'rev',confirm:true});
+  await draftHandlers.deny();
+  assert.equal(draftRequests[7].url,'/api/projects/project-1/runtime-policy/project-deny');
+  assert.deepEqual(JSON.parse(draftRequests[7].opts.body),
+    {capability:'project.python.write',action:'deny',revision:'rev',confirm:true});
+  await draftHandlers.skillProbe();
+  assert.equal(draftRequests[8].url,'/api/skills');
+  assert.equal(draftSkill.options[1].value,'lia-user-abcdef123456');
+  draftSkill.value='lia-user-abcdef123456';
+  await draftHandlers.generate();
+  assert.equal(draftRequests[9].url,'/api/projects/project-1/tasks/module-1/task/draft-jobs');
+  assert.equal(JSON.parse(draftRequests[9].opts.body).skill_id,'lia-user-abcdef123456');
+  assert.equal(draftRequests[10].url,'/api/projects/project-1/draft-jobs/preview123');
+  draftCancel.dataset.cancelDraftJob='job-active';
+  context.confirm=()=>false;
+  await draftHandlers.cancel();
+  assert.equal(draftRequests.length,11);
+  context.confirm=()=>true;
+  await draftHandlers.cancel();
+  assert.equal(draftRequests[11].url,'/api/projects/project-1/draft-jobs/job-active/cancel');
+  assert.deepEqual(JSON.parse(draftRequests[11].opts.body),{confirm:true});
+  context.renderProject=renderOriginal;
+  context.fetch=priorFetch;
+  context.document.getElementById=oldGetElementById;
+  delete context.document.querySelectorAll;
+  const relHtml = context.projectRelease('project-1', {release: {state: 'preparando', published: false, checklist: []}});
+  assert.match(relHtml, /pronto_para_build/);
+  assert.doesNotMatch(relHtml, /<option[^>]*>publicada<\/option>/);
+  const oldRelease = context.projectRelease('project-1', {release: {state: 'publicada', published: true, unverified_claim: true, checklist: []}});
+  assert.match(oldRelease, /declaração anterior de build\/verificação\/publicação/);
+  assert.match(oldRelease, /Reclassificar declaração anterior/);
+  assert.doesNotMatch(oldRelease, /Publicado: <b>sim<\/b>/);
+  const card = context.moduleCard({ id: 'module-1', name: 'M', status: 'pendente', tasks: [{ id: 'task', name: 'T', status: 'pendente' }] });
+  assert.match(card, /resetTask\(/);
+  assert.doesNotMatch(card, /delTask\(/);
+  const project = {
+    entry: { name: 'Jogo', next_step: 'Revisar ideia' }, health: 'needs_review',
+    resume: {}, conflicts: [],
+    stage_gate: { stage: 'preparation', stage_label: 'Preparação', next_stage: 'mvp',
+      next_stage_label: 'MVP jogável', status: 'blocked', history: [],
+      blockers: [{ code: 'IDEA_UNDEFINED', message: 'Descreva a ideia' }] },
+  };
+  const blocked = context.projectOverview('project-1', project);
+  assert.match(blocked, /Descreva a ideia/);
+  assert.doesNotMatch(blocked, /onclick="advanceStage/);
+  project.stage_gate.status = 'ready';
+  project.stage_gate.blockers = [];
+  const ready = context.projectOverview('project-1', project);
+  const pipeline = context.renderStagePipeline(project.stage_gate);
+  assert.match(pipeline, /aria-current="step"/);
+  assert.match(ready, /advanceStage\('project-1','mvp'\)/);
+  assert.match(ready, /id="stage-note"/);
+  assert.match(ready, /id="export-dest"/);
+  assert.doesNotMatch(ready, /stage-pipeline/); // renderProject a desenha uma única vez
+  const post = context.fetch;
+  context.fetch = async () => ({ ok: true, json: async () => ({
+    ...project, modules: [], docs: [], qa: [], release: {}, providers: {}, engine: {},
+  }) });
+  await context.renderProject('project-1', 'plan');
+  assert.equal((view.innerHTML.match(/class="stage-pipeline"/g) || []).length, 1);
+  context.fetch = post;
+  const originalRenderProject = context.renderProject;
+  context.renderProject = async () => {};
+  stageNote.value = '   ';
+  await context.advanceStage('project-1', 'mvp');
+  assert.equal(requests.length, 2); // nota em branco não avança
+  stageNote.value = 'Escopo revisado';
+  await context.advanceStage('project-1', 'mvp');
+  assert.equal(requests[2].url, '/api/projects/project-1/stage');
+  assert.deepEqual(JSON.parse(requests[2].options.body), {
+    target: 'mvp', approved: true, note: 'Escopo revisado',
+  });
+  context.document.querySelectorAll = () => [];
+  context.fetch = async () => ({ ok: true, json: async () => ({
+    issues: [{ name: 'modules.json', project_id: 'project-1',
+      message: 'JSON inválido', backup_available: true }],
+  }) });
+  await context.renderRecovery();
+  assert.match(view.innerHTML, /Restaurar backup/);
+  assert.match(view.innerHTML, /modules\.json/);
+  context.fetch = async (url, options) => {
+    requests.push({ url, options });
+    return { ok: true, json: async () => ({ path: '/tmp/backup-lia/jogo' }) };
+  };
+  exportDest.value = '   ';
+  await context.exportProject('project-1');
+  assert.equal(requests.length, 3); // destino em branco não exporta
+  exportDest.value = ' /tmp/backup-lia ';
+  await context.exportProject('project-1');
+  assert.equal(requests[3].url, '/api/projects/project-1/export');
+  assert.deepEqual(JSON.parse(requests[3].options.body), { dest_dir: '/tmp/backup-lia' });
+  assert.match(exportResult.textContent, /backup-lia\/jogo/);
+  const handoffTask = { value: '0' };
+  const handoffButton = { disabled: true };
+  const handoffPreview = { style: { display: 'none' }, textContent: '' };
+  const handoffStatus = { textContent: '' };
+  context.document.getElementById = id => ({view, toast, 'handoff-task': handoffTask,
+    'handoff-save': handoffButton, 'handoff-preview': handoffPreview,
+    'handoff-status': handoffStatus})[id];
+  context.fetch = async (url, options) => {
+    requests.push({ url, options });
+    return { ok: true, json: async () => url.endsWith('/preview')
+      ? {content: '# Handoff revisável', digest: 'a'.repeat(64), warning: 'Revisar antes de compartilhar'}
+      : url.endsWith('/handoff') && options.method === 'GET'
+        ? {exists: false, content: '', stale: null}
+        : {exists: true, stale: false} };
+  };
+  const handoffHtml = await context.projectHandoff('project-1', {
+    modules: [{id: 'module-1', name: 'Módulo', tasks: [{id: 'task', name: 'Tarefa'}]}],
+  });
+  assert.match(handoffHtml, /Nenhum HANDOFF.md salvo/);
+  assert.match(handoffHtml, /Confirmar e salvar HANDOFF.md/);
+  context.wireHandoff('project-1', [{id: 'module-1', tasks: [{id: 'task'}]}], {exists: false});
+  await context.window.saveHandoff();
+  assert.equal(handoffButton.disabled, true);
+  await context.window.previewHandoff();
+  assert.equal(handoffPreview.textContent, '# Handoff revisável');
+  assert.equal(handoffButton.disabled, false);
+  assert.deepEqual(JSON.parse(requests[5].options.body), {module_id: 'module-1', task_id: 'task'});
+  await context.window.saveHandoff();
+  assert.deepEqual(JSON.parse(requests[6].options.body), {
+    module_id: 'module-1', task_id: 'task', digest: 'a'.repeat(64), confirm: true, replace: false,
+  });
+  assert.equal(handoffButton.disabled, true);
+  const evidenceFields = {
+    'ev-target': {value: 'task:task'}, 'ev-qa': {value: 'qa-1'},
+    'ev-path': {value: 'logs/saida.txt'}, 'ev-note': {value: 'gerado manualmente'},
+  };
+  context.document.getElementById = id => ({view, toast, ...evidenceFields})[id];
+  context.fetch = async (url, options) => {
+    requests.push({url, options});
+    return {ok: true, json: async () => options.method === 'GET' ? {evidence: [{
+      id: 'e-1', target_ref: 'task:task', path: 'logs/saida.txt', bytes: 4,
+      sha256: 'abc', qa_id: 'qa-1', integrity: 'changed', verified_result: false,
+    }]} : {id: 'e-2', integrity: 'intact', verified_result: false}};
+  };
+  const evidenceHtml = await context.projectEvidence('project-1', {
+    modules: [{id: 'module-1', name: 'Módulo', tasks: [{id: 'task', name: 'Tarefa'}]}],
+    qa: [{id: 'qa-1', target_ref: 'task:task', result: 'planejado'}],
+  });
+  assert.match(evidenceHtml, /id="ev-target"/);
+  assert.match(evidenceHtml, /changed \(não valida o resultado\)/);
+  assert.match(evidenceHtml, /qa-1/);
+  assert.doesNotMatch(evidenceHtml, /conteúdo privado/);
+  context.wireEvidence('project-1');
+  await context.window.registerEvidence();
+  const last = requests.at(-1);
+  assert.equal(last.url, '/api/projects/project-1/evidence');
+  assert.deepEqual(JSON.parse(last.options.body), {
+    target_ref: 'task:task', qa_id: 'qa-1', path: 'logs/saida.txt', note: 'gerado manualmente',
+  });
+  const decisionsData = { decisions: [
+    {topic: 'Plataforma', label: 'confirmado', value: 'PC', note: ''},
+    {topic: 'Plataforma', label: 'suposição', value: 'mobile', note: '<script>nao</script>'},
+  ], decisions_revision: 'revision-1', conflicts: [{ topic: 'Plataforma',
+    confirmed: {value: 'PC'}, conflicting: {value: 'mobile', label: 'suposição'} }] };
+  const decisionsHtml = context.projectDecisions('project-1', decisionsData);
+  assert.match(decisionsHtml, /Conflitos a revisar/);
+  assert.match(decisionsHtml, /DECISIONS\.md é regenerado/);
+  assert.doesNotMatch(decisionsHtml, /<script>/);
+  const decisionFields = {
+    'dec-select': {value: '', onchange: null}, 'dec-topic': {value: 'Plataforma'},
+    'dec-label': {value: 'confirmado'}, 'dec-value': {value: 'PC'}, 'dec-note': {value: 'revisado'},
+  };
+  context.document.getElementById = id => ({view, toast, ...decisionFields})[id];
+  context.fetch = async (url, options) => {
+    requests.push({url, options});
+    return {ok: true, json: async () => ({revision: 'revision-2'})};
+  };
+  context.wireDecisions('project-1', decisionsData);
+  await context.window.saveDecision();
+  assert.equal(requests.at(-1).options.method, 'POST');
+  assert.equal(requests.at(-1).url, '/api/projects/project-1/decisions');
+  assert.equal(JSON.parse(requests.at(-1).options.body).revision, 'revision-1');
+  decisionFields['dec-select'].value = '1';
+  decisionFields['dec-select'].onchange();
+  assert.equal(decisionFields['dec-value'].value, 'mobile');
+  decisionFields['dec-value'].value = 'PC';
+  await context.window.saveDecision();
+  assert.equal(requests.at(-1).options.method, 'PUT');
+  assert.equal(requests.at(-1).url, '/api/projects/project-1/decisions/1');
+  assert.equal(JSON.parse(requests.at(-1).options.body).value, 'PC');
+  decisionsData.decisions_projection_modified = true;
+  const pending = requests.length;
+  context.confirm = () => false;
+  await context.window.saveDecision();
+  assert.equal(requests.length, pending);
+  context.confirm = () => true;
+  await context.window.saveDecision();
+  assert.equal(JSON.parse(requests.at(-1).options.body).replace_projection, true);
+  const configHtml = context.projectConfig('project-1', {
+    engine: {id: 'unreal', name: 'Unreal Engine', verified: false},
+    engine_catalog: [{id: 'generic', name: 'Genérico', verified: true},
+      {id: 'unreal', name: 'Unreal Engine', verified: false}],
+    providers: {mode: 'offline', connected: false, simulated: true},
+  });
+  assert.match(configHtml, /value="unreal" selected/);
+  assert.match(configHtml, /Unreal Engine — não verificado/);
+  assert.match(configHtml, /\/godot\/preparation/);
+  context.document.getElementById = id => ({view, toast, 'eng-sel': {value: 'unreal'}})[id];
+  context.wireConfig('project-1', {});
+  await context.window.setEngine('project-1');
+  assert.equal(requests.at(-1).url, '/api/projects/project-1/engines');
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body), {engine_id: 'unreal'});
+  assert.match(configHtml, /Diagnóstico Godot opcional/);
+  const godotHandlers = {};
+  const godotSelect = {options:[],replaceChildren(option) {this.options=[option];},
+    add(option) {this.options.push(option);}, get selectedOptions() {return [this.options[1]];}};
+  const godotScan = {disabled:false,addEventListener:(_,fn)=>godotHandlers.scan=fn};
+  const godotVersion = {disabled:true,addEventListener:(_,fn)=>godotHandlers.version=fn};
+  const godotResult = {textContent:'',innerHTML:''};
+  context.document.getElementById = id => ({view,toast,'eng-sel':{value:'unreal'},
+    'godot-scan':godotScan,'godot-version':godotVersion,
+    'godot-candidate':godotSelect,'godot-result':godotResult})[id];
+  const godotRequests=[];
+  context.fetch=async(url,options)=>{
+    godotRequests.push({url,options});
+    return {ok:true,json:async()=>url.endsWith('/candidates')
+      ? {candidates:[{command:'godot4',path:'/path/<img src=x onerror=alert(1)>'}]}
+      : {version:'4.4.1',warning:'jogo NÃO verificado'}};
+  };
+  context.wireConfig('project-1',{});
+  context.confirm=()=>false;
+  await godotHandlers.scan();
+  assert.equal(godotRequests.length,0);
+  context.confirm=()=>true;
+  await godotHandlers.scan();
+  assert.equal(godotRequests[0].url,'/api/engines/godot/candidates');
+  assert.equal(godotSelect.options[1].dataset.path,'/path/<img src=x onerror=alert(1)>');
+  assert.equal(godotVersion.disabled,false);
+  await godotHandlers.version();
+  assert.equal(godotRequests[1].url,'/api/engines/godot/version');
+  assert.deepEqual(JSON.parse(godotRequests[1].options.body),
+    {command:'godot4',path:'/path/<img src=x onerror=alert(1)>',confirm:true});
+  assert.match(godotResult.textContent,/jogo NÃO verificado/);
+  // Inspeção de descritor é leitura local; não deve executar engine nem mudar gate.
+  assert.match(configHtml,/Inspeção estática do projeto de jogo/);
+  const inspectHandlers={};
+  const inspectFields={
+    'engine-descriptor':{value:'game/project.godot'},
+    'engine-inspect':{disabled:false,addEventListener:(_,fn)=>inspectHandlers.click=fn},
+    'engine-inspect-result':{textContent:'',innerHTML:''},
+  };
+  context.document.getElementById=id=>({view,toast,...inspectFields})[id];
+  const inspectRequests=[];
+  context.fetch=async(url,options)=>{
+    inspectRequests.push({url,options});
+    return {ok:true,json:async()=>({engine:'godot',descriptor_format_version:'5',bytes:52,
+      sha256:'a'.repeat(64),warning:'engine NÃO verificada'})};
+  };
+  context.wireConfig('project-1',{});
+  context.confirm=()=>false;
+  await inspectHandlers.click();
+  assert.equal(inspectRequests.length,0);
+  context.confirm=()=>true;
+  await inspectHandlers.click();
+  assert.equal(inspectRequests[0].url,'/api/projects/project-1/engine-inspection');
+  assert.deepEqual(JSON.parse(inspectRequests[0].options.body),{path:'game/project.godot',confirm:true});
+  assert.match(inspectFields['engine-inspect-result'].textContent,/NÃO verificada/);
+  assert.equal(inspectFields['engine-inspect-result'].innerHTML,'');
+  assert.match(configHtml, /Editor Unity \/ Unreal \(Windows local, opt-in\)/);
+  assert.match(configHtml, /não isola arquivos ou rede/);
+  const editorFields = {view, toast};
+  const editorHandlers = {};
+  for (const kind of ['unity','unreal']) {
+    for (const field of ['exe','project','task','save','launch','status']) {
+      const id = `editor-${field}-${kind}`;
+      editorFields[id] = {value:field === 'task' ? '' : '', disabled:field === 'launch',
+        textContent:'', innerHTML:'', addEventListener:(_,fn) => {editorHandlers[id + ':' + _] = fn;}};
+    }
+  }
+  context.document.getElementById=id=>editorFields[id];
+  const editorCalls=[];
+  context.fetch=async(url,options)=>{
+    editorCalls.push({url,options});
+    return {ok:true,json:async()=> options.method === 'GET' ? {configurations:{}} :
+      options.method === 'PUT' ? {revision:'sha-editor',engine_verified:false} : {id:'editor-1'}};
+  };
+  await context.wireConfig('project-1',{entry:{archived:false},modules:[]});
+  editorFields['editor-exe-unity'].value = 'C:/Unity.exe';
+  editorFields['editor-project-unity'].value = 'C:/Jogo/ProjectSettings/ProjectVersion.txt';
+  context.confirm=()=>false;
+  await editorHandlers['editor-save-unity:click']();
+  assert.equal(editorCalls.length,1); // GET only, no write without consent
+  context.confirm=()=>true;
+  await editorHandlers['editor-save-unity:click']();
+  assert.equal(editorCalls.at(-1).url,'/api/projects/project-1/editor-runs/unity');
+  assert.deepEqual(JSON.parse(editorCalls.at(-1).options.body),
+    {executable:'C:/Unity.exe',project_path:'C:/Jogo/ProjectSettings/ProjectVersion.txt',confirm:true});
+  assert.equal(editorFields['editor-launch-unity'].disabled,false);
+  await editorHandlers['editor-launch-unity:click']();
+  assert.equal(editorCalls.at(-1).url,'/api/projects/project-1/editor-runs/unity/launch');
+  assert.deepEqual(JSON.parse(editorCalls.at(-1).options.body),
+    {revision:'sha-editor',module_id:'',task_id:'',action:'editor',confirm:true});
+  assert.equal(context.location.hash,'#/project/project-1/runs/preparation/run/editor-1');
+  editorFields['editor-exe-unity'].value = 'C:/other.exe';
+  editorHandlers['editor-exe-unity:input']();
+  assert.equal(editorFields['editor-launch-unity'].disabled,true);
+  assert.match(configHtml, /Encontrar apps locais/);
+  const appHandlers = {};
+  const appButton = {disabled:false,addEventListener:(_,fn)=>appHandlers.search=fn};
+  const appStatus = {textContent:''};
+  const appList = {items:[],replaceChildren() {this.items=[];},append(item) {this.items.push(item);}};
+  const originalCreate = context.document.createElement;
+  context.document.createElement = () => ({textContent:'', children:[], append(child) {this.children.push(child);}});
+  context.document.getElementById=id=>({view,toast,
+    'apps-discover':appButton,'apps-extra-roots':{value:'C:/Steam\nD:/Portable'},
+    'apps-discover-status':appStatus,'apps-discover-results':appList})[id];
+  const appCalls=[];
+  context.fetch=async(url,options)=>{
+    appCalls.push({url,options});
+    return {ok:true,json:async()=>({candidates:[{app:'blender',source:'steam',path:'<img src=x onerror=alert(1)>'}],
+      limited:false,warning:'Nenhum app foi iniciado.'})};
+  };
+  await context.wireConfig('project-1',{});
+  context.confirm=()=>false;
+  await appHandlers.search();
+  assert.equal(appCalls.length,0);
+  context.confirm=()=>true;
+  await appHandlers.search();
+  assert.equal(appCalls[0].url,'/api/apps/discover');
+  assert.deepEqual(JSON.parse(appCalls[0].options.body),{confirm:true,roots:['C:/Steam','D:/Portable']});
+  assert.match(appList.items[0].children[0].textContent,/<img src=x/);
+  assert.equal(appList.items[0].innerHTML,undefined); // displayed as text only
+  context.document.createElement = originalCreate;
+  const probeResult = {textContent: '', innerHTML: ''};
+  const probeButton = {disabled: false};
+  context.document.getElementById = id => ({view, toast,
+    'local_model-probe-button': probeButton, 'local_model-probe-result': probeResult})[id];
+  const configCalls = [];
+  context.fetch = async (url, options) => {
+    configCalls.push({url, options});
+    return {ok: true, json: async () => url === '/api/providers/settings'
+      ? {mode: 'offline'} : url === '/api/providers'
+        ? {catalog: []} : url === '/api/gateway/connection'
+        ? {address:'',has_key:false,vault_available:false} : url === '/api/combos/declarations'
+          ? {combos: [], runtime_connected: false, gateway_checked: false}
+          : {status: 'detected', message: 'serviço local respondeu',
+          models: ['<img src=x onerror=alert(1)>'], connected: false}};
+  };
+  await context.renderGlobalConfig();
+  assert.match(view.innerHTML, /Verificar serviço local/);
+  assert.match(view.innerHTML, /Conexão de IA/);
+  assert.deepEqual(configCalls.map(call => call.url),
+    ['/api/providers/settings', '/api/providers', '/api/combos/declarations', '/api/gateway/connection']);
+  assert.match(view.innerHTML, /cota free_quota pode acabar/);
+  assert.match(view.innerHTML, /NÃO verificada no gateway/);
+  const comboHtml = context.comboDeclarationPanel({combos:[{
+    gateway_alias:'<img src=x onerror=alert(1)>', mode:'fusion', age_days:34,
+    declared_at:'2026-09-15',last_success_at:'2026-09-15',revision:'abc',
+    members:[{model:'member',cost_class:'free_quota'}],
+    judge:{model:'judge',cost_class:'paid'},declared_estimate_usd:null,
+    last_unavailable_decision:{at:'2026-10-19',attempt_id:'tentativa-1',last_success_at:'2026-09-15',
+      potential_cost_acknowledged:true},
+  }]});
+  assert.match(comboHtml,/Declarado há 34 dias/);
+  assert.match(comboHtml,/Juiz adicional/);
+  assert.match(comboHtml,/indisponível \(valor incompleto\)/);
+  assert.match(comboHtml,/última conferência bem-sucedida/);
+  assert.match(comboHtml,/&lt;img/);
+  assert.doesNotMatch(comboHtml,/<img/);
+  await context.window.probeLocalModel();
+  assert.equal(configCalls.at(-1).url, '/api/providers/local-model/probe');
+  assert.equal(configCalls.at(-1).options.method, 'POST');
+  assert.deepEqual(JSON.parse(configCalls.at(-1).options.body), {confirm: true});
+  assert.match(probeResult.innerHTML, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(probeResult.innerHTML, /<img/);
+  assert.equal(probeButton.disabled, false);
+  const comboField = {value: JSON.stringify({gateway_alias:'meu-tier',mode:'fusion',
+    members:[{model:'free',cost_class:'free_quota',estimate_usd:'0'}],
+    judge:{model:'juiz',cost_class:'paid',estimate_usd:'0.4'}}), focus(){}};
+  const comboResult = {textContent:''};
+  const comboSave = {disabled:false};
+  context.document.getElementById = id => ({view, toast, 'combo-json':comboField,
+    'combo-result':comboResult, 'combo-save':comboSave})[id];
+  const requestsBeforeCombos = configCalls.length;
+  context.fetch = async (url, options) => {
+    configCalls.push({url, options});
+    return {ok:true, json:async () => url === '/api/providers/settings' ? {mode:'offline'}
+      : url === '/api/providers' ? {catalog:[]}
+      : url === '/api/combos/declarations' && options.method === 'GET'
+        ? {combos:[]}
+        : url === '/api/combos/preview' ? {gateway_alias:'meu-tier',mode:'fusion',
+          members:[{model:'free',cost_class:'free_quota'}],judge:{model:'juiz',cost_class:'paid'},
+          declared_potential_external_cost:true,declared_estimate_usd:'0.4'} : {combos:[]}};
+  };
+  await context.window.saveCombo();
+  const comboCalls = configCalls.slice(requestsBeforeCombos);
+  assert.equal(comboCalls[0].url,'/api/combos/preview');
+  assert.equal(comboCalls[1].url,'/api/combos/declarations');
+  assert.equal(comboCalls[1].options.method,'POST');
+  assert.deepEqual(JSON.parse(comboCalls[1].options.body), {
+    declaration:JSON.parse(comboField.value),expected_revision:null,confirm:true,
+    allow_potential_cost:true});
+  assert.match(comboResult.textContent,/foto/);
+  assert.equal(comboSave.disabled,false);
+  assert.doesNotMatch(view.innerHTML,/Agent Runtime conectado/);
+  // Alpha UI.1: contextos visuais não alteram o estágio nem duplicam a pipeline.
+  const phase = context.renderStageContext('project-1', 'delivery', {
+    stage_gate: project.stage_gate, docs: ['GDD.md'], modules: [], qa: [],
+  });
+  assert.match(phase, /04 \/ FINALIZAÇÃO/);
+  assert.match(phase, /Build, Run e Agent reais ainda não estão conectados/);
+  assert.match(phase, /estágio salvo continua/);
+  const stageNav = context.renderStagePipeline(project.stage_gate, 'project-1', 'delivery');
+  assert.equal((stageNav.match(/class="stage-step/g) || []).length, 4);
+  assert.match(stageNav, /href="#\/project\/project-1\/stage\/delivery"/);
+  assert.match(stageNav, /aria-current="step"/);
+  assert.doesNotMatch(stageNav, />Entrega</);
+  const shellContext = {textContent: ''};
+  const shell = {dataset: {}};
+  const leftToggle = {attributes: {}, setAttribute(k,v) {this.attributes[k]=v;}};
+  const rightToggle = {attributes: {}, setAttribute(k,v) {this.attributes[k]=v;}};
+  const skillTitle = {value: 'Loop de gameplay'};
+  const skillContent = {value: 'Quando usar: revisar o core loop.'};
+  context.document.body = {dataset: {}};
+  context.document.querySelector = () => shell;
+  context.document.getElementById = id => ({view, toast, 'shell-context': shellContext,
+    'toggle-left': leftToggle, 'toggle-right': rightToggle,
+    'skill-title': skillTitle, 'skill-content': skillContent})[id];
+  const pageCalls = [];
+  context.fetch = async (url, options) => {
+    pageCalls.push({url, options});
+    let data = {};
+    if (url === '/api/projects/project-1') data = {
+      ...project, entry: {name:'Jogo',status:'ativo',next_step:'Revisar ideia'},
+      docs:[], modules:[], qa:[], recent_sessions:[], health:'needs_review',
+    };
+    else if (url === '/api/projects') data = {projects:[{id:'project-1', name:'Jogo',
+      stage:'preparation', status:'ativo'}]};
+    else if (url === '/api/skills') data = {skills:[{id:'lia-project-resume',title:'Retomar',
+      description:'Revisar <img src=x onerror=alert(1)>',origin:'hub'},
+      {id:'lia-user-abcdef123456',title:'Minha Skill',origin:'user'}]};
+    else if (url === '/api/skills/lia-project-resume') data = {id:'lia-project-resume',
+      title:'Retomar',description:'Revisar <img src=x onerror=alert(1)>',
+      origin:'hub',content:'# Retomar\n\nFluxo.'};
+    else if (url === '/api/skills/lia-user-abcdef123456') data = {id:'lia-user-abcdef123456',
+      title:'Minha Skill',origin:'user',content:'# Minha Skill\n\nFluxo.',revision:'a'.repeat(64)};
+    if (url === '/api/skills' && options.method === 'POST') data = {id:'lia-user-abcdef123456'};
+    return {ok:true, json:async () => data};
+  };
+  await context.renderHome();
+  assert.match(view.innerHTML, /Criar projeto/);
+  assert.match(view.innerHTML, /Abrir projeto/);
+  assert.match(view.innerHTML, /Criar Skill/);
+  assert.doesNotMatch(view.innerHTML, /stage-pipeline/);
+  assert.equal(context.document.body.dataset.space, 'home');
+  context.renderProject = originalRenderProject;
+  await context.renderProject('project-1', 'stage', 'production');
+  assert.equal((view.innerHTML.match(/class="stage-pipeline"/g) || []).length, 1);
+  assert.match(view.innerHTML, /CONTEXTO/);
+  assert.match(view.innerHTML, /LIA · ACOMPANHAMENTO/);
+  assert.match(view.innerHTML, /Como evoluir sem perder o rumo/);
+  assert.match(view.innerHTML, /O estágio salvo continua/);
+  assert.match(view.innerHTML, /href="#\/project\/project-1\/qa\/production"/);
+  assert.match(view.innerHTML, /href="#\/project\/project-1\/assets\/production"/);
+  assert.equal(context.document.body.dataset.space, 'project');
+  await context.renderProject('project-1', 'qa', 'delivery');
+  assert.match(view.innerHTML, /Contexto: Finalização/);
+  assert.match(view.innerHTML, /href="#\/project\/project-1\/release\/delivery"/);
+  assert.equal(pageCalls.filter(x => x.options.method !== 'GET').length, 0);
+  context.togglePanel('left');
+  context.togglePanel('right');
+  assert.equal(shell.dataset.leftCollapsed, 'true');
+  assert.equal(shell.dataset.rightCollapsed, 'true');
+  assert.equal(leftToggle.attributes['aria-expanded'], 'false');
+  context.togglePanel('left');
+  context.togglePanel('right');
+  assert.equal(shell.dataset.leftCollapsed, 'false');
+  assert.equal(shell.dataset.rightCollapsed, 'false');
+  await context.renderSkills('new');
+  assert.match(view.innerHTML, /Criar Skill/);
+  assert.doesNotMatch(view.innerHTML, /PROJECT WORKSPACE/);
+  assert.equal(context.document.body.dataset.space, 'skills');
+  await context.window.createUserSkill();
+  assert.equal(pageCalls.at(-1).url, '/api/skills');
+  assert.equal(pageCalls.at(-1).options.method, 'POST');
+  assert.match(JSON.parse(pageCalls.at(-1).options.body).content, /^# Loop de gameplay/);
+  assert.equal(context.location.hash, '#/skills/lia-user-abcdef123456');
+  await context.renderSkills('lia-user-abcdef123456', 'edit');
+  skillContent.value = '# Minha Skill\n\nRevisada.';
+  await context.window.saveUserSkill();
+  assert.equal(pageCalls.at(-1).options.method, 'PUT');
+  assert.equal(JSON.parse(pageCalls.at(-1).options.body).revision, 'a'.repeat(64));
+  await context.renderSkills('lia-project-resume');
+  assert.match(view.innerHTML, /Duplicar para editar/);
+  assert.match(view.innerHTML, /Filtrar por nome ou finalidade/);
+  assert.match(view.innerHTML, /Revisar &lt;img/);
+  assert.doesNotMatch(view.innerHTML, /<img src=x onerror=alert/);
+  assert.doesNotMatch(view.innerHTML, /onclick="saveUserSkill/);
+  await context.window.copySelectedSkill();
+  assert.equal(pageCalls.at(-1).options.method, 'POST');
+  assert.equal(context.location.hash, '#/skills/lia-user-abcdef123456/edit');
+  // Assets são workspace do projeto, não upload nem prova de licença/engine.
+  const assetRequests = [];
+  const asset = {id:'abcdef123456',path:'arte/<img src=x onerror=alert(1)>.png',
+    category:'image',source_kind:'unknown',source_ref:'<script>alert(1)</script>',
+    license_note:'a revisar',target_ref:'',note:'',bytes:42,sha256:'a'.repeat(64),
+    integrity:'unavailable',metadata_revision:'b'.repeat(64)};
+  context.fetch = async (url, options) => {
+    assetRequests.push({url,options});
+    return {ok:true,json:async()=>({assets:[asset]})};
+  };
+  const assetData = {modules:[{id:'abcdef12',name:'Arte',tasks:[{id:'12345678',name:'Retrato'}]}]};
+  const assetHtml = await context.projectAssets('project-1',assetData);
+  assert.equal(assetRequests.at(-1).url,'/api/projects/project-1/assets');
+  assert.match(assetHtml,/Assets do projeto/);
+  assert.match(assetHtml,/licença\/engine NÃO verificadas/);
+  assert.match(assetHtml,/Brief opcional para o Lia Forge/);
+  assert.match(assetHtml,/value="abcdef12:12345678"/);
+  assert.match(assetHtml,/não abre o Forge, não envia dados/);
+  assert.match(assetHtml,/&lt;img/);
+  assert.doesNotMatch(assetHtml,/<img src=x/);
+  assert.doesNotMatch(assetHtml,/<script>/);
+  assert.equal(assetData._assets[0].id,asset.id);
+  const assetActions = {};
+  const assetFields = Object.fromEntries([
+    'asset-path','asset-type','asset-source','asset-source-ref','asset-license',
+    'asset-target','asset-note','asset-form-title','asset-status','asset-save','asset-cancel',
+    'forge-task','forge-kind','forge-request','forge-brief-preview','forge-brief-status','forge-brief-text'
+  ].map(id=>[id,{value:'',textContent:'',hidden:false,disabled:false,
+               addEventListener:(_,fn)=>assetActions[id]=fn,focus(){}}]));
+  const assetEditButton = {dataset:{assetEdit:'0'},addEventListener:(_,fn)=>assetActions.edit=fn};
+  context.document.querySelectorAll=selector=>selector==='[data-asset-edit]'?[assetEditButton]:[];
+  context.document.getElementById=id=>assetFields[id];
+  context.wireAssets('project-1',assetData);
+  assetActions.edit();
+  assert.equal(assetFields['asset-path'].disabled,true);
+  assert.equal(assetFields['asset-path'].value,asset.path);
+  context.confirm=()=>false;
+  const beforeAssetWrites=assetRequests.length;
+  await assetActions['asset-save']();
+  assert.equal(assetRequests.length,beforeAssetWrites);
+  assetActions['asset-cancel']();
+  assert.equal(assetFields['asset-path'].disabled,false);
+  const originalProjectRender = context.renderProject;
+  context.renderProject = () => {};
+  context.confirm = () => true;
+  context.fetch = async (url, options) => {
+    assetRequests.push({url,options});
+    return {ok:true,json:async()=>({id:asset.id})};
+  };
+  assetFields['asset-path'].value='arte/personagem.png';
+  assetFields['asset-type'].value='image';
+  assetFields['asset-source'].value='own';
+  assetFields['asset-source-ref'].value='feita por mim';
+  await assetActions['asset-save']();
+  assert.equal(assetRequests.at(-1).url,'/api/projects/project-1/assets');
+  assert.equal(assetRequests.at(-1).options.method,'POST');
+  assert.equal(JSON.parse(assetRequests.at(-1).options.body).path,'arte/personagem.png');
+  assetActions.edit();
+  assetFields['asset-license'].value='pendente';
+  await assetActions['asset-save']();
+  assert.equal(assetRequests.at(-1).url,`/api/projects/project-1/assets/${asset.id}`);
+  assert.equal(assetRequests.at(-1).options.method,'PUT');
+  const sentAsset = JSON.parse(assetRequests.at(-1).options.body);
+  assert.equal(sentAsset.expected_revision, asset.metadata_revision);
+  assert.equal(sentAsset.path,undefined); // edição não altera arquivo ou hash
+  const beforeForge = assetRequests.length;
+  await assetActions['forge-brief-preview']();
+  assert.equal(assetRequests.length, beforeForge); // sem Task/pedido: nenhum preview
+  assetFields['forge-task'].value = 'abcdef12:12345678';
+  assetFields['forge-kind'].value = 'concept';
+  assetFields['forge-request'].value = 'Conceito curto';
+  context.fetch = async (url, options) => {
+    assetRequests.push({url,options});
+    return {ok:true,json:async()=>({content:'<img src=x onerror=alert(1)>',warning:'Prévia local'})};
+  };
+  await assetActions['forge-brief-preview']();
+  assert.equal(assetRequests.at(-1).url,'/api/projects/project-1/forge-brief/preview');
+  assert.deepEqual(JSON.parse(assetRequests.at(-1).options.body),
+    {module_id:'abcdef12',task_id:'12345678',asset_kind:'concept',request:'Conceito curto'});
+  assert.equal(assetFields['forge-brief-text'].textContent,'<img src=x onerror=alert(1)>');
+  assert.equal(assetFields['forge-brief-text'].hidden,false);
+  assetActions['forge-request']();
+  assert.equal(assetFields['forge-brief-text'].textContent,'');
+  assert.equal(assetFields['forge-brief-text'].hidden,true); // input alterado invalida prévia
+  let finishPreview;
+  context.fetch = (url, options) => new Promise(resolve => {
+    assetRequests.push({url,options});
+    finishPreview = () => resolve({ok:true,json:async()=>({content:'prévia antiga',warning:'ok'})});
+  });
+  const pendingPreview = assetActions['forge-brief-preview']();
+  assetFields['forge-request'].value = 'Novo pedido';
+  assetActions['forge-request']();
+  finishPreview();
+  await pendingPreview;
+  assert.equal(assetFields['forge-brief-text'].textContent,'');
+  assert.equal(assetFields['forge-brief-text'].hidden,true); // descarta resposta já obsoleta
+  context.renderProject=originalProjectRender;
+
+  // O loop é hipótese e relato manual; saída hostil deve ser texto, não HTML ativo.
+  const loopRequests = [];
+  const hypothesis = {origin:'<img src=x onerror=alert(1)>',experience:'curiosidade',
+    core_action:'explorar',challenge:'',reward:'',pacing:'',non_negotiable:'descoberta',
+    scope_tradeoffs:'',references:'',prototype_question:'como escolher?',
+    randomness_rule:'',ethical_boundary:''};
+  const observation = {prototype_kind:'visual',prototype_ref:'rascunho',method:'observação em papel',
+    observed_actions:'tocou <script>alert(1)</script>',observed_experience:'',friction:'',
+    risk_reward:'',randomness:'',decision:'iterate',note:'',id:'abcdef123456',
+    hypothesis_revision:'a'.repeat(64),recorded_at:'2026-11-01T10:00:00+00:00',
+    origin:'manual_report',stale:true,verified_result:false};
+  const snapshot = {hypothesis,hypothesis_revision:'a'.repeat(64),revision:'b'.repeat(64),
+    observations:[observation],gameplay_verified:false};
+  context.fetch = async(url,options) => {
+    loopRequests.push({url,options});
+    return {ok:true,json:async()=>snapshot};
+  };
+  const loopData = {};
+  const loopHtml = await context.projectGameplayLoop('project-1',loopData);
+  assert.equal(loopRequests.at(-1).url,'/api/projects/project-1/gameplay-loop');
+  assert.match(loopHtml,/Protótipo visual|Visual ou layout/);
+  assert.match(loopHtml,/hipótese revisada depois do relato/);
+  assert.match(loopHtml,/&lt;img/);
+  assert.doesNotMatch(loopHtml,/<img src=x/);
+  assert.doesNotMatch(loopHtml,/<script>/);
+  assert.match(context.projectBootstrap('project-1',{docs:[]}),/id="b-origin"/);
+  const loopActions = {};
+  const loopFields = Object.fromEntries([
+    ...Object.keys(hypothesis).map(k=>`loop-${k}`),
+    ...['prototype_ref','method','observed_actions','observed_experience','friction','risk_reward',
+        'randomness','note'].map(k=>`loop-report-${k}`),
+    'loop-prototype_kind','loop-decision','loop-save','loop-status','loop-report-save','loop-report-status'
+  ].map(id=>[id,{value:'',textContent:'',disabled:false,
+    addEventListener:(_,fn)=>loopActions[id]=fn}]));
+  for (const [key,value] of Object.entries(hypothesis)) loopFields[`loop-${key}`].value = value;
+  for (const key of ['prototype_ref','method','observed_actions','observed_experience','friction',
+                     'risk_reward','randomness','note']) loopFields[`loop-report-${key}`].value = observation[key];
+  loopFields['loop-prototype_kind'].value='visual';
+  loopFields['loop-decision'].value='iterate';
+  context.document.getElementById=id=>loopFields[id];
+  context.wireGameplayLoop('project-1',loopData);
+  context.confirm=()=>false;
+  const beforeLoopWrites=loopRequests.length;
+  await loopActions['loop-save']();
+  assert.equal(loopRequests.length,beforeLoopWrites);
+  const oldRender=context.renderProject;
+  context.renderProject=()=>{};
+  context.confirm=()=>true;
+  await loopActions['loop-save']();
+  assert.equal(loopRequests.at(-1).options.method,'PUT');
+  assert.equal(JSON.parse(loopRequests.at(-1).options.body).expected_revision,snapshot.hypothesis_revision);
+  await loopActions['loop-report-save']();
+  assert.equal(loopRequests.at(-1).url,'/api/projects/project-1/gameplay-loop/observations');
+  assert.equal(loopRequests.at(-1).options.method,'POST');
+  const sentLoop=JSON.parse(loopRequests.at(-1).options.body);
+  assert.equal(sentLoop.expected_revision,snapshot.revision);
+  assert.equal(sentLoop.observation.decision,'iterate');
+  assert.equal(sentLoop.observation.verified_result,undefined);
+  context.renderProject=oldRender;
+  // Etapa 0 persiste a origem opcional no Brief; não cria hipótese ou jogo.
+  const wizardHtml = context.projectBootstrap('project-1',{docs:[]});
+  assert.match(wizardHtml,/id="b-origin"/);
+  const answers = {'b-idea':'Explorar ilhas','b-origin':'brincar de mapas',
+    'b-exp':'curiosidade','b-aud':'','b-plat':'','b-pillars':'','b-rest':'',
+    'b-ref':'','b-vs':'','b-eng':''};
+  context.document.getElementById=id=>({value:answers[id]});
+  const oldHash=context.location.hash;
+  context.fetch=async(url,options)=>{
+    loopRequests.push({url,options});
+    return {ok:true,json:async()=>({})};
+  };
+  await context.runBootstrap('project-1');
+  assert.equal(loopRequests.at(-1).url,'/api/projects/project-1/bootstrap');
+  assert.equal(JSON.parse(loopRequests.at(-1).options.body).answers.origin,'brincar de mapas');
+  context.location.hash=oldHash;
+
+  // New execution history is backed by the project API, with scoped routes and independent records.
+  const historyData = { entry: {archived:false}, modules: [{id:'m', tasks:[{id:'t', name:'<Task>'}]}] };
+  const run = {id:'run-1', module_id:'m', task_id:'t', kind:'python-ast', status:'completed',
+    started_at:'2026-11-15T12:00:00Z', finished_at:'2026-11-15T12:01:00Z',
+    result:{code:'syntax_ok', validation_status:'passed'}};
+  const runDetail = {
+    run,
+    evidence:[{id:'evidence-1', path:'<screenshot>.png', kind:'screenshot', origin:'manual_local_file',
+      sha256:'a'.repeat(64), bytes:128, integrity:'unavailable', recorded_at:'2026-11-15T12:02:00Z'}],
+    reviews:[{id:'review-1', decision:'rejected', reviewer:'Dev', comment:'<observação>', recorded_at:'2026-11-15T12:03:00Z'},
+      {id:'review-2', decision:'approved', reviewer:'Dev 2', comment:'Reavaliado', recorded_at:'2026-11-15T12:04:00Z',
+        supersedes:'review-1', evidence_ids:['evidence-1']}],
+  };
+  const runRequests = [];
+  const runHost = '/api/projects/project-1/runs';
+  context.fetch = async (url, options) => {
+    runRequests.push({url, options});
+    if (url === runHost) return {ok:true, json:async () => ({runs:[{...run, id:'elsewhere', task_id:'other'}, run]})};
+    if (url === runHost+'/run-1') return {ok:true, json:async () => runDetail};
+    if (url.endsWith('/not-found')) return {ok:false, json:async () => ({error:'<Inexistente>'})};
+    if (url.endsWith('/reviews')) return {ok:true, json:async () => ({id:'review-3'})};
+    return {ok:false, json:async () => ({error:'Arquivo ausente'})};
+  };
+  const runListHtml = await context.projectRunHistory('project-1', historyData, 'mvp', ['task','m','t']);
+  assert.match(runListHtml, /&lt;Task&gt;/);
+  assert.match(runListHtml, /\/runs\/mvp\/run\/run-1/);
+  assert.doesNotMatch(runListHtml, /elsewhere/);
+  const allRunsHtml = await context.projectRunHistory('project-1', historyData, 'mvp', []);
+  assert.ok(allRunsHtml.indexOf('<code>elsewhere</code>') < allRunsHtml.indexOf('<code>run-1</code>'));
+  const runDetailsHtml = await context.projectRunHistory('project-1', historyData, 'mvp', ['run','run-1']);
+  assert.match(runDetailsHtml, /Sintaxe válida/);
+  assert.match(runDetailsHtml, /Arquivo indisponível/);
+  assert.match(runDetailsHtml, /&lt;screenshot&gt;\.png/);
+  assert.match(runDetailsHtml, /&lt;observação&gt;/);
+  assert.match(runDetailsHtml, /Revisão anterior <code>review-1<\/code>/);
+  assert.match(runDetailsHtml, /Evidências na revisão <code>evidence-1<\/code>/);
+  assert.match(runDetailsHtml, /id="history-review"/);
+  assert.doesNotMatch(context.runDetails('project-1', historyData, 'mvp',
+    {...runDetail, run:{...run, status:'interrupted', finished_at:null, result:null}}), /id="history-review"/);
+  const missingRun = await context.projectRunHistory('project-1', historyData, 'mvp', ['run','not-found']);
+  assert.match(missingRun, /role="alert".*&lt;Inexistente&gt;/);
+
+  function historyForm(fields) {
+    const status = {};
+    const controls = {};
+    return {status, controls, resets:0, reset() { this.resets++; },
+      querySelector: selector => selector === '[role=status]' ? status : controls,
+      elements:{namedItem:key => ({value:fields[key]})},
+    };
+  }
+  const reviewForm = historyForm({reviewer:'Dev', decision:'needs_review', comment:'Rever'});
+  const evidenceForm = historyForm({path:'qa/ausente.log', kind:'log'});
+  const reviewList = {}, evidenceList = {};
+  context.document.getElementById = id => ({
+    'history-review':reviewForm, 'history-evidence':evidenceForm,
+    'history-review-list':reviewList, 'history-evidence-list':evidenceList,
+  })[id] ?? originalGet(id);
+  context.wireRunHistory('project-1', 'mvp', ['run','run-1'], () => true);
+  await evidenceForm.onsubmit({preventDefault() {}});
+  assert.match(evidenceForm.status.textContent, /Arquivo ausente/);
+  assert.equal(evidenceForm.controls.disabled, false);
+  assert.equal(evidenceForm.resets, 0);
+  const reviewing = reviewForm.onsubmit({preventDefault() {}});
+  await evidenceForm.onsubmit({preventDefault() {}});
+  await reviewing;
+  assert.equal(runRequests.at(-2).url, runHost+'/run-1/reviews');
+  assert.deepEqual(JSON.parse(runRequests.at(-2).options.body), {reviewer:'Dev', decision:'needs_review', comment:'Rever'});
+  assert.match(reviewForm.status.textContent, /Revisão registrada/);
+  assert.match(reviewList.innerHTML, /review-2/);
+  assert.match(evidenceList.innerHTML, /evidence-1/);
+  assert.equal(reviewForm.resets, 1);
+  assert.equal(evidenceForm.resets, 0);
+  context.document.getElementById = originalGet;
+  context.fetch = originalFetch;
+
+  const godotData = { entry:{archived:false}, modules:[{id:'mod', tasks:[{id:'task', name:'Protótipo'}]}] };
+  const godotBase = '/api/projects/project-1/godot';
+  const godotConfig = {executable:'C:/Godot/Godot.exe', project_path:'game/project.godot', revision:'rev-1'};
+  const adapterRequests = [];
+  context.fetch = async (url, options) => {
+    adapterRequests.push({url, method:options.method, body:options.body ? JSON.parse(options.body) : null});
+    if (url === godotBase && options.method === 'GET') return {ok:true, json:async () => ({
+      config:godotConfig, inspection:{status:'configured', candidates:['C:/<Seleção>/Godot.exe']},
+    })};
+    if (url === godotBase && options.method === 'PUT') return {ok:true, json:async () => ({
+      ...JSON.parse(options.body), revision:'rev-2',
+    })};
+    if (url === godotBase+'/inspect') return {ok:true, json:async () => ({
+      status:'ready', version:'4.5.stable', project_name:'<Meu jogo>',
+    })};
+    if (url === godotBase+'/runs') return {ok:true, json:async () => ({id:'godot-run-1', status:'running'})};
+    if (url === godotBase+'/runs/godot-run-1/cancel') return {ok:true, json:async () => ({status:'cancellation_pending'})};
+    throw new Error('Unexpected route '+url);
+  };
+  const godotHtml = await context.projectGodot('project-1', godotData, 'mvp');
+  assert.match(godotHtml, /C:\/&lt;Seleção&gt;\/Godot\.exe/);
+  assert.match(godotHtml, /id="godot-run"/);
+  const godotControls = {};
+  const fakeGodot = {
+    'godot-config':{dataset:{revision:'rev-1'}, querySelector:() => godotControls, reportValidity:() => true},
+    'godot-executable':{value:godotConfig.executable}, 'godot-project-path':{value:godotConfig.project_path},
+    'godot-save':{}, 'godot-inspect':{}, 'godot-launch':{}, 'godot-inspection':{}, 'godot-launch-status':{},
+    'godot-editor':{}, 'godot-run':{}, 'godot-task':{value:''},
+  };
+  context.document.getElementById = id => fakeGodot[id] ?? originalGet(id);
+  context.wireGodot('project-1','mvp',() => true);
+  assert.equal(fakeGodot['godot-launch'].disabled,false);
+  const oldConfirmGodot = context.confirm;
+  let godotConsent = '';
+  context.confirm = text => { godotConsent = text; return false; };
+  await fakeGodot['godot-inspect'].onclick();
+  assert.match(godotConsent,/--version/);
+  assert.equal(adapterRequests.length,1);
+  context.confirm = text => { godotConsent = text; return true; };
+  fakeGodot['godot-project-path'].value = 'D:/MeuJogo/project.godot';
+  fakeGodot['godot-project-path'].oninput();
+  assert.equal(fakeGodot['godot-launch'].disabled,true);
+  await fakeGodot['godot-run'].onclick();
+  assert.equal(adapterRequests.length,1);
+  await fakeGodot['godot-inspect'].onclick();
+  assert.equal(adapterRequests.at(-1).url,godotBase+'/inspect');
+  assert.match(fakeGodot['godot-inspection'].textContent,/4\.5\.stable.*<Meu jogo>/);
+  await fakeGodot['godot-config'].onsubmit({preventDefault() {}});
+  assert.equal(adapterRequests.at(-1).method,'PUT');
+  assert.equal(fakeGodot['godot-launch'].disabled,false);
+  const oldGodotHash = context.location.hash;
+  await fakeGodot['godot-editor'].onclick();
+  assert.match(godotConsent,/D:\/MeuJogo\/project\.godot/);
+  assert.deepEqual(adapterRequests.at(-1).body,{action:'editor',module_id:'',task_id:'',revision:'rev-2',confirm:true});
+  assert.equal(context.location.hash,'#/project/project-1/runs/mvp/run/godot-run-1');
+  fakeGodot['godot-task'].value = 'mod/task';
+  await fakeGodot['godot-run'].onclick();
+  assert.deepEqual(adapterRequests.at(-1).body,{action:'run',module_id:'mod',task_id:'task',revision:'rev-2',confirm:true});
+  context.location.hash = oldGodotHash;
+
+  const godotRun = {id:'godot-run-1', action:'editor', project_path:'game/project.godot', kind:'godot', status:'running',
+    module_id:'', task_id:'', started_at:'2026-11-16T00:00:00Z', finished_at:null, result:null};
+  const renderGodotRun = run => context.runDetails('project-1',godotData,'mvp',{run,evidence:[],reviews:[]});
+  const activeGodot = renderGodotRun({...godotRun, live:{stdout:"Parcial <amostra>",stderr:"",warnings:0,errors:0,truncated:false}});
+  assert.match(activeGodot,/Editor Godot/);
+  assert.match(activeGodot,/Saída parcial/);
+  assert.match(activeGodot,/Parcial &lt;amostra&gt;/);
+  assert.doesNotMatch(activeGodot,/<dt>Código de saída/);
+  assert.match(activeGodot,/\/godot\/mvp.*← Godot/);
+  assert.match(activeGodot,/id="godot-stop-run" data-engine="godot"/);
+  const terminalGodot = renderGodotRun({...godotRun,status:'failed',finished_at:'2026-11-16T00:00:02Z',
+    result:{code:'exit_nonzero',validation_status:'not_run',exit_code:1,warnings:1,errors:2,truncated:true,
+      stdout:'<img src=x onerror=test()>',stderr:'Falhou'}});
+  assert.match(terminalGodot,/&lt;img src=x onerror=test\(\)&gt;/);
+  assert.match(terminalGodot,/Saída de erros/);
+  assert.match(terminalGodot,/Processo encerrado com erro/);
+  assert.match(terminalGodot,/truncada/);
+  assert.doesNotMatch(terminalGodot,/id="godot-stop-run"/);
+
+  fakeGodot['godot-refresh-run'] = {};
+  fakeGodot['godot-stop-run'] = {dataset:{engine:'godot'}};
+  fakeGodot['godot-stop-status'] = {};
+  const currentProjectRenderer = context.renderProject;
+  let resumedGodotView = false;
+  context.renderProject = async () => { resumedGodotView = true; };
+  context.wireGodotRunControls('project-1','mvp',['run','godot-run-1'],() => true);
+  await fakeGodot['godot-stop-run'].onclick();
+  assert.equal(adapterRequests.at(-1).url,godotBase+'/runs/godot-run-1/cancel');
+  assert.equal(resumedGodotView,true);
+  context.renderProject = currentProjectRenderer;
+  context.confirm = oldConfirmGodot;
+  context.document.getElementById = originalGet;
+  context.fetch = originalFetch;
+  console.log('UI regression: OK');
+})().catch(error => { console.error(error); process.exitCode = 1; });

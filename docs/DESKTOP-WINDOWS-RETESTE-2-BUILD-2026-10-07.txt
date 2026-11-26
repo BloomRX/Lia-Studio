@@ -1,0 +1,101 @@
+148 INFO: PyInstaller: 6.22.3, contrib hooks: 2026.8
+148 INFO: Python: 3.11.0
+160 INFO: Platform: Windows-10-10.0.26200-SP0
+160 INFO: Python environment: J:\Lia-Studio\.venv
+160 INFO: wrote J:\Lia-Studio\LiaStudio.spec
+164 INFO: Removing temporary files and cleaning cache in C:\Users\lucas\AppData\Local\pyinstaller
+178 INFO: Module search paths (PYTHONPATH):
+['J:\\Lia-Studio',
+ 'C:\\Users\\lucas\\AppData\\Local\\Programs\\Python\\Python311\\python311.zip',
+ 'C:\\Users\\lucas\\AppData\\Local\\Programs\\Python\\Python311\\DLLs',
+ 'C:\\Users\\lucas\\AppData\\Local\\Programs\\Python\\Python311\\Lib',
+ 'C:\\Users\\lucas\\AppData\\Local\\Programs\\Python\\Python311',
+ 'J:\\Lia-Studio\\.venv',
+ 'J:\\Lia-Studio\\.venv\\Lib\\site-packages',
+ 'J:\\Lia-Studio']
+541 INFO: Appending 'datas' from .spec
+544 INFO: checking Analysis
+544 INFO: Building Analysis because Analysis-00.toc is non existent
+544 INFO: Looking for Python shared library...
+544 INFO: Using Python shared library: C:\Users\lucas\AppData\Local\Programs\Python\Python311\python311.dll
+544 INFO: Running Analysis Analysis-00.toc
+544 INFO: Target bytecode optimization level: 0
+544 INFO: Initializing module dependency graph...
+547 INFO: Initializing module graph hook caches...
+564 INFO: Analyzing modules for base_library.zip ...
+1482 INFO: Processing standard module hook 'hook-encodings.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+2086 INFO: Processing standard module hook 'hook-heapq.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+2249 INFO: Processing standard module hook 'hook-math.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+2630 INFO: Processing standard module hook 'hook-pickle.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+6429 INFO: Caching module dependency graph...
+6462 INFO: Analyzing J:\Lia-Studio\desktop.py
+6855 INFO: Processing standard module hook 'hook-platform.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+7241 INFO: Processing standard module hook 'hook-_ctypes.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+7262 INFO: Processing standard module hook 'hook-webview.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\webview\\__pyinstaller'
+7421 INFO: Processing standard module hook 'hook-webbrowser.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+7866 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+7974 INFO: Processing standard module hook 'hook-xml.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8885 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+8888 INFO: SetuptoolsInfo: initializing cached setuptools info...
+9687 INFO: Processing pre-safe-import-module hook 'hook-gi.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+9811 INFO: Processing standard module hook 'hook-clr.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\pythonnet\\_pyinstaller'
+9837 INFO: Processing standard module hook 'hook-clr_loader.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+9926 INFO: Processing standard module hook 'hook-pycparser.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+10066 INFO: Processing standard module hook 'hook-setuptools.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10074 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+10075 INFO: Processing pre-find-module-path hook 'hook-distutils.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+10669 INFO: Processing standard module hook 'hook-distutils.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10771 INFO: Processing standard module hook 'hook-distutils.util.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10872 INFO: Processing standard module hook 'hook-sysconfig.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+10928 INFO: Processing standard module hook 'hook-_osx_support.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+11155 INFO: Processing standard module hook 'hook-pkg_resources.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+12141 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+12231 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+13531 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+13616 INFO: Processing module hooks (post-graph stage)...
+13616 WARNING: Hidden import "pycparser.lextab" not found!
+13617 WARNING: Hidden import "pycparser.yacctab" not found!
+13630 INFO: Processing pre-safe-import-module hook 'hook-win32com.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\pre_safe_import_module'
+14351 INFO: Processing standard module hook 'hook-setuptools._vendor.importlib_metadata.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+14455 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+14884 INFO: Processing standard module hook 'hook-difflib.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+15486 INFO: Performing binary vs. data reclassification (35 entries)
+15514 INFO: Looking for ctypes DLLs
+15590 INFO: Analyzing run-time hooks ...
+15593 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+15595 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+15597 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+15599 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+15600 INFO: Including run-time hook 'pyi_rth_pkgres.py' from 'J:\\Lia-Studio\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+15611 INFO: Creating base_library.zip...
+15628 INFO: Looking for dynamic libraries
+16228 INFO: Extra DLL search directories (AddDllDirectory): []
+16228 INFO: Extra DLL search directories (PATH): []
+16498 INFO: Warnings written to J:\Lia-Studio\build\LiaStudio\warn-LiaStudio.txt
+16554 INFO: Graph cross-reference written to J:\Lia-Studio\build\LiaStudio\xref-LiaStudio.html
+16578 INFO: checking PYZ
+16578 INFO: Building PYZ because PYZ-00.toc is non existent
+16578 INFO: Building PYZ (ZlibArchive) J:\Lia-Studio\build\LiaStudio\PYZ-00.pyz
+17068 INFO: Building PYZ (ZlibArchive) J:\Lia-Studio\build\LiaStudio\PYZ-00.pyz completed successfully.
+17079 INFO: checking PKG
+17079 INFO: Building PKG because PKG-00.toc is non existent
+17079 INFO: Building PKG (CArchive) LiaStudio.pkg
+17109 INFO: Building PKG (CArchive) LiaStudio.pkg completed successfully.
+17110 INFO: Bootloader J:\Lia-Studio\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+17110 INFO: checking EXE
+17110 INFO: Building EXE because EXE-00.toc is non existent
+17110 INFO: Building EXE from EXE-00.toc
+17110 INFO: Copying bootloader EXE to J:\Lia-Studio\build\LiaStudio\LiaStudio.exe
+17157 INFO: Copying icon to EXE
+17194 INFO: Copying 0 resources to EXE
+17194 INFO: Embedding manifest in EXE
+17229 INFO: Appending PKG archive to EXE
+17290 INFO: Fixing EXE headers
+17530 INFO: Building EXE from EXE-00.toc completed successfully.
+17531 INFO: checking COLLECT
+17532 INFO: Building COLLECT because COLLECT-00.toc is non existent
+17532 INFO: Removing dir J:\Lia-Studio\dist\LiaStudio
+17554 INFO: Building COLLECT COLLECT-00.toc
+17754 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+17755 INFO: Build complete! The results are available in: J:\Lia-Studio\dist
+ProtÃ³tipo criado em J:\Lia-Studio\dist\LiaStudio (pasta inteira). A janela e o fluxo ainda precisam de teste manual no Windows.

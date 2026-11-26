@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#15131a"/>
+<rect x="35" y="30" width="1530" height="840" rx="28" fill="#211d27" stroke="#b92d70" stroke-width="2"/>
+<text x="75" y="90" fill="#ff5b9b" font-family="Arial" font-size="38" font-weight="700">LIA STUDIO</text>
+<text x="75" y="125" fill="#aaa1b0" font-family="Arial" font-size="18">HOME · Concept Reference</text>
+<line x1="75" y1="150" x2="1525" y2="150" stroke="#493543"/>
+<text x="800" y="225" fill="#fff" font-family="Arial" font-size="42" text-anchor="middle" font-weight="700">O que vamos criar hoje?</text>
+<text x="800" y="260" fill="#bcb4c0" font-family="Arial" font-size="19" text-anchor="middle">A Home escolhe o caminho. Ela não simula um projeto aberto.</text>
+<g>
+<rect x="100" y="330" width="430" height="250" rx="24" fill="#2b2530" stroke="#ff4f96" stroke-width="3"/>
+<text x="315" y="400" fill="#ff6aa5" font-family="Arial" font-size="30" text-anchor="middle" font-weight="700">CRIAR PROJETO</text>
+<text x="315" y="445" fill="#e7e1e8" font-family="Arial" font-size="18" text-anchor="middle">Comece um novo jogo</text>
+<text x="315" y="490" fill="#99909d" font-family="Arial" font-size="16" text-anchor="middle">Engine · plataforma · estrutura</text>
+</g>
+<g>
+<rect x="585" y="330" width="430" height="250" rx="24" fill="#2b2530" stroke="#7b4c74" stroke-width="2"/>
+<text x="800" y="400" fill="#fff" font-family="Arial" font-size="30" text-anchor="middle" font-weight="700">ABRIR PROJETO</text>
+<text x="800" y="445" fill="#e7e1e8" font-family="Arial" font-size="18" text-anchor="middle">Continue um jogo existente</text>
+<text x="800" y="490" fill="#99909d" font-family="Arial" font-size="16" text-anchor="middle">Projetos recentes · importar</text>
+</g>
+<g>
+<rect x="1070" y="330" width="430" height="250" rx="24" fill="#2b2530" stroke="#7b4c74" stroke-width="2"/>
+<text x="1285" y="400" fill="#fff" font-family="Arial" font-size="30" text-anchor="middle" font-weight="700">SKILLS</text>
+<text x="1285" y="445" fill="#e7e1e8" font-family="Arial" font-size="18" text-anchor="middle">Conhecimento reutilizável</text>
+<text x="1285" y="490" fill="#99909d" font-family="Arial" font-size="16" text-anchor="middle">Ler · criar · editar · versionar</text>
+</g>
+<text x="100" y="665" fill="#ff6aa5" font-family="Arial" font-size="20" font-weight="700">PROJETOS RECENTES</text>
+<rect x="100" y="695" width="400" height="95" rx="16" fill="#28232d"/>
+<text x="125" y="735" fill="#fff" font-family="Arial" font-size="20" font-weight="700">Relatos</text>
+<text x="125" y="765" fill="#9f96a5" font-family="Arial" font-size="15">Último acesso · Produção</text>
+<rect x="525" y="695" width="400" height="95" rx="16" fill="#28232d"/>
+<text x="550" y="735" fill="#fff" font-family="Arial" font-size="20" font-weight="700">Novo Projeto</text>
+<text x="550" y="765" fill="#9f96a5" font-family="Arial" font-size="15">Nenhuma atividade recente</text>
+<rect x="950" y="695" width="550" height="95" rx="16" fill="#28232d" stroke="#493543"/>
+<text x="980" y="735" fill="#ffb0cb" font-family="Arial" font-size="17">Lia</text>
+<text x="980" y="765" fill="#d7d0d9" font-family="Arial" font-size="15">“Grandes mundos começam com uma boa ideia.”</text>
+<text x="75" y="840" fill="#746b77" font-family="Arial" font-size="13">CONCEPT — visual direction, not pixel-perfect implementation</text>
+</svg>

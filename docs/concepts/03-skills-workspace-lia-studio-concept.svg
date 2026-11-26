@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#131116"/>
+<rect x="25" y="25" width="1550" height="850" rx="24" fill="#201c23" stroke="#8d2d62" stroke-width="2"/>
+<text x="60" y="72" fill="#ff5b9b" font-family="Arial" font-size="27" font-weight="700">LIA STUDIO</text>
+<text x="60" y="104" fill="#9a919c" font-family="Arial" font-size="14">SKILLS WORKSPACE · Knowledge that can be reused across projects</text>
+<line x1="45" y1="125" x2="1555" y2="125" stroke="#3b303d"/>
+<rect x="45" y="145" width="250" height="680" rx="16" fill="#17151b"/>
+<text x="72" y="185" fill="#ff6aa5" font-family="Arial" font-size="15" font-weight="700">SKILLS</text>
+<text x="72" y="230" fill="#fff" font-family="Arial" font-size="17">Biblioteca</text>
+<text x="72" y="270" fill="#aaa2ad" font-family="Arial" font-size="17">Minhas Skills</text>
+<text x="72" y="310" fill="#aaa2ad" font-family="Arial" font-size="17">Criar Skill</text>
+<text x="72" y="350" fill="#aaa2ad" font-family="Arial" font-size="17">Importar / Exportar</text>
+<text x="72" y="410" fill="#ff6aa5" font-family="Arial" font-size="15" font-weight="700">FILTROS</text>
+<rect x="72" y="440" width="195" height="40" rx="8" fill="#27222b"/><text x="86" y="466" fill="#817985" font-family="Arial" font-size="13">Buscar Skills…</text>
+<text x="72" y="515" fill="#aaa2ad" font-family="Arial" font-size="13">Unreal</text>
+<text x="72" y="545" fill="#aaa2ad" font-family="Arial" font-size="13">Gameplay</text>
+<text x="72" y="575" fill="#aaa2ad" font-family="Arial" font-size="13">Architecture</text>
+<text x="72" y="785" fill="#6f6772" font-family="Arial" font-size="12">‹ recolher painel</text>
+<rect x="320" y="145" width="470" height="680" rx="16" fill="#17151b"/>
+<text x="350" y="190" fill="#fff" font-family="Arial" font-size="25" font-weight="700">Biblioteca de Skills</text>
+<text x="350" y="220" fill="#8f8792" font-family="Arial" font-size="14">12 Skills relevantes</text>
+<rect x="350" y="250" width="410" height="92" rx="13" fill="#29232d" stroke="#ff4f96" stroke-width="2"/>
+<text x="370" y="282" fill="#ff6aa5" font-family="Arial" font-size="17" font-weight="700">Inventory Architecture</text>
+<text x="370" y="310" fill="#aaa2ad" font-family="Arial" font-size="13">UE · Gameplay · Save</text>
+<text x="370" y="330" fill="#7e7582" font-family="Arial" font-size="12">v1.4 · usada em 3 projetos</text>
+<rect x="350" y="360" width="410" height="82" rx="13" fill="#25212a"/>
+<text x="370" y="392" fill="#e7e1e8" font-family="Arial" font-size="16" font-weight="700">Gameplay Systems</text>
+<text x="370" y="418" fill="#8e8591" font-family="Arial" font-size="13">UE · Architecture · C++</text>
+<rect x="350" y="460" width="410" height="82" rx="13" fill="#25212a"/>
+<text x="370" y="492" fill="#e7e1e8" font-family="Arial" font-size="16" font-weight="700">Save System</text>
+<text x="370" y="518" fill="#8e8591" font-family="Arial" font-size="13">Persistence · Data · QA</text>
+<rect x="350" y="560" width="410" height="82" rx="13" fill="#25212a"/>
+<text x="370" y="592" fill="#e7e1e8" font-family="Arial" font-size="16" font-weight="700">UI Architecture</text>
+<text x="370" y="618" fill="#8e8591" font-family="Arial" font-size="13">UMG · UX · Design System</text>
+<rect x="820" y="145" width="410" height="680" rx="16" fill="#1b181f"/>
+<text x="850" y="190" fill="#ff6aa5" font-family="Arial" font-size="14" font-weight="700">SELECTED SKILL</text>
+<text x="850" y="230" fill="#fff" font-family="Arial" font-size="28" font-weight="700">Inventory Architecture</text>
+<text x="850" y="262" fill="#918894" font-family="Arial" font-size="14">v1.4 · Unreal Engine · Gameplay</text>
+<line x1="850" y1="290" x2="1195" y2="290" stroke="#423641"/>
+<text x="850" y="330" fill="#ffb0cb" font-family="Arial" font-size="14">Documentação</text>
+<text x="955" y="330" fill="#8e8591" font-family="Arial" font-size="14">Código</text>
+<text x="1015" y="330" fill="#8e8591" font-family="Arial" font-size="14">Histórico</text>
+<text x="1090" y="330" fill="#8e8591" font-family="Arial" font-size="14">Aplicações</text>
+<text x="850" y="380" fill="#d9d1dc" font-family="Arial" font-size="15">Objetivo</text>
+<text x="850" y="408" fill="#96909a" font-family="Arial" font-size="13">Definir uma arquitetura reutilizável para</text>
+<text x="850" y="430" fill="#96909a" font-family="Arial" font-size="13">inventários e persistência relacionada.</text>
+<rect x="850" y="470" width="155" height="42" rx="9" fill="#b92d70"/><text x="927" y="497" fill="#fff" font-family="Arial" font-size="13" text-anchor="middle">Aplicar no Projeto</text>
+<rect x="1020" y="470" width="155" height="42" rx="9" fill="#302832"/><text x="1097" y="497" fill="#ffb0cb" font-family="Arial" font-size="13" text-anchor="middle">Editar</text>
+<text x="850" y="570" fill="#ff6aa5" font-family="Arial" font-size="14" font-weight="700">RELACIONADAS</text>
+<text x="850" y="605" fill="#cfc7d1" font-family="Arial" font-size="13">Save System</text>
+<text x="850" y="635" fill="#cfc7d1" font-family="Arial" font-size="13">Gameplay Systems</text>
+<text x="850" y="665" fill="#cfc7d1" font-family="Arial" font-size="13">UI Inventory</text>
+<rect x="1260" y="145" width="270" height="680" rx="16" fill="#211b24" stroke="#6c2d50"/>
+<text x="1290" y="190" fill="#ff6aa5" font-family="Arial" font-size="22" font-weight="700">LIA</text>
+<text x="1290" y="218" fill="#968d99" font-family="Arial" font-size="13">SKILL COPILOT</text>
+<text x="1290" y="275" fill="#e9e2ea" font-family="Arial" font-size="14">“Essa Skill pode ser</text>
+<text x="1290" y="298" fill="#e9e2ea" font-family="Arial" font-size="14">adaptada para o contexto</text>
+<text x="1290" y="321" fill="#e9e2ea" font-family="Arial" font-size="14">do Relatos.”</text>
+<rect x="1290" y="355" width="210" height="42" rx="9" fill="#342936"/><text x="1305" y="381" fill="#ff9bc1" font-family="Arial" font-size="13">Aplicar com contexto</text>
+<rect x="1290" y="410" width="210" height="42" rx="9" fill="#342936"/><text x="1305" y="436" fill="#ff9bc1" font-family="Arial" font-size="13">Explicar Skill</text>
+<text x="1290" y="785" fill="#6f6772" font-family="Arial" font-size="12">‹ recolher painel</text>
+<text x="45" y="855" fill="#6f6772" font-family="Arial" font-size="12">CONCEPT — Skills are reusable knowledge, not game projects</text>
+</svg>

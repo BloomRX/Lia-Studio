@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#121116"/>
+<rect x="25" y="25" width="1550" height="850" rx="24" fill="#1e1b22" stroke="#8d2d62" stroke-width="2"/>
+<text x="60" y="72" fill="#ff5b9b" font-family="Arial" font-size="27" font-weight="700">LIA STUDIO</text>
+<text x="300" y="72" fill="#fff" font-family="Arial" font-size="24" font-weight="700">RELATOS</text>
+<text x="300" y="102" fill="#8f8792" font-family="Arial" font-size="14">The Phenomenon · Game Project</text>
+<line x1="45" y1="125" x2="1555" y2="125" stroke="#3b303d"/>
+<rect x="45" y="145" width="210" height="680" rx="16" fill="#17151b"/>
+<text x="70" y="185" fill="#ff6aa5" font-family="Arial" font-size="15" font-weight="700">PROJETO</text>
+<text x="70" y="225" fill="#fff" font-family="Arial" font-size="17">Visão Geral</text>
+<text x="70" y="265" fill="#aaa2ad" font-family="Arial" font-size="17">Tarefas</text>
+<text x="70" y="305" fill="#aaa2ad" font-family="Arial" font-size="17">Documentos</text>
+<text x="70" y="345" fill="#aaa2ad" font-family="Arial" font-size="17">Assets</text>
+<text x="70" y="385" fill="#aaa2ad" font-family="Arial" font-size="17">QA</text>
+<text x="70" y="425" fill="#aaa2ad" font-family="Arial" font-size="17">Builds</text>
+<text x="70" y="485" fill="#ff6aa5" font-family="Arial" font-size="15" font-weight="700">CONHECIMENTO</text>
+<text x="70" y="525" fill="#aaa2ad" font-family="Arial" font-size="17">Skills do Projeto</text>
+<text x="70" y="565" fill="#aaa2ad" font-family="Arial" font-size="17">Biblioteca de Skills</text>
+<text x="70" y="785" fill="#6f6772" font-family="Arial" font-size="12">‹ recolher painel</text>
+<rect x="280" y="145" width="900" height="680" rx="16" fill="#17151b"/>
+<text x="310" y="190" fill="#ff6aa5" font-family="Arial" font-size="14" font-weight="700">PIPELINE DO PROJETO</text>
+<g font-family="Arial" text-anchor="middle">
+<circle cx="400" cy="245" r="28" fill="#ff4f96"/><text x="400" y="252" fill="#fff" font-size="16" font-weight="700">1</text>
+<text x="400" y="295" fill="#fff" font-size="15" font-weight="700">PREPARAÇÃO</text>
+<line x1="430" y1="245" x2="610" y2="245" stroke="#ff4f96" stroke-width="5"/>
+<circle cx="640" cy="245" r="28" fill="#ff4f96"/><text x="640" y="252" fill="#fff" font-size="16" font-weight="700">2</text>
+<text x="640" y="295" fill="#fff" font-size="15" font-weight="700">MVP JOGÁVEL</text>
+<line x1="670" y1="245" x2="850" y2="245" stroke="#6b5363" stroke-width="5"/>
+<circle cx="880" cy="245" r="28" fill="#3a3038" stroke="#8d7080"/><text x="880" y="252" fill="#b9afb8" font-size="16" font-weight="700">3</text>
+<text x="880" y="295" fill="#aaa2ad" font-size="15" font-weight="700">PRODUÇÃO</text>
+<line x1="910" y1="245" x2="1080" y2="245" stroke="#6b5363" stroke-width="5"/>
+<circle cx="1110" cy="245" r="28" fill="#3a3038" stroke="#8d7080"/><text x="1110" y="252" fill="#b9afb8" font-size="16" font-weight="700">4</text>
+<text x="1110" y="295" fill="#aaa2ad" font-size="15" font-weight="700">FINALIZAÇÃO</text>
+</g>
+<text x="315" y="350" fill="#fff" font-family="Arial" font-size="29" font-weight="700">MVP Jogável</text>
+<text x="315" y="382" fill="#9e96a3" font-family="Arial" font-size="16">O núcleo funciona?</text>
+<rect x="315" y="420" width="255" height="155" rx="14" fill="#25212a"/>
+<text x="340" y="458" fill="#ff6aa5" font-family="Arial" font-size="15" font-weight="700">SISTEMAS</text>
+<text x="340" y="490" fill="#ddd5df" font-family="Arial" font-size="15">Gameplay</text>
+<text x="340" y="520" fill="#ddd5df" font-family="Arial" font-size="15">Save System</text>
+<text x="340" y="550" fill="#ddd5df" font-family="Arial" font-size="15">Inventory</text>
+<rect x="590" y="420" width="255" height="155" rx="14" fill="#25212a"/>
+<text x="615" y="458" fill="#ff6aa5" font-family="Arial" font-size="15" font-weight="700">TESTES</text>
+<text x="615" y="490" fill="#ddd5df" font-family="Arial" font-size="15">3 testes pendentes</text>
+<text x="615" y="520" fill="#ddd5df" font-family="Arial" font-size="15">1 bloqueio</text>
+<text x="615" y="550" fill="#ddd5df" font-family="Arial" font-size="15">Última execução: hoje</text>
+<rect x="865" y="420" width="285" height="155" rx="14" fill="#25212a"/>
+<text x="890" y="458" fill="#ff6aa5" font-family="Arial" font-size="15" font-weight="700">SKILLS RELACIONADAS</text>
+<text x="890" y="490" fill="#ddd5df" font-family="Arial" font-size="15">Gameplay Architecture</text>
+<text x="890" y="520" fill="#ddd5df" font-family="Arial" font-size="15">Save System</text>
+<text x="890" y="550" fill="#ddd5df" font-family="Arial" font-size="15">QA Fundamentals</text>
+<text x="315" y="640" fill="#746c77" font-family="Arial" font-size="13">O centro muda conforme a fase. A estrutura do Studio permanece.</text>
+<rect x="1205" y="145" width="325" height="680" rx="16" fill="#211b24" stroke="#6c2d50"/>
+<text x="1235" y="190" fill="#ff6aa5" font-family="Arial" font-size="22" font-weight="700">LIA</text>
+<text x="1235" y="218" fill="#968d99" font-family="Arial" font-size="13">COPILOTO · CONTEXTO ATIVO</text>
+<rect x="1235" y="245" width="265" height="55" rx="10" fill="#302631"/>
+<text x="1250" y="268" fill="#cfc6d0" font-family="Arial" font-size="13">Relatos → MVP → Gameplay</text>
+<text x="1250" y="287" fill="#cfc6d0" font-family="Arial" font-size="13">→ Inventário</text>
+<text x="1235" y="350" fill="#e9e2ea" font-family="Arial" font-size="15">“Encontrei um bloqueio no</text>
+<text x="1235" y="373" fill="#e9e2ea" font-family="Arial" font-size="15">teste do inventário.”</text>
+<rect x="1235" y="405" width="265" height="42" rx="9" fill="#342936"/><text x="1250" y="431" fill="#ff9bc1" font-family="Arial" font-size="13">Ver bloqueios</text>
+<rect x="1235" y="460" width="265" height="42" rx="9" fill="#342936"/><text x="1250" y="486" fill="#ff9bc1" font-family="Arial" font-size="13">Mostrar próximos passos</text>
+<rect x="1235" y="715" width="265" height="62" rx="12" fill="#17151b" stroke="#4a3945"/><text x="1250" y="752" fill="#77707a" font-family="Arial" font-size="13">Mensagem…</text>
+<text x="60" y="855" fill="#6f6772" font-family="Arial" font-size="12">CONCEPT — side panels are collapsible; pipeline is not duplicated in navigation</text>
+</svg>

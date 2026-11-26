@@ -1,0 +1,139 @@
+# Decisões pendentes antes das integrações — Lia Studio
+
+> Estado: **perguntas em aberto** para Agent Runtime geral, não autorização para
+> iniciar agentes, engines, Computer Use ou operações externas. Revisão: 2026-10-17.
+>
+> A Alpha offline/simulada e a evolução visual UI.1 foram aceitas pelo Dev.
+> O shell desktop Windows é reversível (Decisão 22), ainda sem `.exe` validado.
+> Além do diagnóstico somente leitura (20), decisões 27–37 implementam chat/
+> rascunho Ollama opt-in com permissões aplicadas, Jobs canceláveis e edição
+> revisada, **sem** Agent Runtime geral ou validação do jogo.
+
+## Contratos já estabelecidos
+
+- `AI-AGENTS-ARCHITECTURE.md`: Runtime, Role/Profile, Skill, MCP, Tool, Computer Use, Provider/Model, Session e orquestração são responsabilidades distintas. Multi-Agent é suportado pela arquitetura, mas **opcional na execução**.
+- `AI-MULTI-AGENT-CONTRACT.md`: Multi-Agent fica desligado por padrão no Alpha; quando habilitado, usa Task → Subtask → Handoff → Session → Worker Result, com budgets, isolamento e approval gates.
+- `AI-EXECUTION-ORCHESTRATION.md` e `EVIDENCE-AND-EXECUTION-HISTORY.md`: planejamento, autorização, processo, validação e evidência não são sinônimos; simulação não prova conclusão.
+- `AI-CONTEXT-AND-PERMISSIONS.md`: contexto e permissões efetivas mínimos; não repassar todo o ambiente ou credenciais.
+- `AI-PROVIDERS-FREE-FIRST.md`: começar sem pagamento, manter opções pagas voluntárias; nenhum fallback silencioso para custo potencial.
+- `ENGINE-ADAPTER-ARCHITECTURE.md`: adapter de engine ≠ MCP; Unreal é prioridade de avaliação, não dependência obrigatória.
+- `LIA-PROJECT-INTEGRATION.md`: bridge opcional; Studio funciona sem Lia Project.
+- `AI-INTEGRATION-CATALOG.md`: candidatos para pesquisa, não bibliotecas aprovadas nem dependências instaladas.
+
+## D1 — Fonte e parametrização da Skill da Etapa 0
+
+**Situação atual:** `templates_loader` só expõe Skill e templates quando o Hub foi materializado com lock/recibo válidos; `bootstrap.py` monta os documentos por conta própria mesmo sem Skill. A reutilização no gerador permanece parcial (ver Decisão 7 em `arquitetura-decisoes.md`).
+
+**Antes de substituir o gerador:**
+1. O template da Skill é a fonte canônica do Markdown final, apenas uma referência de estrutura, ou uma entrada versionada para um renderer próprio?
+2. Como preencher campos e preservar rótulos `confirmado`/`proposto`/`suposição`/`em aberto`, sem transformar lacunas em decisões do Dev?
+3. O que acontece com documentos já editados manualmente e com templates alterados após a criação do projeto? Como pré-visualizar e autorizar substituições?
+4. Quem versiona/testa mudanças de template e qual a regra de compatibilidade dos documentos gerados?
+
+**Desbloqueia:** parametrizar a Skill no wizard, sem duplicar fluxos nem tornar uma Skill um Runtime. **Até decidir:** a geração atual permanece offline e documental; a UI pode consultar a Skill, mas não deve alegar que seus templates dirigem o gerador.
+
+## D2 — Contrato implementável da bridge com Lia Project
+
+**Situação:** a fronteira conceitual opcional existe, mas não há API, consentimento revogável nem implementação.
+
+**Antes de construir a bridge:**
+1. Qual protocolo/versionamento e quais capacidades mínimas entram na interface pública, sem importar módulos internos do Lia Project?
+2. Quais categorias de contexto/memória podem atravessar a fronteira, para qual tarefa, por quanto tempo e com qual autorização explícita e revogação?
+3. Como indicar ao Dev se dados permitidos serão encaminhados a runtime local ou provider externo, evitando encaminhar memória de convivência por padrão?
+4. Como falhas, desinstalação e mudança de versão mantêm o Studio utilizável isoladamente? Onde ficam logs sem conteúdo sensível?
+
+**Desbloqueia:** bridge de contexto/persona opcional. **Até decidir:** nenhuma dependência, import ou compartilhamento automático com Lia Project.
+
+## D3 — Permissões e isolamento de Computer Use
+
+**Situação:** o contrato separa Computer Use de Tool/MCP/Runtime comum. Agent S e outros itens do catálogo são candidatos de pesquisa, **não** backends escolhidos.
+
+**Antes de executar automação de GUI:**
+1. Qual backend e licença/manutenção/compatibilidade (especialmente Windows) foram verificados? O backend é opcional e substituível?
+2. Qual fronteira de isolamento para desktop, editor e projeto: janela/alvo autorizado, diretórios, rede, credenciais, clipboard e bloqueio de ações fora de escopo?
+3. Quais operações exigem aprovação por ação ou por sessão (shell, exclusão, instalação, push, publicação, gasto) e como parar/cancelar imediatamente?
+4. Como capturar screenshots/logs com revisão de dados sensíveis, relacionar evidência à Session e validar o resultado sem presumir sucesso do processo?
+5. Como lidar com prompt injection de interface/arquivos e testar falha/cancelamento antes de ativar o backend?
+
+**Desbloqueia:** protótipo supervisionado de Computer Use, QA visual e operação de editor sem API. **Até decidir:** não instalar Agent S, não conectar MCP de automação nem conceder controle de desktop à Alpha.
+
+## D4 — Multi-Agent/Subagent
+
+**Situação:** **resolvida como decisão de produto e contrato** em `AI-MULTI-AGENT-CONTRACT.md`.
+
+Decisões tomadas:
+
+- Multi-Agent é suportado pela arquitetura, mas é **opcional** na execução.
+- Fica **desligado por padrão no Alpha**.
+- Pode ser ativado por projeto/preferência do usuário.
+- Tarefas simples devem preferir um Agent para evitar overhead de tokens, processos, memória e coordenação.
+- Quando habilitado, o Orchestrator pode usar Lead → Worker com Task → Subtask → Handoff → Session → Worker Result.
+- Permissões não são herdadas automaticamente.
+- Paralelismo só ocorre quando dependências e conflitos permitirem.
+- Falhas parciais preservam histórico/evidências e podem ser replanejadas dentro dos budgets.
+- A árvore possui limites de profundidade, filhos, concorrência, duração, tokens/custo e retries.
+- Ações de risco seguem approval gates.
+
+**Desbloqueia:** implementação do Orchestrator e dos contratos de domínio. **Não é necessário criar uma árvore falsa de Sessions na simulação Alpha.**
+
+## D5 — Integração opcional com Lia Forge (fronteira decidida; bridge pendente)
+
+**Fronteira decidida pelo Dev:** Studio gere o **jogo** (GDD/Tasks, agentes de
+desenvolvimento, engine, QA, gates, build); Forge é uma **fábrica geral de
+assets** para jogo, Lia Desktop e outros consumidores (produção, transformação,
+validação técnica e proveniência). Não criar módulo de geração por destino nem
+copiar catálogo de providers/workflows do Forge para o Studio. O Forge não pode
+concluir Task de jogo, validar gameplay, engine ou release; o Studio não produz
+mídia no lugar dele. Cada app conserva estados, permissões e aprovação humana.
+
+**Situação da implementação:** `LIA-FORGE-NA-PIPELINE.md` compara o snapshot
+histórico `f274b015` com a arquitetura consolidada do Forge em `79d4b58`.
+Esta registra `Lia3DCreate`/`Lia3DSprite` como módulos internos, mas **não
+implementados** como fluxo geral. Seus Domain Contracts são
+`DRAFT_FOR_HUMAN_REVIEW — NOT AUTHORIZED FOR IMPLEMENTATION`; não há protocolo
+entre produtos. A área Assets do Studio oferece apenas **prévia local/manual**
+de brief a partir de uma Task; não há importação automática nem execução cruzada.
+
+**Antes de criar integração:**
+1. O primeiro corte (prévia local/manual + catálogo de arquivo existente) é
+   suficiente por enquanto? Se houver necessidade real de exportação persistida
+   ou bridge versionada, quem aprova/inicia cada operação e como funciona sem Forge?
+2. Qual projeto/workspace foi escolhido e como resolver caminhos, duplicatas,
+   limites de tamanho e alterações de bytes sem escrever diretamente o
+   `assets.json`/índice do outro produto ou seguir symlinks externos?
+3. Após revisão humana dos Domain Contracts **do Forge**, qual envelope tipado
+   **entre produtos** distingue task/etapa/arquivo/checks técnicos do Forge dos
+   estados de asset, QA/gameplay, evidência e gates do Studio? Que versão/schema
+   cada lado aceita e como falhar em versão desconhecida ou output parcial?
+   O draft do Forge não é automaticamente a API/bridge do Studio.
+4. Quais licenças, origem, direitos de redistribuição, privacidade, custos,
+   ferramentas, instalação e destino de prompt/referência foram revisados pelo
+   Dev? Como ficam cancelamento, indisponibilidade e nenhum fallback pago?
+5. Qual teste de ponta a ponta com asset real, revisão visual e importação na
+   engine, na plataforma alvo, prova cada afirmação sem confundir hash/PNG/JSON
+   com resultado do jogo?
+
+**Desbloqueia:** a prévia do primeiro handoff **opcional** já existe, sem envio;
+só após contrato/aceite, integração incremental com experiência guiada
+Task → Forge → arquivos → revisão.
+Forge completo não implica bridge pronta no Studio. **Até decidir:** nenhum launcher/MCP/adapter automático
+entre produtos, nenhum avanço de Task, QA ou gate por status do Forge.
+
+## Dependências adicionais para execução real
+
+| Etapa | Decisão ainda necessária | Estado seguro atual |
+|---|---|---|
+| Runtime/Profile/Provider/Model | Resolução de capacidades gerais, credenciais de escopo mínimo, política de custo e fallback autorizado | Chat/rascunho Ollama opt-in e parser locais são operações restritas isoladas; **nenhum Agent Runtime de Task** conectado, `simulator` não recebe segredo, Tool ou permissão efetiva. |
+| Engine adapter (prioridade Unreal) | Contrato executável `detect/inspect/open/build/test/collect_logs`, isolamento de comandos e prova de versão instalada; separar do Unreal MCP | Perfil `unreal` é apenas metadado `not_verified`; consulta opt-in da versão Godot não abre ou constrói projeto. |
+| Histórico e evidência de execução real | Persistência transacional entre processo/arquivo/índice, isolamento, vínculo a artefato/teste real e retenção | `sessions.json` continua exclusivamente simulado; Jobs/parser/edições têm registros **separados** com falhas, cancelamento e incerteza após reinício; nenhum atesta gameplay ou gate. |
+
+## Regra para destravar
+
+Registrar cada escolha em `docs/arquitetura-decisoes.md` **antes** de criar integração difícil de reverter. Incluir alternativas consideradas, responsável pela aprovação, ameaça/custo, consequência para dados existentes, critério de aceite e teste de falha. Se não houver resposta, manter a **execução real desligada**; é permitido evoluir descoberta local somente leitura e outras funções reversíveis sem credenciais/execução.
+
+**Não realizado neste sandbox:** 11 casos de symlink no Windows, `.exe` Windows,
+Ollama/modelo instalado, Godot/Unreal/Unity instalados, execução de Agent/MCP/
+engine/Computer Use, build/gameplay real e bridge Lia Project. O Copilot concluiu
+o reteste de navegador Windows para a Alpha e o Dev confirmou o aceite; isso
+não verifica as novas integrações no Windows. Testes locais usam provedores e
+binários falsos; o teste de uso atual pelo Dev fica para a entrega final.

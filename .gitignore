@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Ambiente local da aplicação (projetos do Dev ficam fora do repo por padrão)
+LiaStudioProjects/
+# Declarações privadas do Dev e cópias de recuperação, mesmo com raiz de projetos customizada dentro do repo.
+**/combo_declarations.json
+**/combo_declarations.json.bak
+**/combo_declarations.json.corrupt-*
+# Dados efêmeros do preview na Arena (nunca versionar projetos de teste)
+.arena/
+
+# Junction local opcional do Claude Code -> .agents/skills; nunca versionar espelho/configuração local.
+.claude/skills/
+.claude/worktrees/
+.claude/settings.local.json
+
+# Build opcional da shell desktop (não versionar binários nem venv)
+.venv/
+build/
+dist/
+*.spec
+
+# Somente endereço; chave no cofre do usuário.
+**/gateway_connection.json
+**/gateway_connection.json.bak
+**/gateway_connection.json.corrupt-*
+
+# Configuração local, logs da engine e cópias de recuperação.
+**/godot_config.json
+**/godot_config.json.*
+**/godot_runs.json
+**/godot_runs.json.*
+**/editor_config.json
+**/editor_config.json.*
+**/editor_runs.json
+**/editor_runs.json.*
+
+# Skills gerenciadas pelo Hub: não versionar materializações locais ou payloads.
+# lia-execution-brief ainda não consta no lock; não instalá-la implicitamente.
+/.agents/skills/.hub-install.json
+/.agents/skills/.hub-install-*.tmp
+/.agents/skills/lia-*/
+/.agents/skills/lia-execution-brief/
+/.agents/skills/lia-game-audio-plan/
+/.agents/skills/lia-game-balance-review/
+/.agents/skills/lia-game-bug-triage/
+/.agents/skills/lia-game-design-review/
+/.agents/skills/lia-game-level-design/
+/.agents/skills/lia-game-playtest-report/
+/.agents/skills/lia-game-project-bootstrap/
+/.agents/skills/lia-game-qa-plan/
+/.agents/skills/lia-game-story-readiness/
+/.agents/skills/lia-game-test-evidence-review/
+/.agents/skills/lia-game-ui-plan/
+/.agents/skills/lia-game-vfx-plan/
+/.agents/skills/lia-game-visual-review/
+/.agents/skills/lia-module-planning/
+/.agents/skills/lia-project-resume/
+/.agents/skills/lia-task-handoff/

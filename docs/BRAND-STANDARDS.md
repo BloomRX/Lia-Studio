@@ -81,7 +81,7 @@ Relatórios precisam registrar data, ambiente, versão e comando/procedimento. N
 ## 8. Agentes, instruções e skills
 
 - `AGENTS.md` na raiz é a orientação transversal do repositório; arquivos de instruções em subpastas refinam o escopo local. Mantenha-o conciso e aponte para documentos detalhados.
-- `.agents/skills/` é a localização versionada das skills do repositório, quando usadas. Não suponha que todo host descubra ou carregue skills automaticamente; instrua o agente a ler a skill pertinente quando a plataforma não oferecer descoberta nativa.
+- `.agents/skills/` é o destino local ignorado das materializações verificadas do Hub, quando usadas; não é fonte versionada pelo Studio. Não suponha que todo host descubra ou carregue skills automaticamente; instrua o agente a ler a skill pertinente quando a plataforma não oferecer descoberta nativa.
 - `.claude/rules/` e agentes/configurações compartilhados só devem ser versionados deliberadamente. Ignore apenas arquivos locais conhecidos (por exemplo `.claude/settings.local.json`, worktrees e espelhos/junctions de skills); **não ignore a pasta `.claude/` inteira** se ela contiver regras compartilhadas.
 - `CLAUDE.md` deve ser um adaptador específico do Claude quando necessário, não uma cópia duplicada que se desvie de `AGENTS.md`.
 - Skills e subagentes são procedimentos/ajudantes; não alteram as permissões do processo principal nem autorizam operações pagas, uploads ou ações destrutivas.

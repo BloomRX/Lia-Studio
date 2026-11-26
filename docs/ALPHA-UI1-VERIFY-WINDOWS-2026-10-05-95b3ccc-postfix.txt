@@ -1,0 +1,133 @@
+
+== Núcleo e jornada HTTP offline ==
+test_bootstrap_corrupt_decisions_json_does_not_write_documents (__main__.TestBootstrap.test_bootstrap_corrupt_decisions_json_does_not_write_documents) ... ok
+test_bootstrap_is_one_time_and_preserves_manual_documents_and_decisions (__main__.TestBootstrap.test_bootstrap_is_one_time_and_preserves_manual_documents_and_decisions) ... ok
+test_bootstrap_preflight_prevents_partial_rewrite_on_markdown_link (__main__.TestBootstrap.test_bootstrap_preflight_prevents_partial_rewrite_on_markdown_link) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_bootstrap_refuses_existing_source_archived_and_other_stage (__main__.TestBootstrap.test_bootstrap_refuses_existing_source_archived_and_other_stage) ... ok
+test_full_idea_labels (__main__.TestBootstrap.test_full_idea_labels) ... ok
+test_incomplete_idea_no_invented_confirmed (__main__.TestBootstrap.test_incomplete_idea_no_invented_confirmed) ... ok
+test_invalid_wizard_payload_never_writes_partial_documents (__main__.TestBootstrap.test_invalid_wizard_payload_never_writes_partial_documents) ... ok
+test_confirmed_vs_suposicao_conflict (__main__.TestConflicts.test_confirmed_vs_suposicao_conflict) ... ok
+test_no_false_conflict (__main__.TestConflicts.test_no_false_conflict) ... ok
+test_add_edit_and_revision_keep_markdown_and_conflicts_in_sync (__main__.TestDecisions.test_add_edit_and_revision_keep_markdown_and_conflicts_in_sync) ... ok
+test_concurrent_appends_preserve_decisions_in_same_process (__main__.TestDecisions.test_concurrent_appends_preserve_decisions_in_same_process) ... ok
+test_health_reports_semantically_invalid_decisions_and_recovery_validates_backup (__main__.TestDecisions.test_health_reports_semantically_invalid_decisions_and_recovery_validates_backup) ... ok
+test_invalid_inputs_and_symlink_preflight_leave_json_untouched (__main__.TestDecisions.test_invalid_inputs_and_symlink_preflight_leave_json_untouched) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_manual_markdown_is_not_overwritten_without_explicit_confirmation (__main__.TestDecisions.test_manual_markdown_is_not_overwritten_without_explicit_confirmation) ... ok
+test_explicit_location_overrides_default (__main__.TestDefaultProjectsDir.test_explicit_location_overrides_default) ... ok
+test_new_install_uses_studio_directory (__main__.TestDefaultProjectsDir.test_new_install_uses_studio_directory) ... ok
+test_blocked_simulation_and_unlock_only_with_verified_external_fixture (__main__.TestDependencyGraph.test_blocked_simulation_and_unlock_only_with_verified_external_fixture) ... ok
+test_invalid_persisted_graph_is_visible_in_gate_and_cannot_be_executed (__main__.TestDependencyGraph.test_invalid_persisted_graph_is_visible_in_gate_and_cannot_be_executed) ... ok
+test_qa_stable_reference_and_legacy_text (__main__.TestDependencyGraph.test_qa_stable_reference_and_legacy_text) ... ok
+test_unknown_duplicate_self_cycle_and_id_collisions (__main__.TestDependencyGraph.test_unknown_duplicate_self_cycle_and_id_collisions) ... ok
+test_file_hash_integrity_is_not_test_approval_and_handoff_becomes_stale (__main__.TestEvidence.test_file_hash_integrity_is_not_test_approval_and_handoff_becomes_stale) ... ok
+test_rejects_path_escape_symlinks_cross_target_and_invalid_qa (__main__.TestEvidence.test_rejects_path_escape_symlinks_cross_target_and_invalid_qa) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_semantic_corruption_cannot_claim_verification_and_backup_is_checked (__main__.TestEvidence.test_semantic_corruption_cannot_claim_verification_and_backup_is_checked) ... ok
+test_semantically_invalid_first_backup_cannot_be_restored (__main__.TestEvidence.test_semantically_invalid_first_backup_cannot_be_restored) ... ok
+test_handoff_rejects_unknown_cross_project_archived_and_symlink (__main__.TestHandoff.test_handoff_rejects_unknown_cross_project_archived_and_symlink) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_preview_confirm_reload_and_staleness_without_fake_evidence (__main__.TestHandoff.test_preview_confirm_reload_and_staleness_without_fake_evidence) ... ok
+test_session_history_in_handoff_is_metadata_only_and_invalidates_snapshot (__main__.TestHandoff.test_session_history_in_handoff_is_metadata_only_and_invalidates_snapshot) ... ok
+test_alpha_offline_journey_persists_without_promoting_simulation (__main__.TestHttpApi.test_alpha_offline_journey_persists_without_promoting_simulation) ... C:\Users\lucas\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 400: 'Bad Request'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+ok
+test_bad_wizard_planning_and_markdown_link_return_400_without_writes (__main__.TestHttpApi.test_bad_wizard_planning_and_markdown_link_return_400_without_writes) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_bootstrap_api_rejects_second_generation_without_losing_manual_edits (__main__.TestHttpApi.test_bootstrap_api_rejects_second_generation_without_losing_manual_edits) ... ok
+test_brand_and_same_origin_api_without_wildcard_cors (__main__.TestHttpApi.test_brand_and_same_origin_api_without_wildcard_cors) ... ok
+test_corrupt_index_is_visible_and_recoverable_via_api (__main__.TestHttpApi.test_corrupt_index_is_visible_and_recoverable_via_api) ... ok
+test_cross_site_mutation_is_denied (__main__.TestHttpApi.test_cross_site_mutation_is_denied) ... C:\Users\lucas\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 403: 'Forbidden'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+ok
+test_decisions_api_validates_and_guards_stale_edits (__main__.TestHttpApi.test_decisions_api_validates_and_guards_stale_edits) ... ok
+test_dependency_blocker_exposed_and_approval_rejected_over_http (__main__.TestHttpApi.test_dependency_blocker_exposed_and_approval_rejected_over_http) ... ok
+test_evidence_api_returns_metadata_without_file_body_or_gate_promotion (__main__.TestHttpApi.test_evidence_api_returns_metadata_without_file_body_or_gate_promotion) ... ok
+test_export_api_writes_snapshot_without_touching_source (__main__.TestHttpApi.test_export_api_writes_snapshot_without_touching_source) ... ok
+test_handoff_api_preview_requires_current_digest_and_confirmation (__main__.TestHttpApi.test_handoff_api_preview_requires_current_digest_and_confirmation) ... ok
+test_invalid_persisted_decision_is_a_client_error_not_500 (__main__.TestHttpApi.test_invalid_persisted_decision_is_a_client_error_not_500) ... ok
+test_malformed_json_and_unsupported_project_method_are_client_errors (__main__.TestHttpApi.test_malformed_json_and_unsupported_project_method_are_client_errors) ... ok
+test_provider_settings_api_rejects_invalid_preferences_without_network (__main__.TestHttpApi.test_provider_settings_api_rejects_invalid_preferences_without_network) ... ok
+test_rejects_foreign_host_on_loopback (__main__.TestHttpApi.test_rejects_foreign_host_on_loopback) ... ok
+test_simulated_session_api_is_read_only_and_not_a_validated_result (__main__.TestHttpApi.test_simulated_session_api_is_read_only_and_not_a_validated_result) ... ok
+test_skills_api_and_path_validation (__main__.TestHttpApi.test_skills_api_and_path_validation) ... ok
+test_stage_api_rejects_bypass_and_records_explicit_advance (__main__.TestHttpApi.test_stage_api_rejects_bypass_and_records_explicit_advance) ... ok
+test_storage_recovery_api_requires_confirmation (__main__.TestHttpApi.test_storage_recovery_api_requires_confirmation) ... ok
+test_unknown_module_returns_client_error_not_server_error (__main__.TestHttpApi.test_unknown_module_returns_client_error_not_server_error) ... ok
+test_unreal_profile_is_selectable_but_not_an_engine_adapter (__main__.TestHttpApi.test_unreal_profile_is_selectable_but_not_an_engine_adapter) ... ok
+test_http_endpoint_requires_explicit_confirmation_and_same_origin (__main__.TestOllamaDiscovery.test_http_endpoint_requires_explicit_confirmation_and_same_origin) ... C:\Users\lucas\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 404: 'Not Found'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+ok
+test_opt_in_bounded_read_only_and_no_persistence (__main__.TestOllamaDiscovery.test_opt_in_bounded_read_only_and_no_persistence) ... ok
+test_unavailable_invalid_oversize_and_redirect_do_not_expose_details (__main__.TestOllamaDiscovery.test_unavailable_invalid_oversize_and_redirect_do_not_expose_details) ... C:\Users\lucas\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 302: 'Found'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+ok
+test_corrupt_index_never_becomes_empty_project_list (__main__.TestPersistence.test_corrupt_index_never_becomes_empty_project_list) ... ok
+test_corrupt_project_json_blocks_writes_and_can_restore_with_confirmation (__main__.TestPersistence.test_corrupt_project_json_blocks_writes_and_can_restore_with_confirmation) ... ok
+test_evidence_v1_read_backup_and_explicit_recovery (__main__.TestPersistence.test_evidence_v1_read_backup_and_explicit_recovery) ... ok
+test_future_index_version_is_not_overwritten (__main__.TestPersistence.test_future_index_version_is_not_overwritten) ... ok
+test_future_schema_is_not_silently_downgraded (__main__.TestPersistence.test_future_schema_is_not_silently_downgraded) ... ok
+test_json_symlink_is_not_followed_or_recovered (__main__.TestPersistence.test_json_symlink_is_not_followed_or_recovered) ... skipped 'symlinks indisponíveis neste sistema'
+test_legacy_global_config_is_upgraded_only_when_written (__main__.TestPersistence.test_legacy_global_config_is_upgraded_only_when_written) ... ok
+test_missing_index_with_project_folder_is_not_treated_as_new_install (__main__.TestPersistence.test_missing_index_with_project_folder_is_not_treated_as_new_install) ... ok
+test_missing_primary_with_backup_requires_recovery (__main__.TestPersistence.test_missing_primary_with_backup_requires_recovery) ... ok
+test_single_source_of_truth_and_versioned_files (__main__.TestPersistence.test_single_source_of_truth_and_versioned_files) ... ok
+test_v1_read_without_rewrite_and_upgrade_on_write (__main__.TestPersistence.test_v1_read_without_rewrite_and_upgrade_on_write) ... ok
+test_bad_planning_fields_rejected_before_persistence (__main__.TestPlanning.test_bad_planning_fields_rejected_before_persistence) ... ok
+test_module_task_resume (__main__.TestPlanning.test_module_task_resume) ... ok
+test_no_automatic_qa_or_verified_result_from_simulation (__main__.TestPlanning.test_no_automatic_qa_or_verified_result_from_simulation) ... ok
+test_proposal_neither_simulates_nor_writes_result (__main__.TestPlanning.test_proposal_neither_simulates_nor_writes_result) ... ok
+test_simulation_approval_requires_current_preview_of_permissions_and_plan (__main__.TestPlanning.test_simulation_approval_requires_current_preview_of_permissions_and_plan) ... ok
+test_engines_generic_verified (__main__.TestProvidersEngines.test_engines_generic_verified) ... ok
+test_provider_preferences_corruption_is_reported_and_backup_checked (__main__.TestProvidersEngines.test_provider_preferences_corruption_is_reported_and_backup_checked) ... ok
+test_provider_preferences_validate_without_connecting_or_storing_secrets (__main__.TestProvidersEngines.test_provider_preferences_validate_without_connecting_or_storing_secrets) ... ok
+test_providers_simulated_not_connected (__main__.TestProvidersEngines.test_providers_simulated_not_connected) ... ok
+test_qa_record (__main__.TestQaRelease.test_qa_record) ... ok
+test_qa_requires_evidence_and_valid_result_before_approval (__main__.TestQaRelease.test_qa_requires_evidence_and_valid_result_before_approval) ... ok
+test_release_claims_require_build_evidence_not_available_in_alpha (__main__.TestQaRelease.test_release_claims_require_build_evidence_not_available_in_alpha) ... ok
+test_release_defaults (__main__.TestQaRelease.test_release_defaults) ... ok
+test_history_from_other_project_is_diagnosed_and_cannot_be_recovered (__main__.TestSessions.test_history_from_other_project_is_diagnosed_and_cannot_be_recovered) ... ok
+test_invalid_history_blocks_simulation_before_task_mutation (__main__.TestSessions.test_invalid_history_blocks_simulation_before_task_mutation) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_preview_creates_no_session_and_simulation_preserves_evidence_first (__main__.TestSessions.test_preview_creates_no_session_and_simulation_preserves_evidence_first) ... ok
+test_session_record_without_new_optional_backend_field_is_readable (__main__.TestSessions.test_session_record_without_new_optional_backend_field_is_readable) ... ok
+test_session_recovery_requires_valid_backup_and_confirmation (__main__.TestSessions.test_session_recovery_requires_valid_backup_and_confirmation) ... ok
+test_session_semantic_corruption_has_no_automatic_recovery (__main__.TestSessions.test_session_semantic_corruption_has_no_automatic_recovery) ... ok
+test_skill_templates_present (__main__.TestSkillReuse.test_skill_templates_present) ... ok
+test_conflicts_and_archive_block_advancement (__main__.TestStages.test_conflicts_and_archive_block_advancement) ... ok
+test_gate_rechecks_documents_on_advance (__main__.TestStages.test_gate_rechecks_documents_on_advance) ... ok
+test_legacy_qa_claim_without_criteria_and_tool_does_not_satisfy_gate (__main__.TestStages.test_legacy_qa_claim_without_criteria_and_tool_does_not_satisfy_gate) ... ok
+test_preparation_requires_documents_and_explicit_approval (__main__.TestStages.test_preparation_requires_documents_and_explicit_approval) ... ok
+test_simulation_or_unverified_qa_cannot_unlock_mvp (__main__.TestStages.test_simulation_or_unverified_qa_cannot_unlock_mvp) ... ok
+test_archive_reopen_delete_requires_confirm (__main__.TestStorage.test_archive_reopen_delete_requires_confirm) ... ok
+test_concurrent_journal_appends_preserve_all_entries_in_one_process (__main__.TestStorage.test_concurrent_journal_appends_preserve_all_entries_in_one_process) ... ok
+test_create_index_failure_cleans_only_unindexed_empty_folder (__main__.TestStorage.test_create_index_failure_cleans_only_unindexed_empty_folder) ... ok
+test_create_index_failure_preserves_folder_if_index_becomes_unreadable (__main__.TestStorage.test_create_index_failure_preserves_folder_if_index_becomes_unreadable) ... ok
+test_create_index_failure_preserves_nonempty_unindexed_folder (__main__.TestStorage.test_create_index_failure_preserves_nonempty_unindexed_folder) ... ok
+test_create_list_get (__main__.TestStorage.test_create_list_get) ... ok
+test_delete_rolls_back_folder_when_index_write_fails (__main__.TestStorage.test_delete_rolls_back_folder_when_index_write_fails) ... ok
+test_docs_and_structured (__main__.TestStorage.test_docs_and_structured) ... ok
+test_export (__main__.TestStorage.test_export) ... ok
+test_export_external_project_keeps_destination_inside_export_root (__main__.TestStorage.test_export_external_project_keeps_destination_inside_export_root) ... ok
+test_external_folder_via_symlinked_parent_is_rejected (__main__.TestStorage.test_external_folder_via_symlinked_parent_is_rejected) ... skipped 'links simbólicos não disponíveis neste ambiente'
+test_global_files_are_whitelisted (__main__.TestStorage.test_global_files_are_whitelisted) ... ok
+test_index_cannot_redirect_to_another_project_folder (__main__.TestStorage.test_index_cannot_redirect_to_another_project_folder) ... ok
+test_index_folder_traversal_cannot_read_or_delete_outside_project (__main__.TestStorage.test_index_folder_traversal_cannot_read_or_delete_outside_project) ... ok
+test_journal_append_rejects_symlink_without_leaking_target (__main__.TestStorage.test_journal_append_rejects_symlink_without_leaking_target) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_markdown_input_types_fail_without_writes (__main__.TestStorage.test_markdown_input_types_fail_without_writes) ... ok
+test_markdown_links_are_never_read_or_overwritten (__main__.TestStorage.test_markdown_links_are_never_read_or_overwritten) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_path_traversal_blocked (__main__.TestStorage.test_path_traversal_blocked) ... ok
+test_project_folder_symlink_does_not_expose_outside (__main__.TestStorage.test_project_folder_symlink_does_not_expose_outside) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_bad_inputs_links_and_external_changes_fail_closed (__main__.TestUserSkills.test_bad_inputs_links_and_external_changes_fail_closed) ... skipped 'symlink indisponível sem privilégio no Windows'
+test_create_edit_reopen_and_isolate_from_projects (__main__.TestUserSkills.test_create_edit_reopen_and_isolate_from_projects) ... ok
+test_http_create_update_requires_revision_and_persists (__main__.TestUserSkills.test_http_create_update_requires_revision_and_persists) ... ok
+
+----------------------------------------------------------------------
+Ran 109 tests in 23.548s
+
+OK (skipped=12)
+
+== Compilação sintática ==
+
+== Regressão da UI ==
+UI regression: OK
+
+== Sintaxe JS ==
+
+OK: verificações disponíveis passaram. Isto NÃO é aceite de uso nem validação Windows/desktop.

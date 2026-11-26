@@ -1,0 +1,274 @@
+"""Rascunho de código real, revisado antes da escrita; sem execução do código gerado."""
+import json
+import sys
+import tempfile
+import threading
+import unittest
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.lia import code_drafts, planning, runtime_policy, skills, storage, validation_sessions
+
+
+class TestCodeDrafts(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="lia_draft_")
+        self.store = storage.Storage(Path(self.tmp.name))
+        self.pid = self.store.create_project("Jogo descartável")["id"]
+        self.mod = planning.create_module(self.store, self.pid, {"name": "Gameplay"})
+        self.task = planning.create_task(self.store, self.pid, self.mod["id"], {
+            "name": "Movimento", "objective": "Retornar valor ajustado no loop.",
+            "files": ["game/loop.py"], "verify": "rodar o jogo"})
+        for cap in ("project.python.read", "project.python.write", "model.local.infer"):
+            revision = runtime_policy.snapshot(self.store, self.pid)["revision"]
+            runtime_policy.change_task(self.store, self.pid, self.mod["id"], self.task["id"],
+                                       cap, "allow", revision, True)
+        self.path = self.store.project_path(self.pid) / "game" / "loop.py"
+        self.path.parent.mkdir()
+        self.original = "def loop():\n    return 1\n"
+        self.path.write_text(self.original, encoding="utf-8")
+        self.generated = "def loop():\n    return 2\n"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def preview(self, **kwargs):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}) as chat:
+            result = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                         kwargs.get("path", "game/loop.py"), "mock-model",
+                                         kwargs.get("confirm_send", True), kwargs.get("skill_id"))
+            self.assertEqual(chat.call_count, 1)
+            self.assertIn("Arquivo atual:", chat.call_args.args[0])
+            return result
+
+    def test_selected_skill_is_untrusted_context_and_revision_checked(self):
+        selected = skills.create_skill(self.store, "# Dica\n\nMantenha o loop pequeno.\n")
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}) as chat:
+            preview = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                          "game/loop.py", "mock-model", True, selected["id"])
+            self.assertIn("SKILL NÃO CONFIÁVEL", chat.call_args.args[0])
+            self.assertIn("Mantenha o loop pequeno", chat.call_args.args[0])
+            self.assertEqual(chat.call_args.kwargs["max_prompt"], 6000)
+        skills.save_skill(self.store, selected["id"], "# Dica\n\nRevisada.\n", selected["revision"])
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, preview["proposal_id"], True)
+        self.assertEqual(self.path.read_text(), self.original)
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}):
+            new = code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                      "game/loop.py", "mock-model", True, selected["id"])
+        record = code_drafts.apply(self.store, self.pid, new["proposal_id"], True)
+        self.assertEqual(record["skill_id"], selected["id"])
+        self.assertEqual(record["skill_revision"], skills.get_skill(selected["id"], self.store)["revision"])
+        # Leitura de registros antigos sem os dois campos permanece válida.
+        legacy = {k:v for k,v in record.items() if k not in ("skill_id", "skill_revision", "warning")}
+        self.store.write_structured(self.pid, code_drafts.NAME, [legacy])
+        self.assertEqual(code_drafts.list_changes(self.store, self.pid)[0]["id"], record["id"])
+
+    def test_skill_changed_during_inference_discards_preview(self):
+        selected = skills.create_skill(self.store, "# Dica\n\nOriginal.\n")
+        def mutate_then_answer(*args, **kwargs):
+            skills.save_skill(self.store, selected["id"], "# Dica\n\nMudou.\n", selected["revision"])
+            return {"answer": self.generated}
+        with patch.object(code_drafts.local_model_chat, "chat", side_effect=mutate_then_answer):
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "mock-model", True, selected["id"])
+        self.assertEqual(self.path.read_text(), self.original)
+        self.assertFalse((self.store.project_path(self.pid) / code_drafts.NAME).exists())
+
+    def test_invalid_or_oversized_skill_never_reaches_model(self):
+        selected = skills.create_skill(self.store, "# Dica\n\n" + "A"*2500 + "\n")
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "mock-model", True, selected["id"])
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "mock-model", True, "../SKILL.md")
+            chat.assert_not_called()
+
+    def test_create_initial_file_without_model_then_edit_with_diff(self):
+        self.path.unlink()
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", False)
+        self.assertFalse(self.path.exists())
+        created = code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertEqual(self.path.read_bytes(), code_drafts.STUB)
+        self.assertEqual((created["runtime_id"], created["state"], created["backup_path"]),
+                         ("user-stub", "file_created", ""))
+        self.assertEqual(code_drafts.list_changes(self.store, self.pid)[0]["source_integrity"], "intact")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertEqual(self.path.read_bytes(), code_drafts.STUB)
+        proposal = self.preview()
+        edited = code_drafts.apply(self.store, self.pid, proposal["proposal_id"], True)
+        self.assertEqual(edited["runtime_id"], "local-model-draft")
+        self.assertEqual((self.store.project_path(self.pid) / edited["backup_path"]).read_bytes(), code_drafts.STUB)
+        self.assertEqual(len(code_drafts.list_changes(self.store, self.pid)), 2)
+        rev = runtime_policy.snapshot(self.store, self.pid)["revision"]
+        runtime_policy.change_task(self.store, self.pid, self.mod["id"], self.task["id"],
+                                   "python.syntax.parse", "allow", rev, True)
+        checked = validation_sessions.run_syntax_check(self.store, self.pid, self.mod["id"],
+                                                       self.task["id"], "game/loop.py", True)
+        correlated = validation_sessions.list_sessions(self.store, self.pid)[0]
+        self.assertEqual(correlated["id"], checked["id"])
+        self.assertEqual(correlated["matching_change_id"], edited["id"])
+        self.assertFalse(correlated["verified_result"])
+        self.path.write_text(self.original, encoding="utf-8")
+        self.assertEqual(validation_sessions.list_sessions(self.store, self.pid)[0]["source_integrity"], "changed")
+        self.assertEqual(validation_sessions.list_sessions(self.store, self.pid)[0]["matching_change_id"], edited["id"])
+
+    def test_create_rejects_path_symlink_and_bad_history_before_write(self):
+        self.path.unlink()
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "../game/loop.py", True)
+        outside = Path(self.tmp.name) / "outside.py"
+        outside.write_text("protected")
+        try:
+            self.path.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlink não disponível")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertEqual(outside.read_text(), "protected")
+        self.path.unlink()
+        (self.store.project_path(self.pid) / code_drafts.NAME).write_text("{bad", encoding="utf-8")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.create_stub(self.store, self.pid, self.mod["id"], self.task["id"], "game/loop.py", True)
+        self.assertFalse(self.path.exists())
+
+    def test_preview_requires_consent_and_only_apply_writes_backup(self):
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "mock-model", False)
+            chat.assert_not_called()
+        before = self.preview()
+        self.assertEqual(self.path.read_text(), self.original)
+        self.assertFalse((self.store.project_path(self.pid) / code_drafts.NAME).exists())
+        self.assertIn("+    return 2", before["diff"])
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, before["proposal_id"], False)
+        applied = code_drafts.apply(self.store, self.pid, before["proposal_id"], True)
+        self.assertEqual(self.path.read_text(), self.generated)
+        self.assertEqual((self.store.project_path(self.pid) / applied["backup_path"]).read_text(), self.original)
+        self.assertFalse(applied["verified_result"])
+        self.assertEqual((applied["runtime_id"], applied["state"], applied["validation_status"]),
+                         ("local-model-draft", "file_changed", "not_run"))
+        self.assertEqual(code_drafts.list_changes(storage.Storage(Path(self.tmp.name)), self.pid)[0]["source_integrity"], "intact")
+        self.path.write_text(self.generated + "# edição posterior\n", encoding="utf-8")
+        self.assertEqual(code_drafts.list_changes(self.store, self.pid)[0]["source_integrity"], "changed")
+        self.assertEqual(code_drafts.list_changes(storage.Storage(Path(self.tmp.name)), self.pid)[0]["id"],
+                         applied["id"])
+        self.assertEqual(planning.get_modules(self.store, self.pid)[0]["tasks"][0]["execution_status"], "not_run")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, before["proposal_id"], True)
+
+    def test_stale_file_or_task_never_overwritten(self):
+        draft = self.preview()
+        self.path.write_text("# edição do Dev\n" + self.original, encoding="utf-8")
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
+        self.assertIn("edição do Dev", self.path.read_text())
+        self.assertFalse(list(self.path.parent.glob("*.lia-backup-*")))
+        self.path.write_text(self.original)
+        draft = self.preview()
+        planning.update_task(self.store, self.pid, self.mod["id"], self.task["id"],
+                             {"objective": "outro objetivo"})
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
+
+    def test_invalid_reply_unlisted_path_and_corrupt_history_fail_closed(self):
+        with patch.object(code_drafts.local_model_chat, "chat", return_value={"answer": "```python\nx\n```"}):
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "game/loop.py", "model", True)
+        with patch.object(code_drafts.local_model_chat, "chat") as chat:
+            with self.assertRaises(storage.StorageError):
+                code_drafts.preview(self.store, self.pid, self.mod["id"], self.task["id"],
+                                    "../outside.py", "model", True)
+            chat.assert_not_called()
+        draft = self.preview()
+        self.store.write_structured(self.pid, code_drafts.NAME, [{"bad": "schema"}])
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
+        self.assertEqual(self.path.read_text(), self.original)
+
+    def test_partial_index_failure_preserves_generated_file_and_backup_for_inspection(self):
+        draft = self.preview()
+        with patch.object(self.store, "write_structured", side_effect=OSError("secret path")):
+            with self.assertRaises(storage.StorageError) as error:
+                code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
+        self.assertNotIn("secret", str(error.exception))
+        self.assertEqual(self.path.read_text(), self.generated)
+        self.assertEqual(len(list(self.path.parent.glob("*.lia-backup-*"))), 1)
+        with self.assertRaises(storage.StorageError):
+            code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
+
+    def test_http_creates_file_only_on_confirm(self):
+        from app import server
+        self.path.unlink()
+        with patch.object(server, "storage", self.store):
+            api = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+            thread = threading.Thread(target=api.serve_forever, daemon=True)
+            thread.start()
+            url = (f"http://127.0.0.1:{api.server_address[1]}/api/projects/{self.pid}"
+                   f"/tasks/{self.mod['id']}/{self.task['id']}/create-python")
+            def post(data):
+                return urlopen(Request(url, method="POST", data=json.dumps(data).encode(),
+                                       headers={"Content-Type": "application/json"}))
+            try:
+                with self.assertRaises(HTTPError) as error:
+                    post({"path": "game/loop.py", "confirm": False})
+                self.assertEqual(error.exception.code, 400)
+                self.assertFalse(self.path.exists())
+                with post({"path": "game/loop.py", "confirm": True}) as response:
+                    saved = json.load(response)
+                    self.assertEqual(response.status, 201)
+                self.assertEqual(saved["state"], "file_created")
+                self.assertEqual(self.path.read_bytes(), code_drafts.STUB)
+            finally:
+                api.shutdown()
+                api.server_close()
+                thread.join(timeout=5)
+
+    def test_api_preview_and_apply(self):
+        from app import server
+        selected = skills.create_skill(self.store, "# Curta\n\nRefine o loop.\n")
+        with patch.object(server, "storage", self.store), patch.object(
+                code_drafts.local_model_chat, "chat", return_value={"answer": self.generated}):
+            api = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+            thread = threading.Thread(target=api.serve_forever, daemon=True)
+            thread.start()
+            root = f"http://127.0.0.1:{api.server_address[1]}/api/projects/{self.pid}"
+            def post(path, data):
+                return urlopen(Request(root + path, method="POST", data=json.dumps(data).encode(),
+                                       headers={"Content-Type": "application/json"}))
+            try:
+                path = f"/tasks/{self.mod['id']}/{self.task['id']}/draft"
+                with self.assertRaises(HTTPError) as error:
+                    post(path, {"path": "game/loop.py", "model": "mock-model"})
+                self.assertEqual(error.exception.code, 400)
+                with post(path, {"path": "game/loop.py", "model": "mock-model", "confirm_send": True,
+                                 "skill_id": selected["id"]}) as response:
+                    draft = json.load(response)
+                self.assertEqual(self.path.read_text(), self.original)
+                with post("/code-changes/apply", {"proposal_id": draft["proposal_id"], "confirm": True}) as response:
+                    saved = json.load(response)
+                    self.assertEqual(response.status, 201)
+                self.assertEqual(saved["path"], "game/loop.py")
+                self.assertEqual(saved["skill_id"], selected["id"])
+                with urlopen(root + "/code-changes") as response:
+                    self.assertEqual(json.load(response)["changes"][0]["id"], saved["id"])
+            finally:
+                api.shutdown()
+                api.server_close()
+                thread.join(timeout=5)
+
+
+if __name__ == "__main__":
+    unittest.main()
