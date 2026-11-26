@@ -31,6 +31,7 @@ class TestAnimationAuthoring(unittest.TestCase):
     def test_create_edit_persist_import_export_and_stale_revision(self):
         self.assertEqual(anim.list_all(self.store)["projects"], [])
         created = anim.create(self.store, clip())
+        self.assertTrue((self.store.projects_dir / (anim.NAME + ".bak")).is_file())
         reopened = anim.get(storage.Storage(Path(self.temp)), created["id"])
         self.assertEqual(reopened, created)
         edited = clip(); edited["tracks"]["expression.blink"] = [

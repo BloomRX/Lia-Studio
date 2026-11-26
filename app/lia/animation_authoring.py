@@ -144,6 +144,8 @@ def _save(storage: Storage, data: dict) -> None:
     elif backup.exists():
         raise StorageError("animações ausentes com backup; não sobrescrever")
     storage._atomic_write(path, raw + "\n")
+    if not backup.exists():
+        storage._atomic_write(backup, raw + "\n")  # primeira versão também tem recuperação
 
 
 def _new_id(data: dict) -> str:
