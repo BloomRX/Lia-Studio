@@ -190,7 +190,8 @@ body[data-space="recovery"] .topnav [data-nav="recovery"] { background: #542b48;
 .hero p { color: #dac8d7; max-width: 600px; font-size: 16px; margin: 0; }
 .hero-mark { position: absolute; font-size: clamp(160px,22vw,350px); line-height: 1;
   right: 1%; top: -34px; color: #e4549240; transform: rotate(-18deg); pointer-events: none; }
-.launcher-grid { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 15px; margin: 22px 0 34px; }
+.launcher-grid { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 15px; margin: 22px 0 34px; }
+@media(max-width:1100px) and (min-width:691px) { .launcher-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 .launch-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-height: 188px;
   padding: 24px; border-radius: 20px; text-align: left; text-decoration: none; font-weight: 400;
   color: var(--ink); border: 1px solid #493745; background: #241d28; }

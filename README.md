@@ -192,6 +192,16 @@ no Windows, que tiveram 11 casos de symlink pulados. Resultados e limitações
 ficam em `docs/testes-resultados.md`.
 Backups `.bak` não substituem cópias em outro disco; veja `docs/armazenamento-privacidade.md`.
 
+## Animações — fundação local V1
+
+Abra **Animações** na Home ou em `/static/animation.html` para criar um projeto
+independente de jogo, editar keyframes em trilhas anatômicas e expressivas,
+reproduzir uma prévia 2D esquemática, desfazer/refazer, guardar poses/gestos na
+biblioteca local e exportar/importar um **backup interno**. O contrato de
+animação do Forge e a integração com o runtime Lia ainda não estão publicados
+nem validados; nada aqui exporta um asset interoperável. Veja
+[escopo, fluxo e handoff](docs/ANIMATION-AUTHORING-V1.md).
+
 ## Estrutura
 - `app/lia/` — núcleo (armazenamento, estágios/gates, bootstrap, planejamento,
   skills, provedores, execução simulada, QA, release, engines e conflitos).

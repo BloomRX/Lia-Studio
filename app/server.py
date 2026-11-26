@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import app_discovery, assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
+from .lia import animation_authoring, app_discovery, assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -439,6 +439,35 @@ class Handler(BaseHTTPRequestHandler):
                     "steps": templates_loader.bootstrap_steps(),
                     "templates": templates_loader.list_templates(),
                 }, 200
+            if parts == ["api", "animation"] and method == "GET":
+                return animation_authoring.list_all(storage), 200
+            if parts == ["api", "animation", "projects"] and method == "POST":
+                if set(body) != {"clip"}:
+                    raise StorageError("envie somente o rascunho da animação")
+                return animation_authoring.create(storage, body["clip"]), 201
+            if parts == ["api", "animation", "import"] and method == "POST":
+                if set(body) != {"document"}:
+                    raise StorageError("envie somente o backup interno")
+                return animation_authoring.draft_import(storage, body["document"]), 201
+            if len(parts) == 4 and parts[:3] == ["api", "animation", "projects"]:
+                if method == "GET":
+                    return animation_authoring.get(storage, parts[3]), 200
+                if method == "PUT":
+                    if set(body) != {"clip", "revision"}:
+                        raise StorageError("envie animação e revisão atual")
+                    return animation_authoring.update(storage, parts[3], body["clip"], body["revision"]), 200
+            if len(parts) == 5 and parts[:3] == ["api", "animation", "projects"] and parts[4] == "export" and method == "GET":
+                return animation_authoring.draft_export(storage, parts[3]), 200
+            if len(parts) == 4 and parts[:3] == ["api", "animation", "library"] and method == "GET":
+                return animation_authoring.library_get(storage, parts[3]), 200
+            if parts == ["api", "animation", "library"] and method == "POST":
+                if set(body) != {"clip", "kind"}:
+                    raise StorageError("envie cópia da animação e tipo para biblioteca")
+                return animation_authoring.library_add(storage, body["clip"], body["kind"]), 201
+            if len(parts) == 5 and parts[:3] == ["api", "animation", "library"] and parts[4] == "approve" and method == "POST":
+                if set(body) != {"note", "confirm"}:
+                    raise StorageError("informe nota e confirmação da aprovação local")
+                return animation_authoring.approve_local(storage, parts[3], body["note"], body["confirm"]), 200
             if parts == ["api", "storage", "health"] and method == "GET":
                 return {"issues": storage.inspect_storage_issues()}, 200
             if parts == ["api", "storage", "recover"] and method == "POST":

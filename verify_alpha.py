@@ -76,6 +76,8 @@ CHECKS = {
     "run_history": ("Histórico persistente de execuções", [sys.executable, "tests/test_run_history.py"]),
     "integration": ("Fluxo HTTP integrado sem promover gates", [sys.executable, "tests/test_integrated_flow.py"]),
     "assets": ("Assets locais: metadados, integridade e API", [sys.executable, "tests/test_assets.py"]),
+    "animation": ("Animação: projeto, keyframes, biblioteca, proveniência e API", [sys.executable, "tests/test_animation_authoring.py"]),
+    "animation_ui": ("Timeline e prévia esquemática", ["node", "tests/test_animation_ui.cjs"]),
     "forge_brief": ("Brief manual Studio → Forge sem execução nem escrita", [sys.executable, "tests/test_forge_brief.py"]),
     "gameplay_loop": ("Hipótese, protótipos e relato manual sem promover gates", [sys.executable, "tests/test_gameplay_loop.py"]),
     "skills": ("Skills: metadados progressivos", [sys.executable, "tests/test_skills_progressive.py"]),
@@ -100,7 +102,7 @@ PARTS = (
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe", "app_discovery", "engine_inspection", "unity_inspection", "external_inspection", "godot", "engine_process")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation", "run_history", "godot_runs", "editor_runs")),
     ("CLI/combo declarativo, serviço local falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "legacy_ids", "chat", "drafts", "draft_jobs")),
-    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "forge_brief", "gameplay_loop", "skills", "start_routes", "start_routes_ui", "windows_evidence", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
+    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "animation", "animation_ui", "forge_brief", "gameplay_loop", "skills", "start_routes", "start_routes_ui", "windows_evidence", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 
 
@@ -116,7 +118,7 @@ def run_check(key: str) -> bool:
         index = int(key.split("-")[1]) - 1
         return check(PARTS[index][0], [sys.executable, "tests/test_core.py", "-q", *CORE_PARTS[index]])
     label, command = CHECKS[key]
-    if key in ("ui", "js", "start_routes_ui"):
+    if key in ("ui", "js", "start_routes_ui", "animation_ui"):
         node = shutil.which("node")
         if not node:
             print(f"\n== {label}: NÃO EXECUTADO (Node.js indisponível) ==", flush=True)

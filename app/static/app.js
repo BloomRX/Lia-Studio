@@ -95,6 +95,7 @@ async function renderHome() {
         <button class="launch-tile primary" onclick="showNewProject()"><span class="tile-icon">+</span><span class="tile-kicker">COMEÇAR</span><strong>Criar projeto</strong><small>Do conceito ao primeiro plano</small><span class="tile-arrow">↗</span></button>
         <button class="launch-tile" onclick="document.getElementById('recent').scrollIntoView({behavior:'smooth'})"><span class="tile-icon">▣</span><span class="tile-kicker">CONTINUAR</span><strong>Abrir projeto</strong><small>Retome de onde parou</small><span class="tile-arrow">↗</span></button>
         <a class="launch-tile" href="#/skills"><span class="tile-icon">✧</span><span class="tile-kicker">REUTILIZAR</span><strong>Skills</strong><small>Explore, crie e edite instruções</small><span class="tile-arrow">↗</span></a>
+        <a class="launch-tile" href="/static/animation.html"><span class="tile-icon">◷</span><span class="tile-kicker">MOVIMENTO</span><strong>Animações</strong><small>Edite trilhas, poses e expressões</small><span class="tile-arrow">↗</span></a>
       </div>
       <div id="newproj" hidden class="new-project"><div class="card">
         <h2>Novo projeto</h2><p class="muted">Você poderá revisar cada decisão antes de avançar.</p>
