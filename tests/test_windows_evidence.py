@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
-from subprocess import CompletedProcess, TimeoutExpired
+from subprocess import CompletedProcess, TimeoutExpired, run
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -79,6 +79,17 @@ class WindowsEvidenceTests(unittest.TestCase):
              redirect_stdout(io.StringIO()):
             self.assertEqual(we.main(['--diagnose-only']), 1)
         collect.assert_called_once_with(parts=(7, 9, 10))
+
+    def test_diagnose_direct_script_can_load_part_allowlist_without_repo_on_pythonpath(self):
+        # Reproduz a invocação do .bat: Python executa tools/ como script, não
+        # importa o projeto como pacote. -I remove também a raiz de sys.path.
+        code = ("import runpy; m=runpy.run_path('tools/windows_evidence.py', "
+                "run_name='test_entry'); "
+                "print(m['_failed_groups']('CHECK_RESULT engine_process FAIL\\n', 7))")
+        result = run([sys.executable, '-I', '-S', '-B', '-c', code], cwd=we.ROOT,
+                     capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "['engine_process']")
 
     def test_save_is_new_and_stays_inside_repo(self):
         with tempfile.TemporaryDirectory(dir=we.ROOT) as temp, patch.object(we, 'REPORTS', Path(temp)):

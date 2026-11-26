@@ -34,9 +34,19 @@ def _git(*args: str, runner: Runner = subprocess.run) -> str:
 
 
 def _failed_groups(output: str, part: int) -> list[str]:
-    """Allowlist de chaves estáticas; nunca encaminhar saída dos testes."""
-    from verify_alpha import PARTS
-    expected = set(PARTS[part - 1][1])
+    """Allowlist de chaves estáticas; nunca encaminhar saída dos testes.
+
+    O .bat executa tools/windows_evidence.py diretamente: a raiz do checkout
+    não entra em sys.path. Carregar verify_alpha pela localização conhecida,
+    sem depender do diretório de onde o usuário chamou o script.
+    """
+    from importlib.util import module_from_spec, spec_from_file_location
+    spec = spec_from_file_location("_lia_verify_alpha_diagnostics", ROOT / "verify_alpha.py")
+    if spec is None or spec.loader is None:
+        return []
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    expected = set(module.PARTS[part - 1][1])
     return sorted({key for key in re.findall(r"^CHECK_RESULT ([a-z0-9_-]+) FAIL\s*$", output, re.MULTILINE)
                    if key in expected})
 

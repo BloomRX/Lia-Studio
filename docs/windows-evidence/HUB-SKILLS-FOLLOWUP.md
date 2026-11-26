@@ -49,6 +49,15 @@ push**. Ele exige checkout limpo da revisão nova e não substitui o `.bat` norm
 para registrar o reteste completo. Se o grupo isolado falhar, leia o traceback
 localmente e compartilhe apenas nome de teste e exceção sem paths/segredos.
 
+**Correção posterior do diagnóstico:** o primeiro uso de `--diagnose-only`
+na revisão `075e2f9` parou com `ModuleNotFoundError: No module named
+'verify_alpha'` antes de listar os grupos. O script era executado diretamente
+em `tools/`, sem a raiz no `sys.path`. A leitura da allowlist agora carrega
+`verify_alpha.py` pela localização fixa do checkout, e um teste de subprocesso
+isolado reproduz essa forma de execução. Esse traceback **não é evidência de
+que alguma das partes 7/9/10 mudou de resultado**; execute novamente o
+`--diagnose-only` em checkout limpo da revisão corrigida. Não salvar logs brutos.
+
 O `sourceCommit` no lock do Hub não pôde ser consultado aqui e o checkout/bundle
 fixados não estavam disponíveis. `prepare_hub_skills.ps1` agora exige o commit
 exato e hashes antes da chamada externa e produz recibo local verificável após
