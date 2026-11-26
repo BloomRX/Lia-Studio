@@ -4,6 +4,14 @@ Na primeira etapa, sete branches antigas foram removidas do remoto pela interfac
 
 Na etapa seguinte, autorizada pelo responsável pelo projeto, a aplicação foi consolidada em `main` com resolução dos conflitos documentais e recuperação das sete pesquisas exclusivas. O merge preserva as duas linhas de histórico; o código da aplicação permanece idêntico à ponta de origem. `main` passa a ser a base canônica do Studio.
 
+## Confirmação no remoto
+
+- Merge publicado: [`12dccf06be0fd9e2cc493ab87bf07494ace80fea`](https://github.com/BloomRX/Lia-Studio/commit/12dccf06be0fd9e2cc493ab87bf07494ace80fea), com pais `d97a8bc5` e `8b17dffd`.
+- A árvore publicada (`4d136f4391356759e76e776ff1d01ef62dd5e901`) coincide exatamente com a candidata validada; os dois históricos foram conferidos como ancestrais do merge.
+- O GitHub reconheceu o [PR #1](https://github.com/BloomRX/Lia-Studio/pull/1) como **merged** e o encerrou automaticamente.
+- Após essa conferência, `arena/01a0f4ab-lia-gamedev` foi removida. A interface e a API do GitHub confirmaram **somente `main`** no remoto do Studio.
+- A integração não reescreveu histórico e não alterou outros repositórios nem checkouts Windows existentes.
+
 ## Pontos de partida preservados
 
 - Base documental auditada antes da limpeza: `ba70d224359b84a8e114f87b545d83f260f2deb1`.
@@ -22,6 +30,7 @@ Na etapa seguinte, autorizada pelo responsável pelo projeto, a aplicação foi 
 | `arena/04710d54-lia-studio` | `dbde113ea15f3f6508a9234d0a445d6a8af21f2c` |
 | `arena/6957d4de-lia-studio` | `078f9468b74e8060ba12b5410138de32e201c8d9` |
 | `arena/327100c7-lia-studio` | `3e86c071694c803df1471b9e711bfee3cf573830` |
+| `arena/01a0f4ab-lia-gamedev` — removida após integrar a aplicação | `8b17dffd1b5aabcbffe6a02da0d7321f0e4f9b28` |
 
 ## Backup e recuperação
 
@@ -71,5 +80,5 @@ Os oito casos pulados são sete testes de Windows Job Objects e um teste opt-in 
 ## Política de trabalho
 
 1. Usar `main` como base de desenvolvimento do Studio. Antes de trocar qualquer checkout local, conferir seu estado e preservar alterações sem commit; esta integração não altera workspaces Windows existentes.
-2. Encerrar a branch da aplicação após confirmar o merge no remoto. Seu histórico permanece alcançável por `main` e também está no backup verificado. Não recriar as antigas branches documentais.
+2. A antiga branch da aplicação foi encerrada após confirmar o merge no remoto. Seu histórico permanece alcançável por `main` e também está no backup verificado. Não recriar as antigas branches documentais.
 3. Futuras sessões Arena do Studio serão temporárias, criadas apenas para tarefas delimitadas e encerradas após integração e preservação. O Lia Research fica fora desta limpeza e conserva sua branch própria.
