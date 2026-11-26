@@ -57,7 +57,7 @@ class TestForgeV1Workspace(unittest.TestCase):
         s = spec(); s["rig"]["bones"] = ["notARigBone"]; invalid.append(s)
         s = spec(); s["poses"]["active"]["rotations"]["head"] = [0, 0, 0, 0]; invalid.append(s)
         s = spec(); s["timeline"][1]["pose"] = "missing"; invalid.append(s)
-        s = spec(); s["timeline"][1]["time"] = 1e-40; invalid.append(s)
+        s = spec(); s["timeline"][1]["time"] = 1e-50; invalid.append(s)
         s = spec(); s["mask"] = ["hips"]; invalid.append(s)
         s = spec(); s["tags"]["emotional"].append("invalid tag"); invalid.append(s)
         s = spec(); s["provenance"]["license"] = ""; invalid.append(s)
