@@ -767,11 +767,11 @@ assert.equal(reloads, 1);
     else if (url === '/api/projects') data = {projects:[{id:'project-1', name:'Jogo',
       stage:'preparation', status:'ativo'}]};
     else if (url === '/api/skills') data = {skills:[{id:'lia-project-resume',title:'Retomar',
-      description:'Revisar <img src=x onerror=alert(1)>',origin:'builtin'},
+      description:'Revisar <img src=x onerror=alert(1)>',origin:'hub'},
       {id:'lia-user-abcdef123456',title:'Minha Skill',origin:'user'}]};
     else if (url === '/api/skills/lia-project-resume') data = {id:'lia-project-resume',
       title:'Retomar',description:'Revisar <img src=x onerror=alert(1)>',
-      origin:'builtin',content:'# Retomar\n\nFluxo.'};
+      origin:'hub',content:'# Retomar\n\nFluxo.'};
     else if (url === '/api/skills/lia-user-abcdef123456') data = {id:'lia-user-abcdef123456',
       title:'Minha Skill',origin:'user',content:'# Minha Skill\n\nFluxo.',revision:'a'.repeat(64)};
     if (url === '/api/skills' && options.method === 'POST') data = {id:'lia-user-abcdef123456'};

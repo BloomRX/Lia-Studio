@@ -29,7 +29,7 @@ vale para qualquer agente; só o nome do arquivo muda:**
 | Conceito | Claude Code | Em outras ferramentas |
 |---|---|---|
 | arquivo de regras do projeto | `CLAUDE.md` | `AGENTS.md` (padrão aberto, lido por Codex/Cursor/outros), `.cursor/rules`, `.github/copilot-instructions.md` |
-| instrução reutilizável (skill) | `.claude/skills/<nome>/SKILL.md` | `.agents/skills/` é o caminho neutro — é onde este repositório já guarda as dele |
+| instrução reutilizável (skill) | `.claude/skills/<nome>/SKILL.md` | `.agents/skills/` é destino neutro local do Agent Hub; Studio não versiona os payloads |
 | ajudante especializado | subagente em `.claude/agents/` | se a sua ferramenta não tiver, use uma conversa separada com escopo estreito |
 | ver o que foi carregado | `/memory` | peça a si mesmo a lista dos arquivos de instrução que você leu, com o caminho de cada um |
 

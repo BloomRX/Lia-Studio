@@ -28,8 +28,8 @@
   JSON impede editar uma posição antiga sem recarga, mas não há transação
   multi-arquivo/processo para manter o par sempre sincronizado após falha de disco.
 - Skills criadas pelo Dev (Alpha UI.1): `<pasta>/_skills/lia-user-<id>/SKILL.md`,
-  Markdown UTF-8 independente de todos os projetos. As Skills distribuídas em
-  `.agents/skills/` são somente leitura no app; uma cópia editável vai para
+  Markdown UTF-8 independente de todos os projetos. Skills verificadas do Hub
+  em `.agents/skills/` são opcionais, locais e somente leitura no app; uma cópia editável vai para
   `_skills`. Não há sincronização, importação, backup automático, migração nem
   aplicação a Agent. A exportação de um projeto **não inclui** a biblioteca;
   faça cópia separada antes de mover ou apagar `LIA_PROJECTS_DIR`. Escrita é

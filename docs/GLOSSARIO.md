@@ -70,7 +70,7 @@ a sessão faz por git** × **o que o dono faz na máquina**.
 
 | Caminho | O que é |
 |---|---|
-| `.agents/skills/` | onde as skills **moram** no repositório. É o que vai pro git |
+| `.agents/skills/` | destino local ignorado pelo Git; o Agent Hub gerencia as Skills distribuídas |
 | `.claude/skills/` | onde o Claude Code **procura**. Um junction aponta pro de cima |
 | `%USERPROFILE%\Lia\Studio\Skills\` | skills que o **usuário final** escreveu, fora do repositório |
 

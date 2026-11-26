@@ -129,9 +129,10 @@ O ZIP `docs/pacote-agentes.zip` é um guia de processo, não uma biblioteca de
 `SKILL.md` ou um worker instalado; o notebook Colab não foi executado.
 
 ## Skills Workspace (independente dos projetos)
-Na Home ou barra superior, abra **Skills**. A **Biblioteca** reúne 16 Skills
-distribuídas (quatro originais do Studio e 12 adaptações com atribuição MIT) e as
-suas; **Minhas Skills** filtra as criadas por você. Busque por nome ou finalidade,
+Na Home ou barra superior, abra **Skills**. A **Biblioteca** reúne Skills
+materializadas localmente do Hub (até 16 no lock atual, nenhuma pré-instalada)
+e as suas; **Minhas Skills** filtra as criadas por você. `lia-execution-brief`
+ainda não está fixada pelo Hub; a rota documental de brief não depende dela. Busque por nome ou finalidade,
 clique **Criar Skill**, escreva nome e instruções, salve e reabra. Veja o mapa de
 seleção e limites em `.agents/skills/README.md`. Skills
 distribuídas são somente leitura: use **Duplicar para editar**. Para Skills próprias,

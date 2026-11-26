@@ -25,7 +25,7 @@ Legenda: ✅ implementado e testado · 🟡 implementado, não testado · 🔶 p
 | Referências com origem/permissão | ✅ | tabela em REFERENCIAS |
 | Sugerir vertical slice sem virar limite | ✅ | texto explícito |
 | Não escrever gameplay | ✅ | verificado (nenhum código) |
-| Reutilizar skill existente (não duplicar) | 🔶 | `templates_loader` expõe a Skill para consulta; `bootstrap.py` ainda gera Markdown próprio e não lê templates |
+| Reutilizar skill existente (não duplicar) | 🔶 | O Hub distribui Skills; `templates_loader` só expõe materialização local fixada e verificada. `bootstrap.py` gera Markdown próprio sem depender de Skill |
 
 ## C. Plano, tarefas e continuidade
 | Item | Estado | Notas |

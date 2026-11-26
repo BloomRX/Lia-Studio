@@ -22,7 +22,7 @@
 
 ## D1 — Fonte e parametrização da Skill da Etapa 0
 
-**Situação:** `templates_loader` publica a Skill e os templates para consulta, mas `bootstrap.py` ainda monta os documentos por conta própria. A reutilização no gerador é parcial (ver Decisão 7 em `arquitetura-decisoes.md`).
+**Situação atual:** `templates_loader` só expõe Skill e templates quando o Hub foi materializado com lock/recibo válidos; `bootstrap.py` monta os documentos por conta própria mesmo sem Skill. A reutilização no gerador permanece parcial (ver Decisão 7 em `arquitetura-decisoes.md`).
 
 **Antes de substituir o gerador:**
 1. O template da Skill é a fonte canônica do Markdown final, apenas uma referência de estrutura, ou uma entrada versionada para um renderer próprio?

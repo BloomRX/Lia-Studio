@@ -39,5 +39,25 @@ dist/
 **/editor_runs.json
 **/editor_runs.json.*
 
-# Skills distribuídas em .agents/skills permanecem versionadas e somente leitura.
-# Não ignorar esta fonte; um piloto do Hub não deve sobrescrevê-la.
+# Skills gerenciadas pelo Hub: não versionar materializações locais ou payloads.
+# lia-execution-brief ainda não consta no lock; não instalá-la implicitamente.
+/.agents/skills/.hub-install.json
+/.agents/skills/.hub-install-*.tmp
+/.agents/skills/lia-*/
+/.agents/skills/lia-execution-brief/
+/.agents/skills/lia-game-audio-plan/
+/.agents/skills/lia-game-balance-review/
+/.agents/skills/lia-game-bug-triage/
+/.agents/skills/lia-game-design-review/
+/.agents/skills/lia-game-level-design/
+/.agents/skills/lia-game-playtest-report/
+/.agents/skills/lia-game-project-bootstrap/
+/.agents/skills/lia-game-qa-plan/
+/.agents/skills/lia-game-story-readiness/
+/.agents/skills/lia-game-test-evidence-review/
+/.agents/skills/lia-game-ui-plan/
+/.agents/skills/lia-game-vfx-plan/
+/.agents/skills/lia-game-visual-review/
+/.agents/skills/lia-module-planning/
+/.agents/skills/lia-project-resume/
+/.agents/skills/lia-task-handoff/

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -52,18 +53,25 @@ class TestDependencyLayers(unittest.TestCase):
         self.assertIn("BSD-3-Clause", notice)
         self.assertIn("GPL-2.0-or-later", notice)
 
-    def test_agent_folder_ignored_and_descriptions_trigger_not_copy(self):
+    def test_hub_lock_and_materialized_skill_paths_are_separate_from_git(self):
         ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
         self.assertIn(".claude/skills/", ignore)
         self.assertNotIn(".claude/", ignore)
         self.assertIn("**/combo_declarations.json", ignore)
         self.assertIn("**/combo_declarations.json.bak", ignore)
-        for name in ("lia-project-resume", "lia-module-planning", "lia-task-handoff"):
-            text = (ROOT / ".agents" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
-            description = next(line for line in text.splitlines() if line.startswith("description:"))
-            self.assertIn("Use ", description)
-            self.assertIn("NÃO use", description)
-            self.assertLess(len(description), 1024)
+        lock = json.loads((ROOT / "desktop" / "hub-skills.lock.json").read_text(encoding="utf-8"))
+        self.assertEqual(lock["schemaVersion"], 1)
+        self.assertEqual(len(lock["locks"]), 16)
+        for item in lock["locks"]:
+            name = item["file"].removesuffix(".lock.json")
+            self.assertIn(f"/.agents/skills/{name}/", ignore)
+            self.assertRegex(item["sha256"], r"^[0-9a-f]{64}$")
+        self.assertIn("/.agents/skills/lia-execution-brief/", ignore)
+        self.assertNotIn("lia-execution-brief.lock.json", {item["file"] for item in lock["locks"]})
+        build = (ROOT / "desktop" / "build_windows.ps1").read_text(encoding="utf-8")
+        self.assertIn("hub-skills.lock.json;desktop", build)
+        self.assertNotIn('--add-data "$skills;', build)
+        self.assertNotIn(".agents\\skills\\lia-game-project-bootstrap\\SKILL.md", build)
 
 
 if __name__ == "__main__":

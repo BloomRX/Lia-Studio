@@ -1,13 +1,14 @@
-"""Carrega a skill lia-game-project-bootstrap existente para reutilizá-la.
+"""Leitura opcional da Skill de bootstrap materializada localmente pelo Hub.
 
-Em vez de duplicar o procedimento da Etapa 0 num wizard concorrente, a aplicação
-lê o SKILL.md e os templates originais da skill e os usa como fonte de verdade para
-o fluxo de preparação do jogo.
+O fluxo documental da Etapa 0 não executa a Skill e funciona mesmo sem o Hub;
+nenhum template de origem ausente é inventado ou baixado automaticamente.
 """
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from . import hub_skills
 
 SKILL_ID = "lia-game-project-bootstrap"
 
@@ -20,44 +21,38 @@ def skill_dir() -> Path:
     return SKILL_DIR
 
 
+def _verified() -> Dict[str, Path]:
+    return hub_skills.verified_paths(SKILL_ID)
+
+
 def skill_exists() -> bool:
-    return (SKILL_DIR / "SKILL.md").exists()
+    return "SKILL.md" in _verified()
 
 
 def read_skill_markdown() -> Optional[str]:
-    path = SKILL_DIR / "SKILL.md"
-    if not path.exists():
-        return None
-    return path.read_text(encoding="utf-8")
+    path = _verified().get("SKILL.md")
+    return path.read_text(encoding="utf-8") if path else None
 
 
 def read_template(name: str) -> Optional[str]:
     """Lê um template da skill (ex.: PROJECT_BRIEF.md)."""
-    path = SKILL_DIR / "templates" / name
-    if not path.exists():
-        return None
-    return path.read_text(encoding="utf-8")
+    path = _verified().get(f"templates/{name}") if isinstance(name, str) else None
+    return path.read_text(encoding="utf-8") if path else None
 
 
 def list_templates() -> List[str]:
-    tdir = SKILL_DIR / "templates"
-    if not tdir.exists():
-        return []
-    return sorted(p.name for p in tdir.glob("*.md"))
+    return sorted(key.removeprefix("templates/") for key in _verified()
+                  if key.startswith("templates/") and key.endswith(".md") and key.count("/") == 1)
 
 
 def read_glossary() -> Optional[str]:
-    path = SKILL_DIR / "references" / "glossario-e-metodo.md"
-    if not path.exists():
-        return None
-    return path.read_text(encoding="utf-8")
+    path = _verified().get("references/glossario-e-metodo.md")
+    return path.read_text(encoding="utf-8") if path else None
 
 
 def read_tests() -> Optional[str]:
-    path = SKILL_DIR / "references" / "testes-documentais.md"
-    if not path.exists():
-        return None
-    return path.read_text(encoding="utf-8")
+    path = _verified().get("references/testes-documentais.md")
+    return path.read_text(encoding="utf-8") if path else None
 
 
 def bootstrap_steps() -> List[Dict[str, str]]:

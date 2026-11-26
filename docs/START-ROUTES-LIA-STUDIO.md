@@ -32,9 +32,12 @@ rota, mas não ganha autoridade de execução nem dispensa o consentimento do De
 Na rota breve a ideia e a entrega são obrigatórias; listas vazias permanecem
 pendentes, **não** delegadas. A escolha de engine anotada na Etapa 0 continua
 `proposto`. Referências guardam origem/uso declarado, sem conceder licença.
-Nenhum texto externo exclusivo foi importado: `.agents/skills/lia-execution-brief/`
-é instrução original do Studio; o método de uma Skill recebida do Dev foi
-somente inspiração conceitual e sua licença não foi presumida.
+Nenhum texto externo exclusivo foi importado. A rota de brief é um fluxo
+documental implementado no Studio, **não depende de Skill instalada** e não
+conecta executor. O Hub agora gerencia todas as Skills distribuídas;
+`lia-execution-brief` não consta no lock atual das 16 e não é materializada
+até existir revisão autorizada e fixada no Hub. Isso não bloqueia a criação
+revisável de `EXECUTION_BRIEF.md`.
 
 ## Limites e verificações
 

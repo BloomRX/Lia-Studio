@@ -1,4 +1,4 @@
-"""Biblioteca global de Skills: distribuídas (somente leitura) e do Dev (Markdown local).
+"""Biblioteca global: Skills materializadas pelo Hub e Skills locais do Dev.
 
 Skills são instruções reutilizáveis, não runtimes; salvar não executa Agent nem
 altera projeto. A biblioteca do Dev fica separada de cada pasta de projeto.
@@ -12,8 +12,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .storage import Storage, StorageError
+from . import hub_skills
 
-SKILLS_DIR = Path(__file__).resolve().parents[2] / ".agents" / "skills"
+SKILLS_DIR = hub_skills.SKILLS_DIR  # compatibilidade para inspeção; verificação em hub_skills
 SKILL_ID = re.compile(r"^lia-[a-z0-9-]+$")
 USER_ID = re.compile(r"^lia-user-[0-9a-f]{12}$")
 MAX_CONTENT_BYTES = 64 * 1024
@@ -99,10 +100,12 @@ def _user_path(storage: Storage, skill_id: str) -> Path:
 
 def list_skills(storage: Optional[Storage] = None) -> List[Dict[str, str]]:
     items = []
-    if SKILLS_DIR.is_dir():
-        for folder in sorted(SKILLS_DIR.iterdir()):
-            if not folder.is_symlink() and folder.is_dir() and SKILL_ID.fullmatch(folder.name) and (folder / "SKILL.md").is_file():
-                items.append(_metadata(folder.name, folder / "SKILL.md", "builtin"))
+    if hub_skills.SKILLS_DIR.is_dir():
+        for folder in sorted(hub_skills.SKILLS_DIR.iterdir()):
+            if folder.is_dir() and SKILL_ID.fullmatch(folder.name):
+                verified = hub_skills.verified_paths(folder.name)
+                if "SKILL.md" in verified:
+                    items.append(_metadata(folder.name, verified["SKILL.md"], "hub"))
     if storage is not None:
         root = _user_root(storage)
         if root.is_dir():
@@ -120,12 +123,10 @@ def get_skill(skill_id: str, storage: Optional[Storage] = None) -> Dict[str, str
         if storage is None:
             raise StorageError("Skill do usuário não encontrada")
         return _entry(skill_id, _user_path(storage, skill_id), "user")
-    path = SKILLS_DIR / skill_id / "SKILL.md"
-    if path.parent.is_symlink():
-        raise StorageError("link simbólico não permitido na biblioteca de Skills")
-    if not path.is_file():
-        raise StorageError("skill não encontrada")
-    return _entry(skill_id, path, "builtin")
+    path = hub_skills.verified_paths(skill_id).get("SKILL.md")
+    if path is None:
+        raise StorageError("Skill do Hub indisponível: revisão não fixada, instalação ausente ou conteúdo divergente")
+    return _entry(skill_id, path, "hub")
 
 
 def _validate_content(content: str) -> str:
@@ -175,7 +176,7 @@ def save_skill(storage: Storage, skill_id: str, content: str, revision: str) -> 
     if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{64}", revision):
         raise StorageError("revisão inválida; reabra a Skill antes de editar")
     with storage.stage_lock:
-        path = _user_path(storage, skill_id)  # builtin nunca é editável
+        path = _user_path(storage, skill_id)  # materialização do Hub nunca é editável
         current = _entry(skill_id, path, "user")
         if current["revision"] != revision:
             raise StorageError("Skill alterada desde a leitura; copie seu texto e recarregue antes de salvar")

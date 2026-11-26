@@ -47,8 +47,10 @@ Data: 2026-09-29. Ambiente de build: Linux (sandbox). Destino final: Windows.
   Não houve alteração de `main`, merge ou force-push.
 
 ## Decisão 7 — Reutilização da skill (direção; execução parcial)
-- Direção: `.agents/skills/lia-game-project-bootstrap/` deve ser a fonte do
-  procedimento da Etapa 0; não criar dois métodos concorrentes de preparação.
+- Direção histórica: `.agents/skills/lia-game-project-bootstrap/` foi proposta
+  como fonte do procedimento; **vigente:** o Agent Hub distribui Skills, e o
+  Studio mantém a Etapa 0 documental própria, sem depender de Skill instalada.
+  A materialização local do Hub é opcional e lida somente com lock e recibo.
 - **Auditoria de 2026-10-01:** `templates_loader` permite consultar Skill,
   templates e glossário pela API, mas `bootstrap.py` gera seu próprio Markdown e
   não lê esses templates. A afirmação anterior de reutilização no gerador era
@@ -318,12 +320,14 @@ Skills locais podem ser lidas via API/SPA, não executadas automaticamente.
   a pipeline. Painéis recolhíveis guardam somente preferência visual no navegador;
   ausência de storage web não impede uso. Painel Lia mostra status/links e feedback
   manual por QA, mas não simula chat/resposta ou Agent real.
-- **Skills:** as quatro Skills distribuídas em `.agents/skills` seguem legíveis e
-  imutáveis pelo app. Para criar/editar/salvar sem alterar pacotes ou projetos, o
+- **Skills (histórico, supersedido pela integração Hub):** as quatro Skills
+  distribuídas em `.agents/skills` eram legíveis e imutáveis pelo app. Hoje
+  somente materializações locais verificadas do Hub são exibidas; não há
+  payload de Skill distribuído pelo Studio. Para criar/editar/salvar sem alterar pacotes ou projetos, o
   mínimo backend necessário é guardar Markdown UTF-8 de Skills **do usuário** em
   `LIA_PROJECTS_DIR/_skills/lia-user-<id>/SKILL.md`; sem alterar índice, dados de
   projeto ou contratos existentes. Lista/API atual continuam compatíveis, com
-  origem `builtin` ou `user` adicional. Edição de Skill distribuída exige duplicar
+  origem `hub` (antes `builtin`) ou `user` adicional. Edição de Skill distribuída exige duplicar
   como Skill do usuário; nenhuma Skill é aplicada automaticamente a um Agent.
   IDs gerados no servidor, leitura com limite, recusa de symlink e escrita atômica
   sob lock, com revisão de conteúdo para evitar sobrescrever uma edição concorrente.
@@ -373,8 +377,8 @@ Skills locais podem ser lidas via API/SPA, não executadas automaticamente.
   global. WebView2 Runtime é pré-requisito; se ausente, falhar sem declarar
   desktop suportado nem cair silenciosamente em MSHTML. `.exe` sem assinatura,
   instalador, telemetria, update ou publicação neste incremento.
-- **Compatibilidade de dados:** recursos distribuídos (`app/static`, `.agents/skills`)
-  são somente leitura dentro do pacote; `LIA_PROJECTS_DIR` ou a pasta padrão no
+- **Compatibilidade de dados (retificação Hub):** `app/static` e o lock
+  são distribuídos; Skills materializadas pelo Hub não entram no pacote Studio; `LIA_PROJECTS_DIR` ou a pasta padrão no
   perfil do Dev recebem as escritas. Não gravar no diretório do executável. Core,
   contratos API, gates e simulações aceitas não mudam.
 - **Critério de verificação:** teste Linux com webview falso verifica porta
@@ -780,7 +784,8 @@ e [Microsoft — detectar WebView2 Runtime Evergreen antes de criar a janela](ht
   `THIRD_PARTY_NOTICES.md` e dependências transitivas auditadas/travadas antes de release.
   Na máquina do usuário final o instalador deverá incluir runtime/dependências,
   sem `pip`/Python separado/erro de pacote; isto é requisito, **não teste feito**.
-- `.agents/skills/` é fonte única. `.claude/` deve ser ignorado pelo Git antes
+- **Retificação:** o Agent Hub é fonte das Skills; `.agents/skills/` é destino
+  local ignorado no Git. `.claude/` deve ser ignorado pelo Git antes
   da junction local que o Dev criará no Windows. Não versionar cópias da Skill
   nem tratar a descoberta pelo Claude Code como já verificada neste sandbox.
 

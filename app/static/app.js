@@ -191,7 +191,7 @@ async function renderSkills(selected, mode) {
     const active = creating ? null : onlyMine ? userSkills[0]?.id : (selected || skills[0]?.id);
     const item = active ? await api("GET", `/api/skills/${encodeURIComponent(active)}`) : null;
     if (!current()) return;
-    const nav = (onlyMine ? userSkills : skills).map(skill => `<a data-skill-entry data-search="${esc((skill.title || "") + " " + (skill.description || ""))}" href="#/skills/${esc(skill.id)}" class="${skill.id===active ? "active" : ""}"><span>${esc(skill.title)}</span><small>${skill.origin === "user" ? "MINHA SKILL" : "DO STUDIO"}</small></a>`).join("");
+    const nav = (onlyMine ? userSkills : skills).map(skill => `<a data-skill-entry data-search="${esc((skill.title || "") + " " + (skill.description || ""))}" href="#/skills/${esc(skill.id)}" class="${skill.id===active ? "active" : ""}"><span>${esc(skill.title)}</span><small>${skill.origin === "user" ? "MINHA SKILL" : "DO HUB (LOCAL)"}</small></a>`).join("");
     let detail = "";
     if (creating) {
       detail = `<div class="workspace-heading"><span class="eyebrow">MINHA BIBLIOTECA</span><h1>Criar Skill</h1><p>Uma instrução reutilizável, independente de qualquer projeto. Salvar não executa Agent.</p></div>
@@ -200,15 +200,15 @@ async function renderSkills(selected, mode) {
         <div class="actions"><button onclick="createUserSkill()">Salvar Skill</button><a class="btn ghost" href="#/skills">Cancelar</a></div></div>`;
     } else if (item) {
       const editing = mode === "edit" && item.origin === "user";
-      detail = `<div class="workspace-heading"><span class="eyebrow">${item.origin === "user" ? "MINHA SKILL" : "BIBLIOTECA DO STUDIO"}</span><h1>${esc(item.title)}</h1>
-        <p>${esc(item.id)} · ${item.origin === "user" ? "salva neste Studio" : "incluída no Studio · somente leitura"}</p>${item.description ? `<p>${esc(item.description)}</p>` : ""}</div>
+      detail = `<div class="workspace-heading"><span class="eyebrow">${item.origin === "user" ? "MINHA SKILL" : "BIBLIOTECA DO HUB"}</span><h1>${esc(item.title)}</h1>
+        <p>${esc(item.id)} · ${item.origin === "user" ? "salva neste Studio" : "materialização local do Hub · somente leitura; confirme a preparação e o lock"}</p>${item.description ? `<p>${esc(item.description)}</p>` : ""}</div>
         <div class="skill-actions">${item.origin === "user" ? `<a class="btn ${editing ? "ghost" : ""}" href="#/skills/${esc(item.id)}${editing ? "" : "/edit"}">${editing ? "Ver Skill" : "Editar Skill"}</a>` : ""}
           <button class="ghost" onclick="copySelectedSkill()">Duplicar para editar</button></div>
         ${editing ? `<div class="card skill-editor"><label for="skill-content">Markdown da Skill (inclua # Título; metadados podem vir antes)</label><textarea id="skill-content" maxlength="64000">${esc(item.content)}</textarea>
           <div class="actions"><button onclick="saveUserSkill()">Salvar alterações</button><a class="btn ghost" href="#/skills/${esc(item.id)}">Cancelar</a></div><p class="muted">Uma edição feita em outra janela exige revisão antes de substituir.</p></div>`
         : `<pre class="skill-content">${esc(item.content)}</pre>`}`;
     } else {
-      detail = `<div class="empty">${onlyMine ? "Você ainda não criou Skills. Crie uma para começar." : "Nenhuma Skill disponível."}</div>`;
+      detail = `<div class="empty">${onlyMine ? "Você ainda não criou Skills. Crie uma para começar." : "Nenhuma Skill do Hub preparada nesta máquina. A Etapa 0 documental funciona sem ela; prepare o bundle fixado apenas após revisão local."}</div>`;
     }
     view.innerHTML = `<div class="skills-shell">
       <header class="space-header"><div><a class="back-link" href="#/home">← Launcher</a><span class="eyebrow">CONHECIMENTO REUTILIZÁVEL</span><h1>Skills Workspace</h1><p>Skills especializam fluxos, mas não são obrigatórias para um Agent. Nenhum Agent é iniciado aqui.</p></div><a class="btn" href="#/skills/new">+ Criar Skill</a></header>
@@ -216,7 +216,7 @@ async function renderSkills(selected, mode) {
         <a href="#/skills" class="${!creating && !onlyMine ? "active" : ""}">Biblioteca <span>${skills.length}</span></a>
         <a href="#/skills/mine" class="${onlyMine ? "active" : ""}">Minhas Skills <span>${userSkills.length}</span></a>
         <label for="skill-filter">Buscar na biblioteca</label><input id="skill-filter" type="text" oninput="filterSkillList()" placeholder="Filtrar por nome ou finalidade" />
-        <div class="skill-list">${nav || "<p class='muted'>Nenhuma Skill instalada.</p>"}</div>
+        <div class="skill-list">${nav || "<p class='muted'>Nenhuma Skill materializada pelo Hub nesta máquina.</p>"}</div>
       </nav><section class="skills-detail">${detail}</section>
       <aside class="skills-help"><span class="lia-monogram">L</span><span class="eyebrow">LIA · CONHECIMENTO</span><h3>Um método que você pode reutilizar.</h3>
         <p>Descreva quando usar, entradas necessárias, passos e como revisar o resultado. Uma Skill não conecta runtimes, tools ou MCP.</p>

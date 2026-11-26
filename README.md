@@ -70,9 +70,10 @@ supervisionáveis, sem substituir a direção criativa do Dev.
 - Contexto de projeto e Lia/acompanhamento em painéis recolhíveis. O painel
   mostra bloqueios, Sessions simuladas e atalhos para QA/feedback manual;
   **não há chat ou Agent real** nesta etapa.
-- Skills Workspace independente: consultar as Skills distribuídas (quatro originais na UI.1),
-  criar e editar Skills próprias em Markdown, buscar/organizar por Biblioteca e
-  Minhas Skills. Skills distribuídas são só leitura e podem ser duplicadas.
+- Skills Workspace independente: consultar Skills **materializadas localmente e
+  verificadas do Agent Hub** (se disponíveis), criar e editar Skills próprias em
+  Markdown, buscar por Biblioteca e Minhas Skills. Skills do Hub são só leitura
+  e podem ser duplicadas; a rota documental de brief não exige Skill instalada.
   Skills não são obrigatórias para Agents; salvar não aplica nem executa nada.
 - Decisões e limitações em `docs/arquitetura-decisoes.md` (Decisão 21) e roteiro
   em `docs/ALPHA-UI1-VALIDACAO.md`. O Dev aceitou expressamente a UI.1 em
@@ -196,8 +197,9 @@ Backups `.bak` não substituem cópias em outro disco; veja `docs/armazenamento-
   skills, provedores, execução simulada, QA, release, engines e conflitos).
 - `app/server.py` — API JSON + servidor HTTP (stdlib).
 - `app/static/` — interface (HTML/CSS/JS vanilla, sem build).
-- `.agents/skills/` — 17 skills documentais consultáveis; templates da Etapa 0
-  ainda não são a fonte do gerador (decisão D1 pendente).
+- `.agents/skills/` — destino local (ignorado no Git) das Skills do Hub;
+  lock atual de 16, nenhuma pré-instalada; `lia-execution-brief` aguarda pin.
+  Templates da Etapa 0 não são fonte do gerador (decisão D1 pendente).
 - `planejamento/` — documentos de visão e handoffs.
 - `docs/` — documentação da entrega.
 

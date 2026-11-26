@@ -12,6 +12,8 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
+from hub_fixture import installed
 
 from app.lia import (  # noqa: E402
     storage, bootstrap, planning, conflicts, decisions, qa, release, providers, engines, sessions,
@@ -1962,22 +1964,26 @@ class TestHttpApi(Base):
         from urllib.request import urlopen
         import json
 
-        with urlopen(self.base + "/api/skills") as response:
-            ids = {s["id"] for s in json.load(response)["skills"]}
-        self.assertTrue({"lia-game-project-bootstrap", "lia-module-planning",
-                         "lia-task-handoff", "lia-project-resume"}.issubset(ids))
-        with urlopen(self.base + "/api/skills/lia-project-resume") as response:
-            self.assertIn("JOURNAL.md", json.load(response)["content"])
-        with self.assertRaises(HTTPError) as error:
-            urlopen(self.base + "/api/skills/..%2Fstorage")
-        self.assertEqual(error.exception.code, 400)
+        from app.lia import hub_skills
+        with tempfile.TemporaryDirectory() as empty, patch.object(hub_skills, "SKILLS_DIR", Path(empty)), patch.object(hub_skills, "RECEIPT", Path(empty) / ".hub-install.json"):
+            with urlopen(self.base + "/api/skills") as response:
+                self.assertEqual(json.load(response)["skills"], [])  # Hub não provisionado
+            with self.assertRaises(HTTPError) as error:
+                urlopen(self.base + "/api/skills/lia-project-resume")
+            self.assertEqual(error.exception.code, 400)
+            with self.assertRaises(HTTPError) as error:
+                urlopen(self.base + "/api/skills/..%2Fstorage")
+            self.assertEqual(error.exception.code, 400)
 
 
 class TestUserSkills(Base):
     def test_create_edit_reopen_and_isolate_from_projects(self):
         from app.lia import skills
+        # Fixture sintética com recibo local; nunca payload nem aceite do Hub.
+        hub = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(installed(hub))
         builtin = skills.get_skill("lia-game-project-bootstrap", self.store)
-        self.assertEqual(builtin["origin"], "builtin")
+        self.assertEqual(builtin["origin"], "hub")
         copy = skills.create_skill(self.store, builtin["content"])  # frontmatter é mantido
         self.assertEqual(copy["content"], builtin["content"])
         self.assertEqual(copy["title"], builtin["title"])
@@ -2187,10 +2193,18 @@ class TestLocalModelDiscovery(Base):
 
 
 class TestSkillReuse(Base):
-    def test_skill_templates_present(self):
+    def test_skill_templates_are_optional_until_hub_materialization(self):
         import app.lia.templates_loader as tl
-        self.assertTrue(tl.skill_exists())
-        self.assertIn("PROJECT_BRIEF.md", tl.list_templates())
+        from app.lia import hub_skills
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root) / "lia-game-project-bootstrap"
+            with patch.object(hub_skills, "SKILLS_DIR", Path(root)), patch.object(hub_skills, "RECEIPT", Path(root) / ".hub-install.json"):
+                self.assertFalse(tl.skill_exists())
+                self.assertEqual(tl.list_templates(), [])
+            with installed(Path(root)):
+                self.assertTrue(tl.skill_exists())
+                self.assertEqual(tl.list_templates(), [])  # não inventar templates
+                self.assertIsNone(tl.read_template("../../secrets"))
 
 
 if __name__ == "__main__":

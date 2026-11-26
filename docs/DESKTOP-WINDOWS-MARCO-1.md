@@ -11,7 +11,7 @@ permanecem utilizáveis sem a dependência de desktop.
   Liga a mesma SPA/API em `127.0.0.1`, numa porta **dinâmica**; não abre porta
   pública. Ao fechar a janela ou falhar o webview, o servidor é encerrado.
 - `desktop/build_windows.ps1`: receita **manual** PyInstaller `--onedir` para
-  incluir `app/static` e `.agents/skills`, sem mudar diretório dos projetos,
+  incluir `app/static` e o lock (não payloads de Skills), sem mudar diretório dos projetos,
   sem baixar pacotes por conta própria nem publicar binários.
 - Sem reescrever o Core, storage, provider/engine ou contratos. Sem Agent ou
   chat real, instalador, atualização automática, assinatura ou `.exe` pronto.
@@ -43,26 +43,18 @@ Para construir, após validar a janela de desenvolvimento:
 ```
 
 O resultado esperado fica na **pasta inteira** `dist\LiaStudio\`, incluindo
-`LiaStudio.exe`, `app\static\index.html` e
-`.agents\skills\lia-game-project-bootstrap\SKILL.md`. Não distribua só o `.exe`.
-O script verifica os três caminhos e encerra com erro se faltarem. `dist/` e
-`build/` são ignorados pelo Git.
+`LiaStudio.exe`, `app\static\index.html` e `desktop\hub-skills.lock.json`.
+O script **não aceita** `-SkillsDirectory` para embutir payloads do Hub.
+`dist/` e `build/` são ignorados pelo Git. Não distribua só o `.exe`.
 
-## Build com Skills preparadas pelo Agent Hub
+## Skills do Agent Hub: fora do build
 
-A preparação é explícita. Rode o bootstrap do Lia Agent Hub com pacotes e
-manifestos locais do perfil lia-studio numa cópia de trabalho em que as pastas
-de destino estejam livres. Passe a pasta .agents/skills produzida ao build
-da branch do Studio.
-
-```powershell
-.\desktop\build_windows.ps1 -SkillsDirectory '<copia-preparada>\.agents\skills'
-```
-
-O build conserva o caminho .agents/skills dentro do pacote. Ele verifica se a
-Skill de bootstrap existe. A conferência de revisões e hashes acontece na
-materialização do Hub. O operador seleciona a biblioteca completa antes de
-empacotar. Para obter o build da árvore versionada, omita o parâmetro.
+O Studio não é fonte de distribuição de Skills. A preparação com bundle/checkout
+externos revisados ocorre separadamente e somente por iniciativa do Dev,
+seguindo `.agents/skills/README.md`; `lia-execution-brief` ainda não está no
+lock. Não foi verificado consumo do Hub no `.exe` Windows: o protótipo sem
+Skills só pode afirmar a rota documental e o Workspace vazio/Skills do Dev.
+Não copie pastas de Skills para `dist/` nem publique como parte do Studio.
 
 ## Roteiro de qualificação Windows (ainda não executado)
 
@@ -70,7 +62,7 @@ empacotar. Para obter o build da árvore versionada, omita o parâmetro.
    Windows, Python, pywebview, PyInstaller, WebView2 e hash do commit, sem paths
    sensíveis no relatório público. Rode `py verify_alpha.py` e registre pulados.
 2. Abra o `.exe` pela pasta empacotada, sem `py run.py` e sem VS Code. Verifique
-   janela própria, Home, CSS/JS/Skills distribuídas e ausência de console perdido.
+   janela própria, Home, CSS/JS/Workspace de Skills vazio ou com Skills do Dev e ausência de console perdido.
    Inspecione se a UI ainda informa que Agent, build e chat não estão conectados.
 3. Pela janela: crie projeto, gere/revise documentos, navegue fases sem avançar
    gate, salve uma Skill, recarregue a página, feche a janela. Confirme que o
