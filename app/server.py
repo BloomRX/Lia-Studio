@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import animation_authoring, app_discovery, assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
+from .lia import animation_authoring, forge_animation, app_discovery, assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -439,6 +439,10 @@ class Handler(BaseHTTPRequestHandler):
                     "steps": templates_loader.bootstrap_steps(),
                     "templates": templates_loader.list_templates(),
                 }, 200
+            if parts == ["api", "animation", "forge-v1", "inspect"] and method == "POST":
+                if set(body) != {"sourceText"}:
+                    raise StorageError("envie somente o texto da especificação Forge V1")
+                return forge_animation.inspect_source(body["sourceText"]), 200
             if parts == ["api", "animation"] and method == "GET":
                 return animation_authoring.list_all(storage), 200
             if parts == ["api", "animation", "projects"] and method == "POST":
