@@ -28,6 +28,27 @@ checks/testes e exceções **redigidas** se desejar análise externa. O próximo
 relatório do utilitário permanece apenas metadados e precisa identificar o
 novo HEAD; nenhum resultado Linux substitui reteste Windows.
 
+## Reteste Windows de `a4f8155`
+
+O novo [relatório](windows-check-20261126T004322Z-a4f81556.json) publicado em
+`921d82b` mostra PASS nas partes **1–6 e 8**, FAIL em **7, 9 e 10**. Logo, a
+regressão anterior de 3/6 não se repetiu nesse Windows, mas **não há aprovação
+Windows da suíte**. A parte 10 contém `tests/test_windows_evidence.py`:
+`test_save_is_new_and_stays_inside_repo` tentava criar symlink sem capturar
+`OSError` em instalações Windows sem privilégio de symlink. Isso é um **defeito
+concreto de portabilidade do teste** e foi corrigido sem enfraquecer a
+verificação quando symlinks estão disponíveis. Não sabemos se explica o FAIL
+10 observado: o relatório não inclui falhas individuais. Tampouco é possível
+atribuir causa aos FAILs 7/9 com esses metadados.
+
+Para obter informação útil sem publicar caminhos/tracebacks, uma revisão posterior
+inclui `Studio-Windows-Evidence.bat --diagnose-only` para rodar **somente 7, 9 e
+10** e mostrar as chaves fixas dos grupos com falha. A saída bruta dos testes
+continua descartada; esse modo **não salva relatório, não commita e não faz
+push**. Ele exige checkout limpo da revisão nova e não substitui o `.bat` normal
+para registrar o reteste completo. Se o grupo isolado falhar, leia o traceback
+localmente e compartilhe apenas nome de teste e exceção sem paths/segredos.
+
 O `sourceCommit` no lock do Hub não pôde ser consultado aqui e o checkout/bundle
 fixados não estavam disponíveis. `prepare_hub_skills.ps1` agora exige o commit
 exato e hashes antes da chamada externa e produz recibo local verificável após

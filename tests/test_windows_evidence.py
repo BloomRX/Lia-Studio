@@ -51,6 +51,34 @@ class WindowsEvidenceTests(unittest.TestCase):
         self.assertTrue(report['engine_presence_on_path_only']['godot_on_path'])
         self.assertIn('agent_runtime', report['not_tested'])
         self.assertFalse(report['project_data_stored'])
+        self.assertEqual(report['checks'][4]['failed_groups'], [])
+
+    def test_diagnose_reports_only_allowlisted_check_keys_not_raw_output(self):
+        secret = 'TOKEN_SECRETO C:\\Users\\alguem\\private.json'
+        def fake(command, **kwargs):
+            if command[:2] == ['git', 'status']:
+                return CompletedProcess(command, 0, '', '')
+            if command[:2] == ['git', 'rev-parse']:
+                return CompletedProcess(command, 0, 'a' * 40, '')
+            if command[:2] == ['git', 'branch']:
+                return CompletedProcess(command, 0, we.BRANCH, '')
+            number = int(command[-1])
+            return CompletedProcess(command, 1,
+                f'{secret}\nCHECK_RESULT engine_process FAIL\n'
+                'CHECK_RESULT drafts FAIL\nCHECK_RESULT any_private_path FAIL\n', secret)
+        with patch.object(we.shutil, 'which', return_value=None), redirect_stdout(io.StringIO()) as out:
+            report = we.collect(runner=fake, parts=(7, 9, 10))
+        self.assertEqual([c['failed_groups'] for c in report['checks']],
+                         [['engine_process'], ['drafts'], []])
+        self.assertNotIn(secret, json.dumps(report) + out.getvalue())
+        self.assertNotIn('any_private_path', json.dumps(report) + out.getvalue())
+        self.assertEqual([c['result'] for c in report['checks']], ['FAIL'] * 3)
+        with patch.object(we.platform, 'system', return_value='Windows'), \
+             patch.object(we, 'collect', return_value=report) as collect, \
+             patch.object(we, 'save', side_effect=AssertionError('não salvar')), \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(we.main(['--diagnose-only']), 1)
+        collect.assert_called_once_with(parts=(7, 9, 10))
 
     def test_save_is_new_and_stays_inside_repo(self):
         with tempfile.TemporaryDirectory(dir=we.ROOT) as temp, patch.object(we, 'REPORTS', Path(temp)):
@@ -61,9 +89,14 @@ class WindowsEvidenceTests(unittest.TestCase):
                 we.save({'revision_tested':'a'*40, 'checks':[]})
             path.unlink()
             outside = Path(temp) / 'linked'
-            outside.symlink_to(we.ROOT, target_is_directory=True)
-            with self.assertRaises(RuntimeError):
-                we.save({'revision_tested':'a'*40}, outside)
+            try:
+                outside.symlink_to(we.ROOT, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                # Windows sem Developer Mode/permissão: testar o restante do contrato.
+                pass
+            else:
+                with self.assertRaises(RuntimeError):
+                    we.save({'revision_tested':'a'*40}, outside)
 
     def test_publish_is_cancelled_without_exact_confirmation_and_stages_one_file(self):
         with tempfile.TemporaryDirectory(dir=we.ROOT) as temp:

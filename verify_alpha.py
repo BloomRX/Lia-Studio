@@ -150,6 +150,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Executar os demais itens mesmo após falha, para registrar o resultado
         # de todo o bloco sem iniciar automaticamente o próximo.
         passed = run_check(key)
+        # Chave fixa do roteiro (sem traceback, caminhos ou conteúdo de teste).
+        # O diagnóstico Windows pode informar qual grupo falhou sem publicar logs.
+        print(f"CHECK_RESULT {key} {'PASS' if passed else 'FAIL'}", flush=True)
         ok = passed and ok
     if not ok:
         print("\nFALHA: revise os erros acima; não considere esta parte aprovada.")

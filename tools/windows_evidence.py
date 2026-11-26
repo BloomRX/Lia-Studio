@@ -33,15 +33,25 @@ def _git(*args: str, runner: Runner = subprocess.run) -> str:
     return result.stdout.strip()
 
 
-def collect(runner: Runner = subprocess.run) -> dict:
-    """Executa cada parte em processo próprio e grava APENAS resultado agregado."""
+def _failed_groups(output: str, part: int) -> list[str]:
+    """Allowlist de chaves estáticas; nunca encaminhar saída dos testes."""
+    from verify_alpha import PARTS
+    expected = set(PARTS[part - 1][1])
+    return sorted({key for key in re.findall(r"^CHECK_RESULT ([a-z0-9_-]+) FAIL\s*$", output, re.MULTILINE)
+                   if key in expected})
+
+
+def collect(runner: Runner = subprocess.run, parts: tuple[int, ...] = PARTS) -> dict:
+    """Executa cada parte em processo próprio e grava APENAS metadados."""
     if _git("status", "--porcelain", runner=runner):
         raise RuntimeError("Checkout com alterações locais. Teste em checkout limpo para atribuir a revisão correta; nada foi descartado.")
     revision = _git("rev-parse", "HEAD", runner=runner)
     if not re.fullmatch(r"[a-f0-9]{40}", revision):
         raise RuntimeError("Revisão Git inválida; não crie relatório.")
+    if not parts or any(number not in PARTS for number in parts):
+        raise ValueError("Parte de diagnóstico inválida")
     checks = []
-    for number in PARTS:
+    for number in parts:
         try:
             result = runner([sys.executable, "verify_alpha.py", "--part", str(number)],
                             cwd=ROOT, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
@@ -50,12 +60,19 @@ def collect(runner: Runner = subprocess.run) -> dict:
             state = "PASS" if result.returncode == 0 else "FAIL"
             if state == "PASS" and "NÃO EXECUTADO" in output and number == 10:
                 state = "PARTIAL"
+            failed_groups = _failed_groups(output, number) if state == "FAIL" else []
         except subprocess.TimeoutExpired:
-            state = "TIMEOUT"
+            state, failed_groups = "TIMEOUT", []
         except (OSError, UnicodeError):
-            state = "UNAVAILABLE"
-        checks.append({"part": number, "result": state})
+            state, failed_groups = "UNAVAILABLE", []
+        check = {"part": number, "result": state}
+        if state == "FAIL":
+            check["failed_groups"] = failed_groups
+        checks.append(check)
         print(f"Parte {number}/10: {state} (saída detalhada não foi salva)", flush=True)
+        if state == "FAIL":
+            print("  Grupos com falha: " + (", ".join(failed_groups) if failed_groups else
+                  "indisponíveis; verifique os resultados localmente"), flush=True)
     engines = {
         # Detecção de presença apenas; instalações fora da PATH podem existir.
         "godot_on_path": any(shutil.which(x) is not None for x in ("godot", "godot4")),
@@ -143,11 +160,19 @@ def publish(path: Path, expected_digest: str, runner: Runner = subprocess.run,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evidência Windows local sem logs nem projetos")
-    parser.add_argument("--no-publish", action="store_true", help="somente relatório local")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--no-publish", action="store_true", help="somente relatório local")
+    mode.add_argument("--diagnose-only", action="store_true",
+                      help="retesta apenas 7, 9, 10; mostra grupos fixos sem salvar nem publicar relatório")
     args = parser.parse_args(argv)
     if platform.system() != "Windows":
         parser.error("Execute este utilitário no Windows do Dev; testes falsos rodam separadamente no Linux.")
     try:
+        if args.diagnose_only:
+            result = collect(parts=(7, 9, 10))
+            print("Diagnóstico local concluído; nenhum relatório foi salvo ou enviado."
+                  " Grupos identificam checks, não a exceção nem aprovação Windows.")
+            return 1 if any(c["result"] != "PASS" for c in result["checks"]) else 0
         report = collect()
         path = save(report)
         print("\nRelatório para revisão (somente metadados):")
