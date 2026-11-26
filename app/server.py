@@ -440,6 +440,8 @@ class Handler(BaseHTTPRequestHandler):
                     "templates": templates_loader.list_templates(),
                 }, 200
             if parts == ["api", "animation", "forge-v1", "inspect"] and method == "POST":
+                if not _local_engine_access(self):
+                    return {"error": "inspeção de especificação exige Studio local em loopback"}, 403
                 if set(body) != {"sourceText"}:
                     raise StorageError("envie somente o texto da especificação Forge V1")
                 return forge_animation.inspect_source(body["sourceText"]), 200
