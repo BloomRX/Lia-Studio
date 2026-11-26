@@ -5,6 +5,7 @@ Este repositório pertence ao ecossistema Lia. Leia `docs/BRAND-STANDARDS.md` an
 ## Antes de alterar
 
 - Inspecione o branch, estado e conteúdo real; não presuma que a branch principal contém o trabalho da branch Arena.
+- Leia `docs/BRANCH-CLEANUP-2026-11-26.md` para as bases mantidas e a recuperação das pesquisas; não use branches removidas como base nem reinicie pesquisas já preservadas.
 - Não declare recursos, testes, builds ou integrações como concluídos sem executar e registrar evidências.
 - Preserve a autonomia do Studio: Lia Waifu e agentes externos não devem ser dependências obrigatórias sem decisão explícita.
 - Não instale ferramentas, runtimes, serviços ou pesos, não aceite licenças, não envie dados nem incorra em custos sem autorização explícita.
