@@ -80,6 +80,38 @@ class WindowsEvidenceTests(unittest.TestCase):
             self.assertEqual(we.main(['--diagnose-only']), 1)
         collect.assert_called_once_with(parts=(7, 9, 10))
 
+    def test_named_failure_summary_is_allowlisted_and_never_exports_messages(self):
+        private = 'C:\\Users\\privado\\token.txt SECRET_KEY'
+        def fake(command, **kwargs):
+            if command[:2] == ['git', 'status']:
+                return CompletedProcess(command, 0, '', '')
+            if command[:2] == ['git', 'rev-parse']:
+                return CompletedProcess(command, 0, 'a' * 40, '')
+            if command[:2] == ['git', 'branch']:
+                return CompletedProcess(command, 0, we.BRANCH, '')
+            number = int(command[-1])
+            group, name, kind = (
+                ('app_discovery', 'test_bounded_sources_no_launch_no_manifest_leak', 'AssertionError')
+                if number == 7 else
+                ('chat', 'test_cancel_active_http_socket_discards_late_model_result', 'ConnectionResetError'))
+            text = (f'CHECK_RESULT {group} FAIL\n{private}\n'
+                    f'========================================\nERROR: {name} (__main__.Test.{name})\n'
+                    f'Traceback (most recent call last):\n  File "{private}"\n{kind}: {private}\n'
+                    '========================================\nERROR: test_unlisted_private_name (__main__.Test)\n'
+                    f'RuntimeError: {private}\n')
+            return CompletedProcess(command, 1, text, private)
+        with patch.object(we.shutil, 'which', return_value=None), redirect_stdout(io.StringIO()) as out:
+            report = we.collect(runner=fake, parts=(7, 9))
+        expected = [
+            {'app_discovery': [{'test': 'test_bounded_sources_no_launch_no_manifest_leak',
+                                'error_type': 'AssertionError'}]},
+            {'chat': [{'test': 'test_cancel_active_http_socket_discards_late_model_result',
+                       'error_type': 'ConnectionResetError'}]},
+        ]
+        self.assertEqual([check['failed_tests'] for check in report['checks']], expected)
+        self.assertNotIn(private, json.dumps(report) + out.getvalue())
+        self.assertNotIn('test_unlisted_private_name', json.dumps(report) + out.getvalue())
+
     def test_diagnose_direct_script_can_load_part_allowlist_without_repo_on_pythonpath(self):
         # Reproduz a invocação do .bat: Python executa tools/ como script, não
         # importa o projeto como pacote. -I remove também a raiz de sys.path.

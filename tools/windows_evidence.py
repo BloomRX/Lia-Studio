@@ -7,6 +7,7 @@ opcional acrescenta apenas o relatório revisado à branch atual, sem force.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 from datetime import datetime, timezone
 import json
@@ -24,6 +25,44 @@ REPORTS = ROOT / "docs" / "windows-evidence"
 PARTS = tuple(range(1, 11))
 TIMEOUT_SECONDS = 180
 Runner = Callable[..., subprocess.CompletedProcess]
+# Arquivos de teste conhecidos; a saída só revela IDs declarados no próprio checkout.
+DIAGNOSTIC_FILES = {
+    "app_discovery": "tests/test_app_discovery.py",
+    "chat": "tests/test_local_model_chat.py",
+}
+ERROR_TYPES = frozenset({
+    "AssertionError", "OSError", "PermissionError", "FileNotFoundError",
+    "TimeoutError", "HTTPError", "URLError", "ConnectionError",
+    "ConnectionRefusedError", "ConnectionResetError", "BrokenPipeError",
+    "RuntimeError", "TypeError", "ValueError", "StorageError",
+    "ChatCancelled", "ChatTimedOut", "UnicodeError", "NotImplementedError",
+})
+
+
+def _failed_tests(output: str, group: str) -> list[dict[str, str]]:
+    """Extrai só nomes declarados e classes de exceção permitidas; nunca mensagens."""
+    relative = DIAGNOSTIC_FILES.get(group)
+    if relative is None:
+        return []
+    try:
+        tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, SyntaxError):
+        return []
+    allowed = {node.name for node in ast.walk(tree)
+               if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and node.name.startswith("test_")}
+    results = {}
+    # unittest divide falhas por linhas de '=' e inicia cada bloco com
+    # FAIL/ERROR: test_nome (...). Nenhuma parte do traceback é exportada.
+    for block in re.split(r"(?m)^={10,}\s*$", output):
+        match = re.search(r"(?m)^(?:FAIL|ERROR): (test_[a-z0-9_]+) \(", block)
+        if not match or match.group(1) not in allowed:
+            continue
+        categories = re.findall(r"(?m)^([A-Za-z][A-Za-z0-9_]*)(?::|$)", block)
+        category = next((kind for kind in reversed(categories) if kind in ERROR_TYPES), None)
+        results[match.group(1)] = {"test": match.group(1),
+                                   "error_type": category or "não identificado"}
+    return [results[name] for name in sorted(results)]
 
 
 def _git(*args: str, runner: Runner = subprocess.run) -> str:
@@ -78,11 +117,19 @@ def collect(runner: Runner = subprocess.run, parts: tuple[int, ...] = PARTS) -> 
         check = {"part": number, "result": state}
         if state == "FAIL":
             check["failed_groups"] = failed_groups
+            # Apenas os dois grupos ainda falhando no Windows têm detalhamento.
+            named = {group: tests for group in failed_groups
+                     if (tests := _failed_tests(output, group))}
+            if named:
+                check["failed_tests"] = named
         checks.append(check)
         print(f"Parte {number}/10: {state} (saída detalhada não foi salva)", flush=True)
         if state == "FAIL":
             print("  Grupos com falha: " + (", ".join(failed_groups) if failed_groups else
                   "indisponíveis; verifique os resultados localmente"), flush=True)
+            for group, tests in check.get("failed_tests", {}).items():
+                for item in tests:
+                    print(f"  {group}.{item['test']}: {item['error_type']}", flush=True)
     engines = {
         # Detecção de presença apenas; instalações fora da PATH podem existir.
         "godot_on_path": any(shutil.which(x) is not None for x in ("godot", "godot4")),

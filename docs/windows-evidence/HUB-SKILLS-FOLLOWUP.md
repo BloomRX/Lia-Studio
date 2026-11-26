@@ -58,6 +58,17 @@ isolado reproduz essa forma de execução. Esse traceback **não é evidência d
 que alguma das partes 7/9/10 mudou de resultado**; execute novamente o
 `--diagnose-only` em checkout limpo da revisão corrigida. Não salvar logs brutos.
 
+**Diagnóstico Windows após `6fa662f`:** `--diagnose-only` concluiu; o único
+check falho na parte 7 foi `app_discovery`, e na parte 9, `chat`. A parte 10
+passou. O histórico do relatório anterior não foi reescrito. Os nomes de grupo
+não revelam qual método ou exceção falhou e, portanto, não confirmam a causa.
+Agora o diagnóstico também lista apenas nomes de métodos `test_...` que
+existem nos dois arquivos de teste correspondentes e o **tipo** de exceção
+reconhecido (sem mensagem ou traceback). Tudo continua em memória, sem gravar
+logs/paths. Para distinguir problemas de fixture/Windows de defeitos de produto,
+repita o diagnóstico em checkout limpo da revisão atual e compartilhe somente
+as linhas com métodos e tipos; não atribua êxito a engines, chat real ou QA.
+
 O `sourceCommit` no lock do Hub não pôde ser consultado aqui e o checkout/bundle
 fixados não estavam disponíveis. `prepare_hub_skills.ps1` agora exige o commit
 exato e hashes antes da chamada externa e produz recibo local verificável após
