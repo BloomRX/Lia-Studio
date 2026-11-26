@@ -63,8 +63,8 @@ class TestForgeV1Workspace(unittest.TestCase):
         s = spec(); s["provenance"]["license"] = ""; invalid.append(s)
         s = spec(loop=True); s["timeline"][-1]["pose"] = "active"; invalid.append(s)
         s = spec(); s["unknown"] = True; invalid.append(s)
-        for item in invalid:
-            with self.subTest(item=str(item)[:100]), self.assertRaises(storage.StorageError):
+        for index, item in enumerate(invalid):
+            with self.subTest(case=index, item=str(item)[:150]), self.assertRaises(storage.StorageError):
                 forge_animation.inspect_source(json.dumps(item))
         with self.assertRaisesRegex(storage.StorageError, "duplicado"):
             forge_animation.inspect_source('{"id":"um","id":"dois"}')
@@ -116,7 +116,7 @@ class TestForgeV1Workspace(unittest.TestCase):
             self.assertIn(f'id="{field}"', html)
         self.assertIn("/api/animation/forge-v1/inspect", script)
         self.assertIn("source.value !== lastVerifiedText", script)
-        self.assertIn("não gera clipes ou glTF", html)
+        self.assertIn("nem gera clipes ou glTF", html)
 
 
 if __name__ == "__main__":
