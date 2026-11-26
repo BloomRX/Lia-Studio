@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#141122">
+<title>Forge V1 · Lia Studio</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+.forge-workspace{max-width:1180px;margin:32px auto;padding:0 24px 48px}
+.forge-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(230px,1fr);gap:18px}
+.forge-card{background:#201D2F;border:1px solid #433349;border-radius:18px;padding:20px}
+.forge-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.forge-actions button,.forge-actions label{cursor:pointer}
+#forge-source{display:block;width:100%;height:460px;min-height:280px;resize:vertical;background:#141122;color:#E6DFF8;padding:14px;border:1px solid #75607e;border-radius:10px;font:13px/1.5 ui-monospace,Consolas,monospace;tab-size:2}
+#forge-source:focus-visible{outline:2px solid #FFB1C5;outline-offset:3px}
+.forge-status{white-space:pre-wrap;overflow-wrap:anywhere}
+.forge-details{list-style:none;padding:0}
+.forge-details li{padding:8px 0;border-bottom:1px solid #45374f}
+.forge-muted{color:#C9B8D9}
+.forge-warning{border-left:3px solid #FFB1C5;padding:10px 14px;background:#2C223C;margin:16px 0}
+@media(max-width:800px){.forge-layout{grid-template-columns:1fr}#forge-source{height:340px}}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#forge-main">Ir ao editor Forge V1</a>
+<header class="topbar"><a class="brand" href="/static/animation.html"><span class="badge">✿</span><span class="brand-copy"><strong>Lia <em>Studio</em></strong><small>ANIMAÇÃO · INSPEÇÃO FORGE V1</small></span></a><nav class="topnav"><a href="/static/animation.html">← Editor 2D</a><a href="/">Studio</a></nav></header>
+<main id="forge-main" class="forge-workspace">
+<span class="eyebrow">FORMATO PUBLICADO · FORGE V1</span>
+<h1>Especificação de animação Forge</h1>
+<p>Abra, revise e exporte o <code>spec.json</code> original. Este espaço não converte o rascunho 2D do Studio nem gera clipes ou glTF.</p>
+<div class="forge-warning" role="note">Inspeção estrutural local, não execução do compositor oficial. Verifique no Lia Forge após editar. Direitos, rig, retargeting e qualidade visual não são aprovados aqui.</div>
+<div class="forge-layout">
+<section class="forge-card" aria-label="Editor JSON">
+<div class="forge-actions">
+<label for="forge-file">Abrir spec.json</label>
+<input type="file" id="forge-file" accept=".json,application/json" aria-label="Selecionar especificação Forge V1">
+<button type="button" id="forge-check">Verificar contrato</button>
+<button type="button" id="forge-export" disabled>Exportar JSON verificado</button>
+</div>
+<label for="forge-source">Conteúdo JSON editável (até 2 MB)</label>
+<textarea id="forge-source" spellcheck="false" aria-describedby="forge-notice" placeholder="Abra um spec.json criado pelo Forge."></textarea>
+<p id="forge-notice" class="forge-muted">Alterar qualquer caractere exige nova verificação. Nada é salvo automaticamente no Studio.</p>
+</section>
+<aside class="forge-card">
+<h2>Resultado</h2>
+<p id="forge-status" class="forge-status" role="status" aria-live="polite">Nenhuma especificação carregada.</p>
+<ul id="forge-details" class="forge-details" aria-label="Metadados conferidos"></ul>
+<p class="forge-muted">O hash identifica os bytes do arquivo editado; não certifica autoria, licença ou compatibilidade com um avatar.</p>
+</aside>
+</div>
+</main>
+<script src="/static/forge-animation.js"></script>
+</body></html>
