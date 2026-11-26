@@ -2,7 +2,7 @@
 
 - Produto: Lia Studio. Não reintroduza nomes ou caminhos legados. Preserve o trabalho existente e a branch de desenvolvimento; não faça merge em `main`, release, instalação ou publicação sem autorização específica.
 - O Core `app/lia/` usa apenas a biblioteca padrão Python. Dependências da shell/build são opcionais, fixadas e registradas em `THIRD_PARTY_NOTICES.md`.
-- Prepare as 16 Skills fixadas do Agent Hub com `desktop/prepare_hub_skills.ps1`. O destino é `.agents/skills/`, onde `lia-execution-brief` continua versionada. As junctions dos hosts continuam locais.
+- `.agents/skills/` é a fonte versionada e somente leitura das Skills do Studio; junctions dos hosts são locais. O piloto `desktop/prepare_hub_skills.ps1` não está ativo: seus destinos já estão ocupados e não devem ser apagados para executá-lo.
 - Tasks simuladas continuam **SIMULADAS**. O transporte CLI experimental não conecta Agent Runtime, não cria Session real e não abre gate. Deixe runtime desligado até o Dev testar `claude -p` atrás do gateway em sua máquina e aprovar contrato de execução. `--allowedTools` não é sandbox.
 - Combos do gateway são declarações do Dev, não fatos verificados. Modos `fallback`, `round-robin` e `fusion` têm riscos distintos; fusion pode somar custos. Sem composição/consentimento, não execute nem faça fallback pago oculto.
 - Não leia, copie, registre ou publique credenciais, memórias pessoais, prompts brutos ou streams do modelo sem autorização e política de retenção. Nunca atribua ao Studio testes/builds que não executou.

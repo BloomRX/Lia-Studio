@@ -4,18 +4,17 @@ Convenção canônica das skills: **`.agents/skills/<id-da-skill>/`**, em format
 compatível com Agent Skills (cada skill tem um `SKILL.md` com metadados simples e,
 quando necessário, pastas `templates/` e `references/`).
 
-- O Agent Hub mantém as 16 Skills fixadas em `desktop/hub-skills.lock.json`.
-  `lia-execution-brief` permanece versionada no Studio. Para Claude Code no Windows, o Dev
-  pode criar localmente uma *junction* `.claude/skills/` apontando para este
-  diretório; `.claude/` é ignorado pelo Git. Não gerar ou versionar outra cópia.
-  Descoberta das Skills nessa ferramenta depende de teste no Windows pelo Dev.
-- Prepare as revisões fixadas antes de abrir ou empacotar o Studio:
-
-  ```powershell
-  .\desktop\prepare_hub_skills.ps1 -BundleDirectory '<canal-privado>/lia-studio' -HubCheckout '<checkout-do-hub>' -HubCli '<LiaAgentHubCli.exe>'
-  ```
-
-  O script confere os hashes e exige que os destinos das 16 Skills estejam livres.
+- As Skills distribuídas pelo Studio permanecem **versionadas nesta pasta**, somente
+  leitura e duplicáveis na biblioteca do Dev. `lia-execution-brief` também fica aqui.
+  Para Claude Code no Windows, uma *junction* local `.claude/skills/` pode apontar
+  para este diretório; `.claude/` é ignorado pelo Git. A descoberta nessa ferramenta
+  exige teste no Windows pelo Dev.
+- `desktop/hub-skills.lock.json` e `desktop/prepare_hub_skills.ps1` registram um
+  **piloto de consumo do Agent Hub, não ativo nem obrigatório para abrir o Studio**.
+  O bootstrap exige destinos livres, mas a fonte `.agents/skills/` já está ocupada:
+  **não rode o script neste checkout**, não remova estas Skills para fazê-lo passar,
+  nem misture conteúdo de origens diferentes. Uma mudança de distribuição exige
+  contrato, licença e migração revisados pelo Dev; hashes não autorizam instalação.
 - Cada skill tem **uma** responsabilidade clara e aponta para as outras quando precisa.
 
 ## Skills disponíveis
