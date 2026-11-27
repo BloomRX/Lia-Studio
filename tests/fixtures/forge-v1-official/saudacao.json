@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "id": "saudacao",
+  "version": "1.0.0",
+  "duration": 1.6,
+  "rig": {
+    "profile": "humanoid",
+    "bones": [
+      "rightLowerArm"
+    ]
+  },
+  "poses": {
+    "pose0": {
+      "rotations": {
+        "rightLowerArm": [
+          0,
+          0,
+          0.0,
+          1.0
+        ]
+      },
+      "expressions": {
+        "happy": 0
+      }
+    },
+    "pose1": {
+      "rotations": {
+        "rightLowerArm": [
+          0,
+          0,
+          0.559192903,
+          0.829037573
+        ]
+      },
+      "expressions": {
+        "happy": 0.25
+      }
+    },
+    "pose2": {
+      "rotations": {
+        "rightLowerArm": [
+          0,
+          0,
+          0.241921896,
+          0.970295726
+        ]
+      },
+      "expressions": {
+        "happy": 0.5
+      }
+    },
+    "pose3": {
+      "rotations": {
+        "rightLowerArm": [
+          0,
+          0,
+          0.559192903,
+          0.829037573
+        ]
+      },
+      "expressions": {
+        "happy": 0.25
+      }
+    },
+    "pose4": {
+      "rotations": {
+        "rightLowerArm": [
+          0,
+          0,
+          0.0,
+          1.0
+        ]
+      },
+      "expressions": {
+        "happy": 0
+      }
+    }
+  },
+  "timeline": [
+    {
+      "time": 0.0,
+      "pose": "pose0",
+      "intensity": 1
+    },
+    {
+      "time": 0.4,
+      "pose": "pose1",
+      "intensity": 0.85
+    },
+    {
+      "time": 0.8,
+      "pose": "pose2",
+      "intensity": 1
+    },
+    {
+      "time": 1.2,
+      "pose": "pose3",
+      "intensity": 1
+    },
+    {
+      "time": 1.6,
+      "pose": "pose4",
+      "intensity": 1
+    }
+  ],
+  "interpolation": "linear",
+  "transition": {
+    "inSeconds": 0.1,
+    "outSeconds": 0.1
+  },
+  "loop": false,
+  "mask": [
+    "rightLowerArm"
+  ],
+  "tags": {
+    "emotional": [
+      "friendly"
+    ],
+    "behavioral": [
+      "saudacao"
+    ]
+  },
+  "provenance": {
+    "author": "Lia Forge contributors",
+    "source": "Composicao sintetica original do projeto",
+    "license": "CC0-1.0"
+  }
+}
