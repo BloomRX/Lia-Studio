@@ -51,6 +51,25 @@ class TestForgeV1Workspace(unittest.TestCase):
                 # O editor é textual: exporta exatamente os bytes que passaram no gate.
                 self.assertEqual(text.encode("utf-8"), original)
 
+    def test_five_actual_forge_reference_specs(self):
+        """Cross-repository contract gate: original files from the Forge V1 commit."""
+        root = Path(__file__).resolve().parents[1]
+        fixture_dir = root / "tests/fixtures/forge-v1-official"
+        names = ("concordancia", "curiosidade", "negacao", "ocioso", "saudacao")
+        for name in names:
+            with self.subTest(name=name):
+                source = (fixture_dir / (name + ".json")).read_bytes()
+                document = source.decode("utf-8")
+                parsed = json.loads(document)
+                result = forge_animation.inspect_source(document)
+                self.assertEqual(result["id"], name)
+                self.assertEqual(result["version"], parsed["version"])
+                self.assertEqual(result["duration"], parsed["duration"])
+                self.assertEqual(result["rigProfile"], parsed["rig"]["profile"])
+                self.assertEqual(result["beats"], len(parsed["timeline"]))
+                self.assertEqual(result["sourceSha256"], hashlib.sha256(source).hexdigest())
+                self.assertEqual(result["interoperability"], "forge-spec-v1-text")
+
     def test_rejects_modified_unsupported_and_inconsistent_spec(self):
         invalid = []
         s = spec(); s["schemaVersion"] = 2; invalid.append(s)
