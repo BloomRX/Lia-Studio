@@ -15,7 +15,7 @@
 #forge-source:focus-visible{outline:2px solid #FFB1C5;outline-offset:3px}
 .forge-status{white-space:pre-wrap;overflow-wrap:anywhere}
 .forge-details{list-style:none;padding:0}
-.forge-details li{padding:8px 0;border-bottom:1px solid #45374f}
+.forge-details li{padding:8px 0;border-bottom:1px solid #45374f;overflow-wrap:anywhere}
 .forge-muted{color:#C9B8D9}
 .forge-warning{border-left:3px solid #FFB1C5;padding:10px 14px;background:#2C223C;margin:16px 0}
 @media(max-width:800px){.forge-layout{grid-template-columns:1fr}#forge-source{height:340px}}
@@ -37,15 +37,15 @@
 <button type="button" id="forge-check">Verificar contrato</button>
 <button type="button" id="forge-export" disabled>Exportar JSON verificado</button>
 </div>
-<label for="forge-source">Conteúdo JSON editável (até 2 MB)</label>
+<label for="forge-source">Conteúdo JSON editável (até 4 MiB, UTF-8 sem BOM)</label>
 <textarea id="forge-source" spellcheck="false" aria-describedby="forge-notice" placeholder="Abra um spec.json criado pelo Forge."></textarea>
-<p id="forge-notice" class="forge-muted">Alterar qualquer caractere exige nova verificação. Nada é salvo automaticamente no Studio.</p>
+<p id="forge-notice" class="forge-muted">Verifique novamente após editar. Aumente a versão do JSON se mudar o conteúdo. Mudanças só de formatação preservam o arquivo original.</p>
 </section>
 <aside class="forge-card">
 <h2>Resultado</h2>
 <p id="forge-status" class="forge-status" role="status" aria-live="polite">Nenhuma especificação carregada.</p>
 <ul id="forge-details" class="forge-details" aria-label="Metadados conferidos"></ul>
-<p class="forge-muted">O hash identifica os bytes do arquivo editado; não certifica autoria, licença ou compatibilidade com um avatar.</p>
+<p class="forge-muted">O hash identifica os bytes que serão exportados. A aprovação para distribuição acontece no Forge.</p>
 </aside>
 </div>
 </main>

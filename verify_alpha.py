@@ -78,6 +78,7 @@ CHECKS = {
     "assets": ("Assets locais: metadados, integridade e API", [sys.executable, "tests/test_assets.py"]),
     "animation": ("Animação: projeto, keyframes, biblioteca, proveniência e API", [sys.executable, "tests/test_animation_authoring.py"]),
     "animation_ui": ("Timeline e prévia esquemática", ["node", "tests/test_animation_ui.cjs"]),
+    "forge_animation": ("Inspeção Forge V1 e integridade dos bytes", [sys.executable, "tests/test_forge_animation.py"]),
     "forge_brief": ("Brief manual Studio → Forge sem execução nem escrita", [sys.executable, "tests/test_forge_brief.py"]),
     "gameplay_loop": ("Hipótese, protótipos e relato manual sem promover gates", [sys.executable, "tests/test_gameplay_loop.py"]),
     "skills": ("Skills: metadados progressivos", [sys.executable, "tests/test_skills_progressive.py"]),
@@ -102,7 +103,7 @@ PARTS = (
     ("Políticas, Tool Registry e diagnóstico de engine", ("permissions", "registry", "runtime_policy", "engine_probe", "app_discovery", "engine_inspection", "unity_inspection", "external_inspection", "godot", "engine_process")),
     ("Tentativas, fatia vertical e parser Python", ("attempts", "slice", "validation", "run_history", "godot_runs", "editor_runs")),
     ("CLI/combo declarativo, serviço local falsos, diff e Jobs", ("agent_cli", "combo_policy", "combo_canary", "gateway_models", "legacy_ids", "chat", "drafts", "draft_jobs")),
-    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "animation", "animation_ui", "forge_brief", "gameplay_loop", "skills", "start_routes", "start_routes_ui", "windows_evidence", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
+    ("Integração, desktop falso, compilação e UI", ("integration", "assets", "animation", "animation_ui", "forge_animation", "forge_brief", "gameplay_loop", "skills", "start_routes", "start_routes_ui", "windows_evidence", "desktop", "dependency_layers", "parts", "compile", "ui", "js")),
 )
 
 

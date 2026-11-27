@@ -14,12 +14,13 @@ from typing import Any
 
 from .storage import StorageError
 
-MAX_BYTES = 2 * 1024 * 1024
+MAX_BYTES = 4 * 1024 * 1024
+SPEC_MEDIA_TYPE = "application/vnd.lia.forge-spec+json"
 BONES = set(("hips spine chest upperChest neck head leftEye rightEye jaw "
              "leftShoulder rightShoulder leftUpperArm rightUpperArm leftLowerArm rightLowerArm leftHand rightHand "
              "leftUpperLeg rightUpperLeg leftLowerLeg rightLowerLeg leftFoot rightFoot leftToes rightToes").split())
 NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,79}$")
-VERSION = re.compile(r"^\d+\.\d+\.\d+$")
+VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 IDENTITY = (0.0, 0.0, 0.0, 1.0)
 
 
@@ -37,7 +38,7 @@ def _name(value: Any) -> bool:
 
 
 def _number(value: Any, lo: float, hi: float, positive: bool = False) -> bool:
-    return type(value) in (int, float) and math.isfinite(value) and lo <= value <= hi and (not positive or value > 0)
+    return type(value) in (int, float) and lo <= value <= hi and (not positive or value > 0)
 
 
 def _rotation(value: Any) -> bool:
@@ -74,23 +75,39 @@ def _unique_pairs(pairs: list[tuple[str, Any]]) -> dict:
     result = {}
     for key, value in pairs:
         if key in result:
-            _fail("campo JSON duplicado: " + key)
+            _fail("campo JSON duplicado")
         result[key] = value
     return result
 
 
 def inspect_source(source_text: Any) -> dict:
-    """Valida o recorte de contrato V1 e retorna o hash dos bytes originais."""
-    if type(source_text) is not str or not source_text:
+    """Compatibilidade com a API anterior de texto em envelope JSON."""
+    if type(source_text) is not str:
         _fail("texto JSON obrigatório")
-    raw = source_text.encode("utf-8")
+    try:
+        raw = source_text.encode("utf-8")
+    except UnicodeEncodeError:
+        _fail("o arquivo deve usar UTF-8 válido")
+    return inspect_bytes(raw)
+
+
+def inspect_bytes(raw: bytes) -> dict:
+    """Valida o recorte de contrato V1 e retorna o hash dos bytes originais."""
+    if not raw:
+        _fail("texto JSON obrigatório")
     if len(raw) > MAX_BYTES:
-        _fail("arquivo supera 2 MB")
+        _fail("arquivo supera 4 MiB")
+    if raw.startswith(b"\xef\xbb\xbf"):
+        _fail("o arquivo deve usar UTF-8 sem BOM")
+    try:
+        source_text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        _fail("o arquivo deve usar UTF-8 válido")
     try:
         spec = json.loads(source_text, object_pairs_hook=_unique_pairs,
                           parse_constant=lambda x: _fail("constante JSON proibida: " + x))
-    except (ValueError, UnicodeError) as exc:
-        _fail("JSON ilegível: " + str(exc))
+    except (ValueError, RecursionError):
+        _fail("JSON ilegível")
     _keys(spec, {"schemaVersion", "id", "version", "duration", "rig", "poses", "timeline",
                  "interpolation", "transition", "loop", "tags", "provenance", "mask"},
           "raiz", {"mask"})
@@ -110,9 +127,9 @@ def inspect_source(source_text: Any) -> dict:
         _fail("ossos do rig inválidos")
     bones = set(rig["bones"])
     mask = spec.get("mask", rig["bones"])
-    if type(mask) is not list or len(set(map(str, mask))) != len(mask) or any(
+    if type(mask) is not list or any(
         type(b) is not str or b not in bones for b in mask
-    ):
+    ) or len(set(mask)) != len(mask):
         _fail("mask incompatível")
     poses = spec["poses"]
     if type(poses) is not dict:

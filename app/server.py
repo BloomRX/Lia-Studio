@@ -85,6 +85,41 @@ def _local_engine_access(handler):
             and handler.client_address[0] == "127.0.0.1")
 
 
+def _inspect_forge_source(handler) -> None:
+    if not _local_engine_access(handler):
+        _err(handler, 403, "inspeção de especificação exige Studio local em loopback")
+        return
+    try:
+        if handler.headers.get_content_type() == forge_animation.SPEC_MEDIA_TYPE:
+            lengths = handler.headers.get_all("Content-Length", [])
+            if (handler.headers.get("Transfer-Encoding") is not None or len(lengths) != 1
+                    or not re.fullmatch(r"[0-9]+", lengths[0].strip())):
+                raise StorageError("Content-Length inválido")
+            try:
+                length = int(lengths[0])
+            except ValueError:
+                raise StorageError("Content-Length inválido") from None
+            if length > forge_animation.MAX_BYTES:
+                _err(handler, 413, "a especificação não pode exceder 4 MiB")
+                return
+            raw = handler.rfile.read(length)
+            if len(raw) != length:
+                raise StorageError("corpo da especificação incompleto")
+            result = forge_animation.inspect_bytes(raw)
+        else:
+            body = _read_body(handler)
+            if set(body) != {"sourceText"}:
+                raise StorageError("envie somente o texto da especificação Forge V1")
+            result = forge_animation.inspect_source(body["sourceText"])
+    except StorageError as exc:
+        _err(handler, 400, str(exc))
+        return
+    except (ValueError, RecursionError):
+        _err(handler, 400, "corpo JSON inválido")
+        return
+    _send_json(handler, result)
+
+
 def api_projects(handler, pid: Optional[str], sub: list, method: str, body, query) -> Any:
     if method == "GET" and pid is None:
         return {"projects": storage.list_projects()}
@@ -439,12 +474,6 @@ class Handler(BaseHTTPRequestHandler):
                     "steps": templates_loader.bootstrap_steps(),
                     "templates": templates_loader.list_templates(),
                 }, 200
-            if parts == ["api", "animation", "forge-v1", "inspect"] and method == "POST":
-                if not _local_engine_access(self):
-                    return {"error": "inspeção de especificação exige Studio local em loopback"}, 403
-                if set(body) != {"sourceText"}:
-                    raise StorageError("envie somente o texto da especificação Forge V1")
-                return forge_animation.inspect_source(body["sourceText"]), 200
             if parts == ["api", "animation"] and method == "GET":
                 return animation_authoring.list_all(storage), 200
             if parts == ["api", "animation", "projects"] and method == "POST":
@@ -604,14 +633,16 @@ class Handler(BaseHTTPRequestHandler):
             if (origin and origin not in (f"http://{host}", f"https://{host}")) or self.headers.get("Sec-Fetch-Site") == "cross-site":
                 _err(self, 403, "origem não autorizada")
                 return
+        parsed = urlparse(self.path)
+        parts = [p for p in parsed.path.split("/") if p]
+        if parts == ["api", "animation", "forge-v1", "inspect"] and self.command == "POST":
+            _inspect_forge_source(self)
+            return
         try:
             self._body = _read_body(self)
         except StorageError as exc:
             _err(self, 400, str(exc))
             return
-        parsed = urlparse(self.path)
-        parts = [p for p in parsed.path.split("/") if p]
-
         if parts and parts[0] == "api":
             result = self._dispatch_api()
             if result is None:

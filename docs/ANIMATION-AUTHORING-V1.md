@@ -64,16 +64,33 @@ O registro histórico acima foi escrito antes da publicação; não deve ser lid
 como estado atual da existência do contrato.
 
 O Studio passa a oferecer `/static/forge-animation.html`, separado do
-editor interno 2D. A pessoa escolhe um `spec.json`, pode editar o JSON
-em texto, solicita inspeção pelo endpoint local
-`POST /api/animation/forge-v1/inspect` com `{sourceText}` e exporta
-**exatamente o texto verificado**, sem normalizar/regravar bytes.
-Qualquer edição posterior desativa a exportação até uma nova inspeção.
+editor interno 2D. Abra um `spec.json`, clique em **Verificar contrato**
+e confira o SHA-256 antes de exportar. A exportação sem mudança de conteúdo
+preserva os bytes importados, inclusive CRLF, LF e Unicode. Se as únicas
+mudanças forem de formatação, o Studio também exporta o arquivo original.
+Uma alteração de conteúdo de uma especificação válida exige avançar seu
+campo `version`, inspecionar novamente e exportar uma nova revisão.
+Na mesma sessão, a última revisão exportada passa a ser a base para
+as próximas edições.
+Todo download corresponde ao SHA-256 mostrado na última inspeção e uma
+edição posterior desativa a exportação. O Studio mantém a proveniência
+declarada no JSON e a saída é um arquivo separado. As decisões de
+aprovação do Forge são vinculadas à versão e ao SHA-256. Uma decisão
+anterior é recusada pelo Forge para a nova revisão.
+
+O endpoint local `POST /api/animation/forge-v1/inspect` recebe os bytes
+UTF-8 sem BOM com `Content-Type: application/vnd.lia.forge-spec+json`.
+O teto de 4 MiB (4.194.304 bytes) corresponde ao limite de entrada do
+adaptador `animation-v1` do Forge. O corpo binário evita que o escape de
+caracteres de um envelope JSON ocupe parte desse limite. O envelope
+`{sourceText}` permanece disponível sob o limite HTTP global preexistente.
+A rota exige loopback e mantém as checagens de host e origem. O backend
+não grava a especificação nem o editor 2D.
+
 O verificador de biblioteca padrão do Python checa a estrutura esperada do
 contrato Forge V1, nomes, limites, ossos, poses, quaternions, expressão,
 timeline (ordem float32), máscaras, loop, transições e proveniência declarada.
-A resposta inclui SHA-256 do texto original e contagens, sem persistir a
-especificação no backend.
+A resposta inclui o SHA-256 dos bytes recebidos e contagens.
 
 **Fronteiras:** a inspeção NÃO é o compositor oficial Forge/Zod, não cria
 `clip.json`, `motion.gltf` nem `manifest.json`, não aprova licenças,
@@ -82,10 +99,8 @@ não reproduz rig, e não converte o formato privado
 `.lia-capability` e não faz round-trip semântico de uma timeline 2D para
 quaternions 3D. Após exportar, executar novamente
 `node scripts/animation-pipeline.mjs <spec.json> <novo-diretório>`
-no Forge e passar seus gates oficiais. O formato exato pode divergir do
-validador independente até executar os cinco arquivos de exemplo reais
-do Forge contra os dois consumidores. O resultado deve ser tratado como
-**candidato a integração**, não interoperabilidade ponta a ponta.
+no Forge e passar seus gates oficiais. O ensaio cruzado abaixo cobre
+os cinco exemplos oficiais, incluindo preservação, edição e revisão.
 
 **Gate cruzado acrescentado após o QA:** os cinco JSONs originais de
 `BloomRX/Lia-Forge@f9cc2a144bd4f786ae282d0f993ee525b23049ff`,
@@ -95,10 +110,43 @@ foram copiados sem alterações para
 comparados ao repositório fonte e coincidiram para os cinco arquivos.
 `test_five_actual_forge_reference_specs` os inspeciona com o validador
 do Studio e confere hash dos bytes, identidade, versão, duração, perfil
-e número de beats. Este gate de leitura NÃO equivale a round-trip de
-composição Forge nem a execução de rig/GLTF no Studio.
+e número de beats. Esse é o teste automatizado de leitura.
 
-`tests/test_forge_animation.py` cobre cinco fixtures **sintéticas** com
-identificadores dos gestos de exemplo, recusas, HTTP local e fios estáticos
-da UI. Não confundir esses cinco casos com execução dos cinco exemplos
-originais no Forge nem com validação no Windows.
+### Ensaio cruzado no Windows
+
+Em Windows 11 x64, build 26200, Python 3.14.3, Node.js 24.22.2 e
+Electron 45.0.0, o gate `tools/verify_forge_v1_electron.cjs` executou
+a interface do Studio com um perfil e servidor locais isolados e o
+compositor oficial de `BloomRX/Lia-Forge@5b460111`. Comandos na raiz do
+Studio, com o checkout Forge preparado segundo seu lockfile:
+
+```powershell
+python -m unittest discover -s tests -p "test_forge_animation.py" -v
+node --check app/static/forge-animation.js
+node --check tools/verify_forge_v1_electron.cjs
+node tools/verify_forge_v1_electron.cjs --electron <electron.exe> --forge <checkout-Forge> --output <diretório-novo>
+```
+
+| Verificação | Resultado |
+| --- | --- |
+| Validação Python/HTTP local | 9 testes aprovados. Abrange o envelope anterior, limites de bytes, host/origem, loopback, Unicode, BOM e JSON inválido. |
+| Concordância, curiosidade, negação, ocioso e saudação | 5 de 5 no Electron e compositor reais. Bytes e aprovação de teste preservados sem edição. Alteração e reimportação como `1.0.1` preservaram a proveniência, com novo hash e estado `review-required`. |
+| Edição mantendo a versão, quaternion inválido, UTF-8 inválido, BOM e JSON inválido | Recusados no Electron. A segunda edição de saudação na mesma sessão também exigiu avançar de `1.0.1` para `1.0.2`. A aprovação anterior foi recusada pelo Forge nas cinco novas revisões, e o quaternion inválido foi recusado também no Forge. |
+| LF e CRLF com Unicode e mudança só de formatação | SHA-256 das exportações idêntico ao dos respectivos originais. |
+| Limite real de 4 MiB | Importação, inspeção e download idêntico em 4.194.304 bytes. A importação de 4.194.305 bytes foi recusada. |
+
+O ensaio gera `report.json`, os arquivos baixados, os manifestos de
+recomposição e `review-revision.png`. Os arquivos de aprovação são
+fixtures para testar a vinculação, sem aprovação de distribuição real.
+O gate oficial `scripts/validation/studio-forge-v1.mjs` do Forge também
+recompôs os cinco casos no Windows e gerou um GLB de rig de teste de
+saudação com Blender 5.3.0. Não foi executado aqui o shell WebView2
+distribuído do Studio nem testado um avatar de produção.
+
+A regressão ampla `python verify_alpha.py --part N` passou nas partes
+1 a 8 e 10. A parte 10 incluiu a suíte Forge V1, a compilação sintática
+e a UI. Com `PYTHONIOENCODING=utf-8`, a saída do verificador manteve os
+caracteres Unicode. A parte 9 apresentou falhas no cancelamento do chat
+com servidor falso e no acesso a `lia_index.json` em jobs concorrentes.
+Essas falhas também ocorreram no checkout-base `3aec3d3d` no Windows.
+A entrega do Forge V1 mantém o gate geral da parte 9 reprovado.
