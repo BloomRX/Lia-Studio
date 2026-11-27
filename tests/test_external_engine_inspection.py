@@ -25,7 +25,7 @@ class TestExternalEngineInspection(unittest.TestCase):
         self.game = root / 'jogo-externo'
         (self.game / 'ProjectSettings').mkdir(parents=True)
         (self.game / 'project.godot').write_text('config_version=42\n[application]\nconfig/name="Segredo"\n')
-        (self.game / 'Futuro.uproject').write_text('{"FileVersion":250,"EngineAssociation":"histórico"}')
+        (self.game / 'Futuro.uproject').write_text('{"FileVersion":250,"EngineAssociation":"histórico"}', encoding='utf-8')
         (self.game / 'ProjectSettings' / 'ProjectVersion.txt').write_text('m_EditorVersion: 5.6.7f1\n')
 
     def test_versions_are_declared_only_and_project_folder_unchanged(self):
