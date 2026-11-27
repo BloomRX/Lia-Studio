@@ -7,6 +7,7 @@ on:
       - "app/server.py"
       - "app/static/forge-animation.*"
       - "tests/test_forge_animation.py"
+      - "tests/fixtures/forge-v1-official/**"
       - ".github/workflows/forge-v1-contract.yml"
   push:
     paths:
@@ -14,6 +15,7 @@ on:
       - "app/server.py"
       - "app/static/forge-animation.*"
       - "tests/test_forge_animation.py"
+      - "tests/fixtures/forge-v1-official/**"
       - ".github/workflows/forge-v1-contract.yml"
 
 permissions:
