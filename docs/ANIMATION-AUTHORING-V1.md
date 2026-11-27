@@ -87,6 +87,17 @@ validador independente até executar os cinco arquivos de exemplo reais
 do Forge contra os dois consumidores. O resultado deve ser tratado como
 **candidato a integração**, não interoperabilidade ponta a ponta.
 
+**Gate cruzado acrescentado após o QA:** os cinco JSONs originais de
+`BloomRX/Lia-Forge@f9cc2a144bd4f786ae282d0f993ee525b23049ff`,
+`examples/animation/{concordancia,curiosidade,negacao,ocioso,saudacao}.json`,
+foram copiados sem alterações para
+`tests/fixtures/forge-v1-official/`. Os SHA de blob Git foram
+comparados ao repositório fonte e coincidiram para os cinco arquivos.
+`test_five_actual_forge_reference_specs` os inspeciona com o validador
+do Studio e confere hash dos bytes, identidade, versão, duração, perfil
+e número de beats. Este gate de leitura NÃO equivale a round-trip de
+composição Forge nem a execução de rig/GLTF no Studio.
+
 `tests/test_forge_animation.py` cobre cinco fixtures **sintéticas** com
 identificadores dos gestos de exemplo, recusas, HTTP local e fios estáticos
 da UI. Não confundir esses cinco casos com execução dos cinco exemplos
