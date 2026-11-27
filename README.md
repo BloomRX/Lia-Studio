@@ -1,225 +1,94 @@
-# Lia Studio
+<h1 align="center">Lia Studio</h1>
 
-> **Base canônica:** `main` reúne a aplicação e sua documentação. A consolidação de
-> 2026-11-26 preserva os históricos anteriores e recupera as
-> [sete pesquisas de branches antigas](docs/research/README.md).
-> Consulte o [registro de integração e validação](docs/BRANCH-CLEANUP-2026-11-26.md).
+<p align="center">
+  <strong>Do primeiro conceito de jogo ao planejamento, revisão e entrega.</strong><br>
+  Um espaço de criação para transformar ideias em projetos organizados, com assistência opcional de IA e decisões sempre supervisionadas.
+</p>
 
-Ferramenta da Lia para ajudar uma pessoa — inclusive sem experiência de programação —
-a preparar, construir, testar, documentar e retomar projetos de jogos com agentes
-supervisionáveis, sem substituir a direção criativa do Dev.
+<p align="center">
+  <a href="#do-brief-ao-projeto">Conheça</a> ·
+  <a href="#experimente-localmente">Começar</a> ·
+  <a href="#estado-atual">Estado</a> ·
+  <a href="docs/START-ROUTES-LIA-STUDIO.md">Guias de início</a>
+</p>
 
-> **Estado atual: Alpha offline/local-first e simulada, com aceite confirmado pelo Dev em 2026-10-03.**
-> Aceite explicitamente comunicado pelo Dev após o reteste Windows pelo Copilot;
-> isso **não certifica o produto para produção** nem significa que o Dev executou
-> pessoalmente o roteiro. O núcleo (preparação, planejamento, QA, release,
-> armazenamento) é **real e local**.
-> **A Alpha aceita** tem Task simulada; os incrementos posteriores incluem
-> Ollama opt-in para chat/rascunho, que pode usar nuvem/cobrança conforme a
-> configuração do Dev. Não há Agent Runtime geral nem engine executora conectados.
+> **Alpha local-first em desenvolvimento.** Os recursos de organização, planejamento, documentação e QA manual são reais. A execução geral de agentes, a geração de um jogo e builds por engines **não** estão integradas.
 
-## O que está implementado na Alpha aceita
-- Gerenciamento de projetos (criar, renomear, arquivar, reabrir, excluir com confirmação).
-- JSON versionado, backup local da versão anterior, diagnóstico e recuperação
-  com confirmação. Exportação manual de projeto com manifesto do índice.
-- **Etapa 0** com duas entradas escolhidas na Home: preparação guiada ou brief
-  revisável para outro executor. Uma sugestão local por regras pode indicar a rota,
-  mas o Dev confirma; não há Agent Runtime orquestrador conectado. Ambas geram os
-  mesmos documentos canônicos (brief, GDD, escopo, decisões, referências) sem
-  gameplay ou sobrescrita na segunda chamada. A rota breve acrescenta
-  `EXECUTION_BRIEF.md` como snapshot não enviado; o Plano e os gates permanecem.
-  As Skills são consultáveis; o gerador não interpreta seus templates diretamente.
-- Edição de documentos Markdown e rótulos `confirmado/proposto/suposição/em aberto`.
-- Detecção de **conflitos** entre decisão confirmada e suposição/em-aberto; aba
-  Decisões para registro e revisão humana, com proteção contra edição obsoleta e
-  confirmação antes de substituir `DECISIONS.md` modificado manualmente.
-- Planejamento em módulos/tarefas com critérios de aceite, IDs estáveis e dependências verificadas; módulos dependentes não podem ter tarefas simuladas antes de as dependências registrarem conclusão, execução real, validação e revisão aprovadas. A simulação não gera nem comprova esses estados.
-- Estágios Preparação → MVP jogável → Produção → Entrega com gates e aprovação
-  explícita. Sem execução real, o gate de saída do MVP permanece bloqueado.
-- Prévia de proposta sem gravação, seguida de aprovação explícita vinculada ao
-  digest atual do plano/permissões e execução **simulada** (validação e revisão do
-  resultado são separadas; sem código/serviço real).
-  Cada confirmação nova registra uma Session de simulação com ID em `sessions.json`;
-  conclusão da Session não comprova execução real, validação ou evidência.
-- QA/playtest com registro **manual** de verificações (planejado/executado/aprovado/falhou);
-  critério, ferramenta e evidência são exigidos para resultados não planejados.
-  Arquivos já existentes no projeto podem ser vinculados a módulo/tarefa e QA por ID;
-  o SHA-256 verifica apenas integridade dos bytes, nunca aprovação do teste.
-- Preparação documental de build/release (checklist, créditos, notas) — **sem
-  build nem publicação**; API não permite declarar build gerada ou publicação.
-- Preferências de provedores validadas (modo/provider do catálogo, sem credenciais),
-  sem inferência; perfis de engine exibidos do catálogo, incluindo Unreal não verificado.
-  Nenhum adapter ou provider de inferência real está conectado.
-- **Após o aceite da Alpha:** diagnóstico opcional e somente leitura da lista de
-  modelos anunciados por Ollama no loopback **do computador que executa o Studio**.
-  Sem consulta automática, instalação, download, envio de documentos, inferência
-  ou mudança de modo. A lista pode incluir modelos de nuvem e não comprova custo.
-- Decisões que bloqueiam integrações futuras: `docs/DECISOES-PENDENTES-INTEGRACOES.md`.
-- Interface navegável (SPA) servida localmente, com preview no navegador.
-- Handoff explícito por tarefa: prévia, revisão e confirmação geram `HANDOFF.md`
-  no projeto. A retomada sinaliza quando o snapshot mudou, inclusive após Job,
-  edição ou verificação sintática; só metadados desses registros são incluídos,
-  sem grants locais, prompt, fonte ou diff. Handoff não envia dados nem executa
-  código, e não substitui a revisão humana antes de compartilhar.
-- Biblioteca de 17 Skills locais consultáveis (cinco originais e 12 adaptadas de fontes MIT), separada dos projetos; busca por finalidade e editor de cópia. Aplicação geral por Agent Runtime ainda não conectada. Ver [duas rotas de início](docs/START-ROUTES-LIA-STUDIO.md).
-- Na aba Assets, prévia local e opcional de brief de Task para o Lia Forge, copiável após revisão; não conecta Forge, não envia dados nem substitui o catálogo ou QA. Ver `docs/LIA-FORGE-NA-PIPELINE.md`.
+## Do brief ao projeto
 
-## Alpha UI.1 — aceita pelo Dev em 2026-10-05
-- Home como **launcher** separado dos projetos, com criar/abrir projeto,
-  recentes e entrada para Skills.
-- Project Workspace com pipeline **central única**. `delivery` segue sendo o ID
-  do core, apresentado na interface como **Finalização**. Escolher uma fase
-  apenas troca a visão; avançar o estágio exige o gate existente na Visão geral.
-  A composição contextual muda em Preparação, MVP, Produção e Finalização; ações
-  de build/Agent são sinalizadas como não conectadas, sem inventar execução.
-- Contexto de projeto e Lia/acompanhamento em painéis recolhíveis. O painel
-  mostra bloqueios, Sessions simuladas e atalhos para QA/feedback manual;
-  **não há chat ou Agent real** nesta etapa.
-- Skills Workspace independente: consultar Skills **materializadas localmente e
-  verificadas do Agent Hub** (se disponíveis), criar e editar Skills próprias em
-  Markdown, buscar por Biblioteca e Minhas Skills. Skills do Hub são só leitura
-  e podem ser duplicadas; a rota documental de brief não exige Skill instalada.
-  Skills não são obrigatórias para Agents; salvar não aplica nem executa nada.
-- Decisões e limitações em `docs/arquitetura-decisoes.md` (Decisão 21) e roteiro
-  em `docs/ALPHA-UI1-VALIDACAO.md`. O Dev aceitou expressamente a UI.1 em
-  2026-10-05 após o [reteste Windows da versão correta](docs/ALPHA-UI1-EXECUCAO-WINDOWS-2026-10-05-95b3ccc.md)
-  e a correção responsiva `df1742e`. Os 12 casos de symlink pulados no Windows
-  permanecem **não executados**; aceite não os transforma em aprovação.
+O **Lia Studio** acompanha o desenvolvimento de jogos sem retirar as decisões criativas de quem está construindo. Comece com uma preparação guiada ou com um brief curto, detalhe o escopo, organize tarefas e registre as evidências de cada etapa.
 
-## O que é apenas simulado / não implementado
-- Execução de **Tasks por Agent** e conexão direta Gemini/OpenRouter: indisponíveis.
-  Chat Ollama pode fazer inferência real opcional por mensagem, e rascunho de
-  arquivo Python pode ser gerado após confirmação; nada disso executa o jogo.
-- Integração real com engines (Unreal/Godot/Unity/MonoGame): perfis selecionáveis,
-  mas adapters/builds não implementados/verificados. Diagnóstico Godot opt-in
-  procura `godot`/`godot4` na PATH e, com nova confirmação, consulta `--version`;
-  isto não abre, testa nem valida um projeto.
-- **Marco desktop Windows:** shell opcional `desktop.py` para janela WebView2
-  e receita de build `desktop/build_windows.ps1`, com a mesma API/SPA e sem Agent
-  real. O [primeiro reteste Windows](docs/DESKTOP-WINDOWS-MARCO-1-2026-10-07.md)
-  comprovou build, abertura do `.exe` fora do VS Code e persistência básica,
-  **não** aptidão para distribuição. A revisão seguinte habilita zoom nativo,
-  recarga explícita e pré-checagem de WebView2; pede [reteste direcionado](docs/DESKTOP-WINDOWS-RETESTE-2.md).
-  A Alpha via `python run.py` continua sem dependências de terceiros.
+<p align="center">
+  <img src="docs/concepts/01-home-lia-studio-concept.svg" alt="Concept da Home do Lia Studio" width="760"><br>
+  <sub>Concept versionado de direção e arquitetura da interface — não é uma captura da Alpha executada.</sub>
+</p>
 
-## Incrementos integrados em desenvolvimento (não aceitos no Windows)
-- Conversa textual opcional com modelo escolhido do Ollama em loopback, após
-  confirmação por mensagem. Modelo anunciado pode usar nuvem/custo segundo a
-  configuração do usuário; o Studio não instala modelo, não guarda prompt e
-  não lê documentos automaticamente. Sem Ollama, o aplicativo continua offline.
-- Na aba Execução, uma Task pode criar um arquivo `.py` inicial vinculado,
-  sem sobrescrever um existente. Uma Task com arquivo Python existente pode pedir rascunho
-  via Ollama em Job cancelável, opcionalmente incluir uma Skill pequena escolhida
-  explicitamente, **abrir o diff**, confirmar sua revisão e então confirmar
-  separadamente a aplicação. O Studio cria backup e registra hashes/IDs, mas
-  não executa o código nem declara a
-  Task aprovada. Arquivos alterados por outros processos bloqueiam aplicação.
-- Validação sintática local em processo Python separado da interface, limitada
-  a arquivo `.py` vinculado à Task; timeout, cancelamento do parser ativo
-  (visível em outra aba durante a requisição síncrona) e histórico próprio.
-  Liga registros por coincidência de Task/arquivo/hash, sem atribuir causalidade.
-  Testa sintaxe, não gameplay, build ou critério de aceite. Não abre gate do MVP.
-- Transporte CLI **experimental, somente testado com executável falso**:
-  `app/lia/agent_cli.py` valida JSONL, limites e timeout, mas não tem rota,
-  login, Session real ou gateway conectado. `--allowedTools` não é sandbox;
-  nenhum `claude -p` real foi executado ou autorizado por esse módulo. Combos
-  com custo/composição desconhecidos ficam bloqueados como decisão de produto.
-- Roteiro de fatia vertical por Task vinculado ao QA manual, sem validação de
-  jogo ou playtest pelo Studio. Grants explícitos por Task/projeto, com negação
-  prevalecendo, são checados no uso das quatro capacidades reais restritas
-  (arquivo Python e Ollama). Não liberam comandos arbitrários; não são sandbox
-  do sistema operacional nem autorização para engines, build ou publicação.
+## O que você encontra no Studio
 
-## Dependências por camada
-- **Core `app/lia/`:** apenas biblioteca padrão do Python; nenhuma dependência
-  externa foi encontrada na inspeção estática de imports dos módulos atuais.
-- **Desenvolvimento:** `python run.py` continua funcionando com Python 3.9+ e
-  biblioteca padrão, sem `pip install`. O navegador exibe a SPA local.
-- **Shell/adapters/build:** dependências externas são permitidas só quando
-  justificadas, com versões diretas **exatas** fixadas e registradas em
-  `THIRD_PARTY_NOTICES.md` (licença/finalidade). O build Windows opcional usa
-  `desktop/requirements-windows.txt`; suas dependências transitivas ainda exigem
-  lock/auditoria antes de qualquer distribuição.
-- **Usuário final (objetivo não validado):** o instalador deve entregar runtime e
-  dependências prontos; nunca pedir `pip`, Python instalado ou mostrar erro de
-  dependência. O teste real em máquina Windows limpa ainda não foi executado.
+| Área | Para que serve |
+| --- | --- |
+| **Home e projetos** | Criar, abrir, renomear, arquivar e retomar projetos locais. |
+| **Preparação e GDD** | Produzir briefs, escopo, decisões e documentos de referência revisáveis. |
+| **Planejamento** | Organizar módulos, tarefas, critérios de aceite, dependências e etapas do jogo. |
+| **Decisões** | Distinguir o que foi confirmado do que ainda é proposta, hipótese ou questão aberta. |
+| **Skills** | Consultar, duplicar e editar conhecimentos reutilizáveis, inclusive importações locais do Agent Hub. |
+| **QA e playtest** | Registrar verificações, critérios, evidências e decisões de aprovação manual. |
+| **Animações** | Criar poses e gestos em um editor 2D com keyframes e biblioteca local; importar/exportar seu backup interno. |
+| **IA opcional** | Consultar modelos anunciados pelo Ollama e produzir rascunhos controlados, com revisão de diff antes de aplicar alterações. |
 
-Windows é o destino final; aqui o caminho de desenvolvimento roda como servidor local.
+### Um fluxo com decisões humanas
 
-## Como executar
-```bash
-python run.py              # sobe em http://127.0.0.1:8080 (ou env PORT)
+```text
+Ideia → Preparação → MVP jogável → Produção → Finalização
+          ↓                ↓
+      Decisões         QA e evidências
 ```
-`HOST=0.0.0.0` expõe o servidor na rede e só deve ser usado em preview ou rede
-confiável; ainda não há autenticação para publicação na internet. Abra a URL no navegador. Para experimentar sem configurar conta, use o botão
-**"Carregar exemplo demonstrativo"** na tela inicial. Projetos são salvos em
-`~/LiaStudioProjects` (configurável via `LIA_PROJECTS_DIR`).
 
-Para experimentar o incremento de código (não equivale a aceite do jogo): crie
-um projeto e uma Task cujo campo **arquivos** aponte para um `.py` relativo ao
-projeto. Em Execução, abra **Capacidades reais desta Task** e conceda, por
-capacidade, as permissões necessárias: escrita para criar arquivo, leitura e
-parser para validar sintaxe, leitura e inferência Ollama para pedir rascunho,
-leitura e escrita para aplicar diff. A concessão também registra grant de escopo
-projeto, mas outras Tasks continuam negadas; qualquer negação prevalece.
-**Criar arquivo inicial** cria o `.py` ausente (ou crie-o manualmente na pasta
-projeto); a criação salva hash, sem backup de original inexistente. Use
-**Validar sintaxe** para análise local sem executar o jogo. Para usar
-**Pedir rascunho**, instale/inicie Ollama por conta própria, consulte os modelos,
-selecione um e, se quiser, liste e selecione uma Skill curta (até 2400 caracteres)
-na aba Execução. Confirme o envio do objetivo da Task, arquivo e Skill escolhida
-ao serviço, aguarde o Job e confirme que revisou o diff antes de confirmar
-separadamente a aplicação. O cancelamento solicita interrupção da conexão local,
-mas o serviço/modelo remoto pode continuar trabalhando/cobrar. Após reiniciar o
-Studio, Jobs interrompidos/propostas em memória não são retomados. Pode haver
-custo ou transferência para nuvem conforme o modelo/configuração do Ollama. Confirme o backup indicado
-antes de qualquer revisão manual. Se o Ollama não estiver disponível, o
-projeto/Skills/QA continuam utilizáveis; nenhuma instalação é disparada.
+As etapas são organizacionais: um checklist aprovado não cria automaticamente um jogo. O Studio diferencia **planejamento**, **simulação**, **execução comprovada** e **revisão humana**. Sem evidência real, os gates de conclusão permanecem bloqueados.
 
-## Testar a Alpha
-Para não sobrecarregar o VS Code/Copilot, **um comando por chamada**:
+## Experimente localmente
+
+A versão de desenvolvimento principal usa **Python 3.9+** e a biblioteca padrão:
+
 ```bash
-python verify_alpha.py --list-parts   # consulta; não executa testes
-python verify_alpha.py --part 1       # somente bloco 1; peça o próximo depois
+python run.py
 ```
-Continue com `--part 2` até `--part 10` em mensagens/terminais separados,
-aguardando o resultado antes de solicitar o próximo. Não rode em paralelo nem
-junto à suíte longa. `python verify_alpha.py` sem argumentos continua disponível
-para uma execução completa opcional (Python + UI/JS se Node existir).
-`python run.py` inicia o servidor para o teste de uso posterior. A cobertura
-e os comandos DevKit independentes estão no
-[roteiro fracionado](docs/ENTREGA-INTEGRADA-2026-10-17.md).
-`python tests/test_core.py` e `node tests/test_ui.cjs` podem ser executados
-individualmente (Node.js é opcional). Para repetir o percurso de uso, siga
-[`docs/ALPHA-ROTEIRO-DE-TESTE.md`](docs/ALPHA-ROTEIRO-DE-TESTE.md). O Dev
-**concedeu aceite à Alpha** em 2026-10-03; isso é distinto dos testes do Copilot
-no Windows, que tiveram 11 casos de symlink pulados. Resultados e limitações
-ficam em `docs/testes-resultados.md`.
-Backups `.bak` não substituem cópias em outro disco; veja `docs/armazenamento-privacidade.md`.
 
-## Animações — fundação local V1
+Abra o endereço local informado no terminal (por padrão, `http://127.0.0.1:8080`). A interface web funciona sem agente, sem modelo instalado e sem conexão obrigatória com outro produto Lia.
 
-Abra **Animações** na Home ou em `/static/animation.html` para criar um projeto
-independente de jogo, editar keyframes em trilhas anatômicas e expressivas,
-reproduzir uma prévia 2D esquemática, desfazer/refazer, guardar poses/gestos na
-biblioteca local e exportar/importar um **backup interno**. A integração deste
-editor com o contrato de animação do Forge e com o runtime Lia ainda não foi
-validada; a exportação atual é somente backup interno, não um asset interoperável. Veja
-[escopo, fluxo e handoff](docs/ANIMATION-AUTHORING-V1.md).
+Há também um shell Windows opcional com WebView2, mas ele ainda depende de validação de distribuição. Para os testes da Alpha:
 
-## Estrutura
-- `app/lia/` — núcleo (armazenamento, estágios/gates, bootstrap, planejamento,
-  skills, provedores, execução simulada, QA, release, engines e conflitos).
-- `app/server.py` — API JSON + servidor HTTP (stdlib).
-- `app/static/` — interface (HTML/CSS/JS vanilla, sem build).
-- `.agents/skills/` — destino local (ignorado no Git) das Skills do Hub;
-  lock atual de 16, nenhuma pré-instalada; `lia-execution-brief` aguarda pin.
-  Templates da Etapa 0 não são fonte do gerador (decisão D1 pendente).
-- `planejamento/` — documentos de visão e handoffs.
-- `docs/` — documentação da entrega.
+```bash
+python verify_alpha.py --list-parts
+python verify_alpha.py --part 1
+```
 
-## Licença e marca
-- Código e documentação próprios: **MIT** (ver `LICENSE`).
-- Nome, personagem, logo e identidade visual da Lia: política de marca **separada**,
-  não licenciada pela MIT para apropriação ou representação como produto oficial
-  (ver `THIRD_PARTY_NOTICES.md`).
+Siga o [roteiro de uso e validação](docs/ALPHA-ROTEIRO-DE-TESTE.md) antes de testar a Alpha com dados importantes.
+
+## Animações e interoperabilidade
+
+O editor de animações do Studio trabalha com um **formato interno de rascunho**. A integração textual com especificações de animação do [Lia Forge](https://github.com/BloomRX/Lia-Forge) está sendo desenvolvida separadamente na [PR #2](https://github.com/BloomRX/Lia-Studio/pull/2); não é uma conversão automática de animação 2D para rig 3D ou VRM.
+
+Veja o [escopo do editor de animações](docs/ANIMATION-AUTHORING-V1.md).
+
+## Estado atual
+
+O Studio é uma **Alpha funcional para preparação e organização**. A execução de Tasks por agentes é simulada ou restrita a capacidades muito específicas, como validação sintática de arquivo Python. Integrações completas com Godot/Unity/Unreal, automação de build/publicação e um runtime de agentes continuam por fazer. A consulta ao Ollama pode envolver modelos remotos conforme a configuração; nada é enviado automaticamente.
+
+A experiência Windows e os fluxos de edição possuem testes documentados, mas não representam certificação para uso em produção.
+
+## Explorar a documentação
+
+- [Duas rotas de início](docs/START-ROUTES-LIA-STUDIO.md)
+- [Visão da interface e conceitos](docs/concepts/README.md)
+- [Arquitetura e decisões](docs/arquitetura-decisoes.md)
+- [Escopo de Skills e agentes](docs/AI-AGENTS-UX.md)
+- [Resultados e limites de testes](docs/testes-resultados.md)
+
+## Ecossistema, colaboração e licença
+
+O Studio se conecta conceitualmente à [Lia Desktop](https://github.com/BloomRX/Lia-Project), à fábrica de assets [Lia Forge](https://github.com/BloomRX/Lia-Forge) e à biblioteca de capacidades [Lia Agent Hub](https://github.com/BloomRX/Lia-AgentHub), sem exigir que esses aplicativos estejam instalados.
+
+Para agentes de desenvolvimento e contribuidores: [`AGENTS.md`](AGENTS.md) e [`CLAUDE.md`](CLAUDE.md) contêm as regras de trabalho. Este README apresenta o produto e os caminhos para experimentá-lo.
+
+Código próprio sob [MIT](LICENSE); personagem, nome, ícones e outros elementos de identidade seguem política de marca separada. Consulte os [avisos de terceiros](THIRD_PARTY_NOTICES.md).
