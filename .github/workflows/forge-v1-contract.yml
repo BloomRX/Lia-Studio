@@ -1,0 +1,38 @@
+name: Forge V1 spec contract
+
+on:
+  pull_request:
+    paths:
+      - "app/lia/forge_animation.py"
+      - "app/server.py"
+      - "app/static/forge-animation.*"
+      - "tests/test_forge_animation.py"
+      - "tests/fixtures/forge-v1-official/**"
+      - ".github/workflows/forge-v1-contract.yml"
+  push:
+    paths:
+      - "app/lia/forge_animation.py"
+      - "app/server.py"
+      - "app/static/forge-animation.*"
+      - "tests/test_forge_animation.py"
+      - "tests/fixtures/forge-v1-official/**"
+      - ".github/workflows/forge-v1-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Studio Forge V1 (Python 3.11)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Forge spec unit and local HTTP checks
+        run: python -m unittest discover -s tests -p "test_forge_animation.py" -v

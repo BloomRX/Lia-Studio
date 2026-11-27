@@ -8,6 +8,6 @@
 - Não leia, copie, registre ou publique credenciais, memórias pessoais, prompts brutos ou streams do modelo sem autorização e política de retenção. Nunca atribua ao Studio testes/builds que não executou.
 - Para testes automatizados: `python verify_alpha.py --part N`, **uma parte por chamada**, nunca em paralelo. Testes Windows e do gateway real pertencem ao Dev; sem executá-los, marque NÃO EXECUTADO.
 
-Consulte `docs/LEIA-ME-SESSAO.md` e `docs/GUIA-LIA-STUDIO.md` quando iniciar uma sessão ou planejar mudanças.
-Consulte `docs/BRAND-STANDARDS.md` para princípios de marca compartilhados; `docs/UI-UX-DESIGN-SYSTEM-LIA-STUDIO.md` para identidade visual e experiência do Studio. `docs/PADRAO-DA-MARCA.md` é uma referência específica de distribuição/armazenamento desktop, não o design system.
-Consulte `docs/GLOSSARIO.md` quando nomear conceitos, arquivos ou interfaces.
+Sessão e planejamento: `docs/LEIA-ME-SESSAO.md` e `docs/GUIA-LIA-STUDIO.md`.
+Marca: `docs/BRAND-STANDARDS.md`. UI: `docs/UI-UX-DESIGN-SYSTEM-LIA-STUDIO.md`.
+Distribuição e armazenamento desktop: `docs/PADRAO-DA-MARCA.md`. Nomes: `docs/GLOSSARIO.md`.

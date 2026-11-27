@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .lia import animation_authoring, app_discovery, assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
+from .lia import animation_authoring, forge_animation, app_discovery, assets, bootstrap, combo_canary, combo_policy, code_drafts, conflicts, decisions as decisions_service, draft_jobs, editor_runs, engine_inspection, engine_probe, engines, evidence, execution, forge_brief, gameplay_loop, godot_runs, handoff, gateway_models, legacy_ids, local_model_chat, local_model_discovery, planning, providers, qa, release, run_history, runtime_policy, sessions, skills, stages, start_routes, templates_loader, validation_sessions, vertical_slice
 from .lia.storage import Storage, StorageError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -83,6 +83,41 @@ def _local_engine_access(handler):
     # Acesso à engine e logs só na API local, nunca no preview de rede.
     return (handler is not None and handler.server.server_address[0] == "127.0.0.1"
             and handler.client_address[0] == "127.0.0.1")
+
+
+def _inspect_forge_source(handler) -> None:
+    if not _local_engine_access(handler):
+        _err(handler, 403, "inspeção de especificação exige Studio local em loopback")
+        return
+    try:
+        if handler.headers.get_content_type() == forge_animation.SPEC_MEDIA_TYPE:
+            lengths = handler.headers.get_all("Content-Length", [])
+            if (handler.headers.get("Transfer-Encoding") is not None or len(lengths) != 1
+                    or not re.fullmatch(r"[0-9]+", lengths[0].strip())):
+                raise StorageError("Content-Length inválido")
+            try:
+                length = int(lengths[0])
+            except ValueError:
+                raise StorageError("Content-Length inválido") from None
+            if length > forge_animation.MAX_BYTES:
+                _err(handler, 413, "a especificação não pode exceder 4 MiB")
+                return
+            raw = handler.rfile.read(length)
+            if len(raw) != length:
+                raise StorageError("corpo da especificação incompleto")
+            result = forge_animation.inspect_bytes(raw)
+        else:
+            body = _read_body(handler)
+            if set(body) != {"sourceText"}:
+                raise StorageError("envie somente o texto da especificação Forge V1")
+            result = forge_animation.inspect_source(body["sourceText"])
+    except StorageError as exc:
+        _err(handler, 400, str(exc))
+        return
+    except (ValueError, RecursionError):
+        _err(handler, 400, "corpo JSON inválido")
+        return
+    _send_json(handler, result)
 
 
 def api_projects(handler, pid: Optional[str], sub: list, method: str, body, query) -> Any:
@@ -598,14 +633,16 @@ class Handler(BaseHTTPRequestHandler):
             if (origin and origin not in (f"http://{host}", f"https://{host}")) or self.headers.get("Sec-Fetch-Site") == "cross-site":
                 _err(self, 403, "origem não autorizada")
                 return
+        parsed = urlparse(self.path)
+        parts = [p for p in parsed.path.split("/") if p]
+        if parts == ["api", "animation", "forge-v1", "inspect"] and self.command == "POST":
+            _inspect_forge_source(self)
+            return
         try:
             self._body = _read_body(self)
         except StorageError as exc:
             _err(self, 400, str(exc))
             return
-        parsed = urlparse(self.path)
-        parts = [p for p in parsed.path.split("/") if p]
-
         if parts and parts[0] == "api":
             result = self._dispatch_api()
             if result is None:

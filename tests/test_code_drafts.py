@@ -173,7 +173,7 @@ class TestCodeDrafts(unittest.TestCase):
         self.path.write_text("# edição do Dev\n" + self.original, encoding="utf-8")
         with self.assertRaises(storage.StorageError):
             code_drafts.apply(self.store, self.pid, draft["proposal_id"], True)
-        self.assertIn("edição do Dev", self.path.read_text())
+        self.assertIn("edição do Dev", self.path.read_text(encoding="utf-8"))
         self.assertFalse(list(self.path.parent.glob("*.lia-backup-*")))
         self.path.write_text(self.original)
         draft = self.preview()
